@@ -7,6 +7,7 @@ use App\Enums\UserType;
 use App\Models\Branch;
 use App\Models\Shop;
 use App\Models\User;
+use App\Services\ChartOfAccountsProvisioner;
 use App\Services\ShopRoleProvisioner;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -15,6 +16,7 @@ class CreateShopAction
 {
     public function __construct(
         private readonly ShopRoleProvisioner $roleProvisioner,
+        private readonly ChartOfAccountsProvisioner $accountProvisioner,
     ) {}
 
     /**
@@ -66,6 +68,7 @@ class CreateShopAction
             ]);
 
             $this->roleProvisioner->provisionForNewShop($shop, $owner);
+            $this->accountProvisioner->provisionForNewShop($shop, $branch);
 
             return [
                 'shop' => $shop,
