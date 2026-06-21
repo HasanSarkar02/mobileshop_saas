@@ -9,6 +9,7 @@ use App\Models\Shop;
 use App\Models\User;
 use App\Services\ChartOfAccountsProvisioner;
 use App\Services\ShopRoleProvisioner;
+use App\Services\UserInviter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -17,6 +18,7 @@ class CreateShopAction
     public function __construct(
         private readonly ShopRoleProvisioner $roleProvisioner,
         private readonly ChartOfAccountsProvisioner $accountProvisioner,
+        private readonly UserInviter $userInviter,
     ) {}
 
     /**
@@ -57,24 +59,24 @@ class CreateShopAction
 
             $owner = User::create([
                 'shop_id' => $shop->id,
-                'branch_id' => null, // Owner is never branch-restricted
+                'branch_id' => null,
                 'name' => $data['owner_name'],
                 'email' => $data['email'],
-                'password' => $plainPassword,
+                'password' => Str::password(40), // unusable placeholder — real password set via invite link
                 'user_type' => UserType::Owner,
                 'phone' => $data['phone'] ?? null,
                 'is_active' => true,
-                'email_verified_at' => now(),
+                'email_verified_at' => null,
             ]);
 
             $this->roleProvisioner->provisionForNewShop($shop, $owner);
             $this->accountProvisioner->provisionForNewShop($shop, $branch);
+            $this->userInviter->invite($owner, "the owner of {$shop->name}");
 
             return [
                 'shop' => $shop,
                 'branch' => $branch,
                 'owner' => $owner,
-                'plain_password' => $plainPassword,
             ];
         });
     }

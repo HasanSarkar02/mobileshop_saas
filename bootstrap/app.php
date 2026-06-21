@@ -13,7 +13,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->appendToGroup('web', SetTenantContext::class);
+        $middleware->appendToGroup('web', [
+            \App\Http\Middleware\EnsureAccountIsActive::class,
+            \App\Http\Middleware\SetTenantContext::class,
+        ]);
+
+        $middleware->alias([
+            'super_admin' => \App\Http\Middleware\EnsureIsSuperAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
