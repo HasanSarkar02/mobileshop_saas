@@ -13,6 +13,13 @@ use App\Livewire\Suppliers\SupplierForm;
 use App\Livewire\Suppliers\SupplierList;
 use App\Http\Controllers\Admin\AdminLoginController;
 use App\Http\Controllers\Admin\ImpersonationController;
+use App\Livewire\Products\ProductDetail;
+use App\Livewire\Products\ProductForm;
+use App\Livewire\Products\ProductList;
+use App\Livewire\Settings\ShopSettings;
+use App\Livewire\Customers\CustomerForm;
+use App\Livewire\Customers\CustomerList;
+use App\Livewire\Customers\CustomerProfile;
 
 // ─── Super Admin ──────────────────────────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -33,21 +40,39 @@ Route::prefix('admin')->name('admin.')->group(function () {
 });
 
 // ─── Shop App (Owner + Employee) ──────────────────────────────────────────────
+// ─── Shop App (Owner + Employee) ──────────────────────────────────────────────
 Route::middleware(['auth:web'])->group(function () {
 
     Route::get('/', fn() => redirect()->route('dashboard'));
-    Route::get('dashboard', fn() => view('dashboard'))->name('dashboard');
+    Route::livewire('dashboard', \App\Livewire\Dashboard::class)->name('dashboard');
 
-    // Impersonation
+    // Impersonation stop
     Route::post('impersonation/stop', [ImpersonationController::class, 'stop'])->name('impersonation.stop');
 
+    // Products
+    Route::livewire('products', ProductList::class)->name('products.index');
+    Route::livewire('products/create', ProductForm::class)->name('products.create');
+    Route::livewire('products/{product}/edit', ProductForm::class)->name('products.edit');
+    Route::livewire('products/{product}', ProductDetail::class)->name('products.show');
+
     // Suppliers
-    Route::get('suppliers', SupplierList::class)->name('suppliers.index');
-    Route::get('suppliers/create', SupplierForm::class)->name('suppliers.create');
-    Route::get('suppliers/{supplier}/edit', SupplierForm::class)->name('suppliers.edit');
+    Route::livewire('suppliers', SupplierList::class)->name('suppliers.index');
+    Route::livewire('suppliers/create', SupplierForm::class)->name('suppliers.create');
+    Route::livewire('suppliers/{supplier}/edit', SupplierForm::class)->name('suppliers.edit');
 
     // Purchases
-    Route::get('purchases', PurchaseList::class)->name('purchases.index');
-    Route::get('purchases/create', CreatePurchase::class)->name('purchases.create');
-    Route::get('purchases/{purchase}', PurchaseDetail::class)->name('purchases.show');
+    Route::livewire('purchases', PurchaseList::class)->name('purchases.index');
+    Route::livewire('purchases/create', CreatePurchase::class)->name('purchases.create');
+    Route::livewire('purchases/{purchase}', PurchaseDetail::class)->name('purchases.show');
+
+    // Settings
+    Route::livewire('settings', ShopSettings::class)->name('settings');
+
+
+
+    // Customers
+    Route::livewire('customers', CustomerList::class)->name('customers.index');
+    Route::livewire('customers/create', CustomerForm::class)->name('customers.create');
+    Route::livewire('customers/{customer}/edit', CustomerForm::class)->name('customers.edit');
+    Route::livewire('customers/{customer}', CustomerProfile::class)->name('customers.show');
 });

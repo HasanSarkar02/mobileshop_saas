@@ -26,4 +26,13 @@ class Branch extends Model
     {
         return $this->hasMany(User::class);
     }
+    public function units(): HasMany
+    {
+        return $this->hasMany(\App\Models\ProductUnit::class);
+    }
+
+    public function stock(): HasMany
+    {
+        return $this->hasMany(\App\Models\BranchStock::class);
+    }
 }

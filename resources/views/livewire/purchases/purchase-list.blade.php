@@ -26,10 +26,13 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($purchases as $purchase)
-                        <tr class="hover:bg-gray-50 cursor-pointer"
-                            wire:click="$navigate('{{ route('purchases.show', $purchase) }}')">
+                        <tr class="hover:bg-gray-50 cursor-pointer">
                             <td class="table-td font-mono text-sm font-medium text-indigo-700">
-                                {{ $purchase->reference_number }}</td>
+                                <a href="{{ route('purchases.show', $purchase) }}" wire:navigate
+                                    class="hover:underline">
+                                    {{ $purchase->reference_number }}
+                                </a>
+                            </td>
                             <td class="table-td font-medium">{{ $purchase->supplier->name }}</td>
                             <td class="table-td text-gray-500">{{ $purchase->branch->name }}</td>
                             <td class="table-td text-gray-500">{{ $purchase->purchase_date->format('d M Y') }}</td>
