@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\ValidationException;
@@ -26,6 +27,9 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
+        Fortify::loginView(fn () => view('auth.login'));
+        Fortify::requestPasswordResetLinkView(fn () => view('auth.forgot-password'));
+        Fortify::resetPasswordView(fn (Request $request) => view('auth.reset-password', ['request' => $request]));
 
         Fortify::authenticateUsing(function (Request $request) {
             $user = User::where('email', $request->email)->first();
@@ -63,5 +67,19 @@ class FortifyServiceProvider extends ServiceProvider
 
             return Limit::perMinute(5)->by($throttleKey);
         });
+
+        // Fortify::requestPasswordResetLinkUsing(function (Request $request) {
+        //     $user = User::where('email', $request->input(Fortify::email()))->first();
+
+        //     if ($user?->isSuperAdmin()) {
+        //         // Silently do nothing — caller sees the same "link sent" message
+        //         // so they can't tell whether the email is a real admin account.
+        //         return Password::RESET_LINK_SENT;
+        //     }
+
+        //     return Password::broker()->sendResetLink(
+        //         $request->only(Fortify::email())
+        //     );
+        // });
     }
 }

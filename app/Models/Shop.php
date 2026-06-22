@@ -4,9 +4,11 @@ namespace App\Models;
 
 use App\Enums\ShopStatus;
 use App\Enums\UserType;
+use App\Models\SubscriptionPlan;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -16,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'business_type', 'currency', 'timezone', 'status',
     'vat_enabled', 'vat_registration_number', 'default_vat_rate',
     'trial_ends_at', 'subscription_ends_at', 'is_active', 'settings',
+    'subscription_plan_id', 'books_locked_through', 'onboarding_completed_at',
 ])]
 class Shop extends Model
 {
@@ -24,15 +27,19 @@ class Shop extends Model
     protected function casts(): array
     {
         return [
-            'status' => ShopStatus::class,
-            'trial_ends_at' => 'datetime',
-            'subscription_ends_at' => 'datetime',
-            'is_active' => 'boolean',
-            'vat_enabled' => 'boolean',
-            'default_vat_rate' => 'decimal:2',
-            'settings' => 'array',
+            'status'                  => ShopStatus::class,
+            'trial_ends_at'           => 'datetime',
+            'subscription_ends_at'    => 'datetime',
+            'onboarding_completed_at' => 'datetime',
+            'books_locked_through'    => 'date',
+            'is_active'               => 'boolean',
+            'vat_enabled'             => 'boolean',
+            'default_vat_rate'        => 'decimal:2',
+            'settings'                => 'array',
         ];
     }
+
+    // ─── Relationships ────────────────────────────────────────────────────────
 
     public function users(): HasMany
     {
@@ -53,6 +60,13 @@ class Shop extends Model
     {
         return $this->hasOne(User::class)->where('user_type', UserType::Owner->value);
     }
+
+    public function subscriptionPlan(): BelongsTo
+    {
+        return $this->belongsTo(SubscriptionPlan::class, 'subscription_plan_id');
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────────
 
     public function isOnTrial(): bool
     {

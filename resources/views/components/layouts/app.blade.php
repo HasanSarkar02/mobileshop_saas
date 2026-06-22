@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>
+        @isset($title)
+            {{ $title }} —
+        @endisset ShopSaaS
+    </title>
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/images/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
+</head>
+
+<body class="h-full font-sans" x-data="{
+    sidebarOpen: false,
+    notifications: [],
+    addNotification(type, message) {
+        const n = { id: Date.now(), type, message };
+        this.notifications.push(n);
+        setTimeout(() => this.notifications = this.notifications.filter(x => x.id !== n.id), 4000);
+    }
+}"
+    @notify.window="addNotification($event.detail[0]?.type ?? 'info', $event.detail[0]?.message ?? '')">
+
+    {{-- Impersonation Banner --}}
+    @if (session('impersonator_id'))
+        <div
+            class="bg-amber-500 text-amber-950 text-sm font-semibold text-center py-2 px-4 flex items-center justify-center gap-4">
+            <span>⚠️ You are impersonating {{ auth()->user()->name }}</span>
+            <form method="POST" action="{{ route('impersonation.stop') }}" class="inline">
+                @csrf
+                <button type="submit" class="underline hover:no-underline">Return to Admin</button>
+            </form>
+        </div>
+    @endif
+
+    {{-- Toast Notifications --}}
+    <div class="fixed top-4 right-4 z-50 flex flex-col gap-2 w-80 pointer-events-none" aria-live="polite">
+        <template x-for="n in notifications" :key="n.id">
+            <div class="pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium"
+                :class="{
+                    'bg-green-50 border-green-300 text-green-800': n.type === 'success',
+                    'bg-red-50 border-red-300 text-red-800': n.type === 'error',
+                    'bg-yellow-50 border-yellow-300 text-yellow-800': n.type === 'warning',
+                    'bg-blue-50 border-blue-300 text-blue-800': n.type === 'info'
+                }"
+                x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-x-4"
+                x-transition:enter-end="opacity-100 translate-x-0">
+                <span x-text="n.message" class="flex-1"></span>
+                <button @click="notifications = notifications.filter(x => x.id !== n.id)"
+                    class="opacity-60 hover:opacity-100 shrink-0">✕</button>
+            </div>
+        </template>
+    </div>
+
+    <div class="min-h-full flex pb-16 lg:pb-0">
+        {{-- Desktop Sidebar --}}
+        <aside class="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 fixed inset-y-0 z-30">
+            <div class="flex items-center h-16 px-6 border-b border-gray-100">
+                <div>
+                    <span class="font-bold text-indigo-700 text-lg">ShopSaaS</span>
+                    <div class="text-xs text-gray-400 truncate max-w-[180px]">{{ auth()->user()?->shop?->name }}</div>
+                </div>
+            </div>
+            <nav class="flex-1 p-3 space-y-0.5 overflow-y-auto">
+                @php
+                    $navLinks = [
+                        [
+                            'route' => 'dashboard',
+                            'label' => 'Dashboard',
+                            'd' =>
+                                'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+                        ],
+                        [
+                            'route' => 'suppliers.index',
+                            'label' => 'Suppliers',
+                            'd' =>
+                                'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+                        ],
+                        [
+                            'route' => 'purchases.index',
+                            'label' => 'Purchases',
+                            'd' =>
+                                'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
+                        ],
+                    ];
+                @endphp
+                @foreach ($navLinks as $link)
+                    <a href="{{ route($link['route']) }}" wire:navigate
+                        class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+                            {{ request()->routeIs($link['route'] . '*') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}">
+                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="{{ $link['d'] }}" />
+                        </svg>
+                        {{ $link['label'] }}
+                    </a>
+                @endforeach
+            </nav>
+            <div class="p-4 border-t border-gray-100">
+                <div class="text-xs text-gray-400 mb-1">{{ auth()->user()?->name }}</div>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="text-sm text-gray-500 hover:text-red-600 transition-colors">Sign
+                        out</button>
+                </form>
+            </div>
+        </aside>
+
+        {{-- Main Content --}}
+        <div class="lg:pl-64 flex-1 flex flex-col min-h-screen">
+            <header
+                class="sticky top-0 z-20 bg-white border-b border-gray-200 h-14 flex items-center px-4 lg:px-8 gap-3">
+                <button class="lg:hidden text-gray-500" @click="sidebarOpen = !sidebarOpen">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                <h1 class="text-sm font-semibold text-gray-900 flex-1">{{ $title ?? 'Dashboard' }}</h1>
+            </header>
+            <main class="flex-1 p-4 lg:p-6">
+                {{ $slot }}
+            </main>
+        </div>
+    </div>
+
+    {{-- Mobile Bottom Nav (PWA) --}}
+    <nav class="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-30 flex">
+        @php
+            $bottomNav = [
+                [
+                    'route' => 'dashboard',
+                    'label' => 'Home',
+                    'd' =>
+                        'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+                ],
+                [
+                    'route' => 'suppliers.index',
+                    'label' => 'Suppliers',
+                    'd' =>
+                        'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+                ],
+                [
+                    'route' => 'purchases.index',
+                    'label' => 'Purchases',
+                    'd' =>
+                        'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
+                ],
+            ];
+        @endphp
+        @foreach ($bottomNav as $item)
+            <a href="{{ route($item['route']) }}" wire:navigate
+                class="flex-1 flex flex-col items-center justify-center gap-0.5 py-2 text-xs font-medium transition-colors
+                    {{ request()->routeIs($item['route'] . '*') ? 'text-indigo-600' : 'text-gray-500' }}">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="{{ $item['d'] }}" />
+                </svg>
+                {{ $item['label'] }}
+            </a>
+        @endforeach
+    </nav>
+
+    @livewireScripts
+</body>
+
+</html>

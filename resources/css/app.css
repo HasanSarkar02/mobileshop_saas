@@ -1,9 +1,89 @@
 @import 'tailwindcss';
 
+@plugin "@tailwindcss/forms";
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+
+@layer base {
+    body {
+        @apply antialiased;
+    }
+}
+
+
+@layer components {
+
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    }
+
+    .btn-primary {
+        @apply bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500;
+    }
+
+    .btn-secondary {
+        @apply bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-indigo-500;
+    }
+
+    .btn-danger {
+        @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+    }
+
+    .btn-success {
+        @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
+    }
+
+
+    .input {
+        @apply block w-full rounded-lg border-gray-300 shadow-sm text-sm focus:border-indigo-500 focus:ring-indigo-500;
+    }
+
+    .input-error {
+        @apply border-red-300 focus:border-red-500 focus:ring-red-500;
+    }
+
+    .label {
+        @apply block text-sm font-medium text-gray-700 mb-1;
+    }
+
+    .error {
+        @apply mt-1 text-xs text-red-600;
+    }
+
+
+    .card {
+        @apply bg-white rounded-xl shadow-sm border border-gray-200;
+    }
+
+
+    .badge {
+        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    }
+
+    .badge-green {
+        @apply bg-green-100 text-green-800;
+    }
+
+    .badge-blue {
+        @apply bg-blue-100 text-blue-800;
+    }
+
+    .badge-red {
+        @apply bg-red-100 text-red-800;
+    }
+
+    .badge-gray {
+        @apply bg-gray-100 text-gray-700;
+    }
+
+    .badge-yellow {
+        @apply bg-yellow-100 text-yellow-800;
+    }
 }

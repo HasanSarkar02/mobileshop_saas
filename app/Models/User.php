@@ -27,6 +27,7 @@ class User extends Authenticatable
             'user_type' => UserType::class,
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
+            'password_changed_at' => 'datetime',
         ];
     }
 
@@ -54,4 +55,16 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Branch::class);
     }
+
+    public function sendPasswordResetNotification($token): void
+{
+    if ($this->isSuperAdmin()) {
+        return; // Silently discard — never send reset emails to Super Admin
+    }
+
+    $this->notify(new \App\Notifications\SetInitialPasswordNotification(
+        $token,
+        'your account'
+    ));
+}
 }
