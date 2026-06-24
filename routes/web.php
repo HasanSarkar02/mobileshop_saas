@@ -20,6 +20,8 @@ use App\Livewire\Settings\ShopSettings;
 use App\Livewire\Customers\CustomerForm;
 use App\Livewire\Customers\CustomerList;
 use App\Livewire\Customers\CustomerProfile;
+use App\Http\Controllers\SaleReceiptController;
+use App\Livewire\Sales\SaleList;
 
 // ─── Super Admin ──────────────────────────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -69,10 +71,17 @@ Route::middleware(['auth:web'])->group(function () {
     Route::livewire('settings', ShopSettings::class)->name('settings');
 
 
-
     // Customers
     Route::livewire('customers', CustomerList::class)->name('customers.index');
     Route::livewire('customers/create', CustomerForm::class)->name('customers.create');
     Route::livewire('customers/{customer}/edit', CustomerForm::class)->name('customers.edit');
     Route::livewire('customers/{customer}', CustomerProfile::class)->name('customers.show');
+
+    // POS
+    Route::livewire('pos', \App\Livewire\Pos::class)->name('pos');
+
+    // Sales
+    Route::livewire('sales', SaleList::class)->name('sales.index');
+    Route::get('sales/{sale}/receipt', [SaleReceiptController::class, 'show'])
+        ->name('sales.receipt');
 });

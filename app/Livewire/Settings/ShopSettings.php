@@ -345,4 +345,69 @@ class ShopSettings extends Component
     {
         return view('livewire.settings.shop-settings');
     }
+
+    // ── Finance Partners ──────────────────────────────────────────────────────
+    public bool   $showFpForm    = false;
+    public ?int   $editingFpId   = null;
+    public string $fpName        = '';
+    public string $fpPhone       = '';
+    public string $fpContactPerson = '';
+    public string $fpFeePercent  = '0';
+    public string $fpNotes       = '';
+
+    #[Computed]
+    public function financePartners(): \Illuminate\Database\Eloquent\Collection
+    {
+        return \App\Models\FinancePartner::orderBy('name')->get();
+    }
+
+    public function openFpForm(?int $id = null): void
+    {
+        $this->showFpForm = true;
+        $this->editingFpId = $id;
+        if ($id) {
+            $fp = \App\Models\FinancePartner::findOrFail($id);
+            $this->fpName = $fp->name;
+            $this->fpPhone = $fp->phone ?? '';
+            $this->fpContactPerson = $fp->contact_person ?? '';
+            $this->fpFeePercent = (string) $fp->processing_fee_percent;
+            $this->fpNotes = $fp->notes ?? '';
+        } else {
+            $this->fpName = $this->fpPhone = $this->fpContactPerson = $this->fpNotes = '';
+            $this->fpFeePercent = '0';
+        }
+    }
+
+    public function saveFinancePartner(): void
+    {
+        $this->validateOnly('fpName', ['fpName' => 'required|string|max:255']);
+
+        $data = [
+            'shop_id'                => Auth::user()->shop_id,
+            'name'                   => $this->fpName,
+            'phone'                  => $this->fpPhone ?: null,
+            'contact_person'         => $this->fpContactPerson ?: null,
+            'processing_fee_percent' => (float) $this->fpFeePercent,
+            'notes'                  => $this->fpNotes ?: null,
+            'is_active'              => true,
+        ];
+
+        if ($this->editingFpId) {
+            \App\Models\FinancePartner::findOrFail($this->editingFpId)->update($data);
+        } else {
+            \App\Models\FinancePartner::create($data);
+        }
+
+        unset($this->financePartners);
+        $this->showFpForm = false;
+        $this->dispatch('notify', type: 'success', message: 'Finance partner saved.');
+    }
+
+    public function toggleFpStatus(int $id): void
+    {
+        $fp = \App\Models\FinancePartner::findOrFail($id);
+        $fp->update(['is_active' => ! $fp->is_active]);
+        unset($this->financePartners);
+        $this->dispatch('notify', type: 'success', message: 'Updated.');
+    }
 }

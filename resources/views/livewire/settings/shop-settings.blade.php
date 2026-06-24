@@ -7,6 +7,7 @@
                 $tabs = [
                     ['key' => 'profile', 'label' => 'Shop Profile'],
                     ['key' => 'payments', 'label' => 'Payment Accounts'],
+                    ['key' => 'finance_partners', 'label' => 'Finance Partners (EMI)'],
                     ['key' => 'branches', 'label' => 'Branches'],
                     ['key' => 'vat', 'label' => 'VAT / Tax'],
                 ];
@@ -210,6 +211,77 @@
                             Add your first account
                         </button>
                     </div>
+                @endforelse
+            </div>
+        </div>
+
+        {{-- ── FINANCE PARTNERS TAB ── --}}
+        <div wire:show="activeTab === 'finance_partners'" class="p-6 space-y-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="font-semibold text-gray-900">EMI Finance Partners</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">TopPay, PalmPay etc. — used in POS for EMI sales.</p>
+                </div>
+                <button wire:click="openFpForm()" class="btn-primary btn-sm">+ Add Partner</button>
+            </div>
+
+            <div wire:show="showFpForm" class="border border-indigo-200 bg-indigo-50 rounded-xl p-5 space-y-4">
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="label">Company Name *</label>
+                        <input wire:model="fpName" type="text" class="input" placeholder="e.g. TopPay, PalmPay">
+                        @error('fpName')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div><label class="label">Contact Person</label><input wire:model="fpContactPerson"
+                            type="text" class="input"></div>
+                    <div><label class="label">Phone</label><input wire:model="fpPhone" type="tel"
+                            class="input"></div>
+                    <div>
+                        <label class="label">Processing Fee %</label>
+                        <input wire:model="fpFeePercent" type="number" step="0.01" min="0"
+                            class="input" placeholder="0">
+                        <p class="text-xs text-gray-400 mt-0.5">Fee they deduct from settlement</p>
+                    </div>
+                    <div><label class="label">Notes</label><input wire:model="fpNotes" type="text"
+                            class="input"></div>
+                </div>
+                <div class="flex gap-2">
+                    <button wire:click="saveFinancePartner" class="btn-primary btn-sm">Save</button>
+                    <button wire:click="$set('showFpForm', false)" class="btn-secondary btn-sm">Cancel</button>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                @forelse($this->financePartners as $fp)
+                    <div class="flex items-center gap-3 p-4 border border-gray-200 rounded-xl">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="font-medium text-sm">{{ $fp->name }}</span>
+                                <span class="{{ $fp->is_active ? 'badge-green' : 'badge-gray' }} badge text-xs">
+                                    {{ $fp->is_active ? 'Active' : 'Inactive' }}
+                                </span>
+                                @if ($fp->processing_fee_percent > 0)
+                                    <span class="text-xs text-gray-400">{{ $fp->processing_fee_percent }}% fee</span>
+                                @endif
+                            </div>
+                            @if ($fp->phone)
+                                <div class="text-xs text-gray-400 mt-0.5">{{ $fp->phone }}</div>
+                            @endif
+                        </div>
+                        <div class="flex gap-2">
+                            <button wire:click="openFpForm({{ $fp->id }})"
+                                class="text-xs text-indigo-600 hover:underline">Edit</button>
+                            <button wire:click="toggleFpStatus({{ $fp->id }})"
+                                class="text-xs {{ $fp->is_active ? 'text-red-500' : 'text-green-600' }} hover:underline">
+                                {{ $fp->is_active ? 'Deactivate' : 'Activate' }}
+                            </button>
+                        </div>
+                    </div>
+                @empty
+                    <p class="text-center py-8 text-sm text-gray-400">No finance partners yet. Add TopPay, PalmPay etc.
+                    </p>
                 @endforelse
             </div>
         </div>
