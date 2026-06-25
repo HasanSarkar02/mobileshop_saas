@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'business_type', 'currency', 'timezone', 'status',
     'vat_enabled', 'vat_registration_number', 'default_vat_rate',
     'trial_ends_at', 'subscription_ends_at', 'is_active', 'settings',
-    'subscription_plan_id', 'books_locked_through', 'onboarding_completed_at',
+    'subscription_plan_id', 'books_locked_through', 'onboarding_completed_at','expense_approval_threshold',
 ])]
 class Shop extends Model
 {
@@ -36,6 +36,7 @@ class Shop extends Model
             'vat_enabled'             => 'boolean',
             'default_vat_rate'        => 'decimal:2',
             'settings'                => 'array',
+            'expense_approval_threshold' => 'decimal:2',
         ];
     }
 

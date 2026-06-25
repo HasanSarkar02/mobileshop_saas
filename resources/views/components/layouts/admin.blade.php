@@ -25,25 +25,28 @@
         setTimeout(() => this.notifications = this.notifications.filter(x => x.id !== n.id), 4000);
     }
 }"
-    @notify.window="addNotification($event.detail[0]?.type ?? 'info', $event.detail[0]?.message ?? '')">
-
-    {{-- Toast Notifications --}}
-    <div class="fixed top-4 right-4 z-50 flex flex-col gap-2 w-80 pointer-events-none" aria-live="polite">
-        <template x-for="n in notifications" :key="n.id">
-            <div class="pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium"
-                :class="{
-                    'bg-green-50 border-green-300 text-green-800': n.type === 'success',
-                    'bg-red-50 border-red-300 text-red-800': n.type === 'error',
-                    'bg-yellow-50 border-yellow-300 text-yellow-800': n.type === 'warning',
-                    'bg-blue-50 border-blue-300 text-blue-800': n.type === 'info'
-                }"
-                x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-x-4"
-                x-transition:enter-end="opacity-100 translate-x-0">
-                <span x-text="n.message" class="flex-1"></span>
-                <button @click="notifications = notifications.filter(x => x.id !== n.id)"
-                    class="opacity-60 hover:opacity-100 shrink-0">✕</button>
-            </div>
-        </template>
+    @notify.window="
+        const d = $event.detail;
+        const n = Array.isArray(d) ? d[0] : d;
+        addNotification(n?.type ?? 'info', n?.message ?? '');
+    "
+    {{-- Toast Notifications --}} <div class="fixed top-4 right-4 z-50 flex flex-col gap-2 w-80 pointer-events-none"
+    aria-live="polite">
+    <template x-for="n in notifications" :key="n.id">
+        <div class="pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium"
+            :class="{
+                'bg-green-50 border-green-300 text-green-800': n.type === 'success',
+                'bg-red-50 border-red-300 text-red-800': n.type === 'error',
+                'bg-yellow-50 border-yellow-300 text-yellow-800': n.type === 'warning',
+                'bg-blue-50 border-blue-300 text-blue-800': n.type === 'info'
+            }"
+            x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 translate-x-4"
+            x-transition:enter-end="opacity-100 translate-x-0">
+            <span x-text="n.message" class="flex-1"></span>
+            <button @click="notifications = notifications.filter(x => x.id !== n.id)"
+                class="opacity-60 hover:opacity-100 shrink-0">✕</button>
+        </div>
+    </template>
     </div>
 
     <div class="min-h-full flex">

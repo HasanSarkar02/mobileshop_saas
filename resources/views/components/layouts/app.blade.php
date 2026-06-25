@@ -27,18 +27,20 @@
         setTimeout(() => this.notifications = this.notifications.filter(x => x.id !== n.id), 4000);
     }
 }"
-    @notify.window="addNotification($event.detail[0]?.type ?? 'info', $event.detail[0]?.message ?? '')">
-
-    {{-- Impersonation Banner --}}
-    @if (session('impersonator_id'))
-        <div
-            class="bg-amber-500 text-amber-950 text-sm font-semibold text-center py-2 px-4 flex items-center justify-center gap-4">
-            <span>⚠️ You are impersonating {{ auth()->user()->name }}</span>
-            <form method="POST" action="{{ route('impersonation.stop') }}" class="inline">
-                @csrf
-                <button type="submit" class="underline hover:no-underline">Return to Admin</button>
-            </form>
-        </div>
+    @notify.window="
+        const d = $event.detail;
+        const n = Array.isArray(d) ? d[0] : d;
+        addNotification(n?.type ?? 'info', n?.message ?? '');
+    "
+    {{-- Impersonation Banner --}} @if (session('impersonator_id'))
+    <div
+        class="bg-amber-500 text-amber-950 text-sm font-semibold text-center py-2 px-4 flex items-center justify-center gap-4">
+        <span>⚠️ You are impersonating {{ auth()->user()->name }}</span>
+        <form method="POST" action="{{ route('impersonation.stop') }}" class="inline">
+            @csrf
+            <button type="submit" class="underline hover:no-underline">Return to Admin</button>
+        </form>
+    </div>
     @endif
 
     {{-- Toast Notifications --}}
@@ -111,6 +113,42 @@
                             'label' => 'Sales',
                             'd' =>
                                 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+                        ],
+                        [
+                            'route' => 'service.index',
+                            'label' => 'Service',
+                            'd' =>
+                                'M12 18h.01M8 21l4-4 4 4M3 4.5A2.5 2.5 0 015.5 2h13A2.5 2.5 0 0121 4.5v9.5a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 14V4.5z',
+                        ],
+                        [
+                            'route' => 'finance-partners.index',
+                            'label' => 'EMI Partners',
+                            'd' =>
+                                'M2.25 8.25h19.5m-18 4.5h16.5m-15 4.5h13.5M3 4.5h18A1.5 1.5 0 0122.5 6v12A1.5 1.5 0 0121 19.5H3A1.5 1.5 0 011.5 18V6A1.5 1.5 0 013 4.5z',
+                        ],
+                        [
+                            'route' => 'used-phones.index',
+                            'label' => 'Used Phones',
+                            'd' =>
+                                'M12 18h.01M8 21l4-4 4 4M3 4.5A2.5 2.5 0 015.5 2h13A2.5 2.5 0 0121 4.5v9.5a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 14V4.5z',
+                        ],
+                        [
+                            'route' => 'expenses.index',
+                            'label' => 'Expenses',
+                            'd' =>
+                                'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z',
+                        ],
+                        [
+                            'route' => 'payroll.index',
+                            'label' => 'Payroll',
+                            'd' =>
+                                'M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z',
+                        ],
+                        [
+                            'route' => 'employees.index',
+                            'label' => 'Employees',
+                            'd' =>
+                                'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
                         ],
                         [
                             'route' => 'settings',

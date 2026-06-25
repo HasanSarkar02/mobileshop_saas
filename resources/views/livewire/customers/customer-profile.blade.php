@@ -136,7 +136,7 @@
     {{-- ── Tabs ── --}}
     <div class="card overflow-hidden">
         <nav class="flex border-b border-gray-200 overflow-x-auto">
-            @foreach ([['key' => 'overview', 'label' => 'Overview'], ['key' => 'transactions', 'label' => 'Transaction History'], ['key' => 'documents', 'label' => 'Documents'], ['key' => 'guarantor', 'label' => 'Guarantor']] as $tab)
+            @foreach ([['key' => 'overview', 'label' => 'Overview'], ['key' => 'transactions', 'label' => 'Transaction History'], ['key' => 'purchases', 'label' => 'Purchase History'], ['key' => 'documents', 'label' => 'Documents'], ['key' => 'guarantor', 'label' => 'Guarantor']] as $tab)
                 <button wire:click="$set('activeTab', '{{ $tab['key'] }}')"
                     class="px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors
                         {{ $activeTab === $tab['key'] ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
@@ -202,6 +202,8 @@
                     @endforelse
                 </div>
             </div>
+
+
 
             {{-- Write-off (owner only) --}}
             @if ($customer->current_balance > 0 && auth()->user()->isOwner())
@@ -287,6 +289,72 @@
             </table>
             @if ($transactions->hasPages())
                 <div class="px-4 py-3 border-t border-gray-100">{{ $transactions->links() }}</div>
+            @endif
+        </div>
+
+        {{-- Purchases Tab --}}
+        <div wire:show="activeTab === 'purchases'">
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="table-th">Invoice</th>
+                        <th class="table-th">Date</th>
+                        <th class="table-th">Items</th>
+                        <th class="table-th text-right">Total</th>
+                        <th class="table-th">Payment</th>
+                        <th class="table-th">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @forelse($sales as $sale)
+                        <tr
+                            class="{{ $sale->status->value === 'voided' ? 'opacity-50 bg-red-50' : 'hover:bg-gray-50' }}">
+                            <td class="table-td">
+                                <a href="{{ route('sales.show', $sale) }}" wire:navigate
+                                    class="font-mono font-semibold text-indigo-600 hover:underline text-sm">
+                                    {{ $sale->sale_number }}
+                                </a>
+                            </td>
+                            <td class="table-td text-gray-500 text-xs">
+                                {{ $sale->confirmed_at?->format('d M Y') }}
+                            </td>
+                            <td class="table-td">
+                                @foreach ($sale->items->take(2) as $item)
+                                    <div class="text-xs text-gray-700">
+                                        {{ $item->product_name }}
+                                        @if ($item->serial_number)
+                                            <span class="font-mono text-indigo-400">{{ $item->serial_number }}</span>
+                                        @endif
+                                    </div>
+                                @endforeach
+                                @if ($sale->items->count() > 2)
+                                    <div class="text-xs text-gray-400">+{{ $sale->items->count() - 2 }} more</div>
+                                @endif
+                            </td>
+                            <td
+                                class="table-td text-right font-bold {{ $sale->status->value === 'voided' ? 'line-through text-gray-400' : 'text-gray-900' }}">
+                                ৳{{ number_format($sale->grand_total, 2) }}
+                            </td>
+                            <td class="table-td text-xs text-gray-500">
+                                {{ $sale->paymentSummary() }}
+                            </td>
+                            <td class="table-td">
+                                <span class="badge {{ $sale->status->badgeClass() }}">
+                                    {{ $sale->status->label() }}
+                                </span>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="table-td text-center text-gray-400 py-8">
+                                No purchases yet.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+            @if ($sales->hasPages())
+                <div class="px-4 py-3 border-t border-gray-100">{{ $sales->links() }}</div>
             @endif
         </div>
 

@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
+use App\Models\SalaryDraw;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['name', 'email', 'password', 'shop_id', 'branch_id', 'user_type', 'phone', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
@@ -28,6 +30,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'last_login_at' => 'datetime',
             'password_changed_at' => 'datetime',
+            'has_system_access' => 'boolean',
         ];
     }
 
@@ -57,14 +60,24 @@ class User extends Authenticatable
     }
 
     public function sendPasswordResetNotification($token): void
-{
-    if ($this->isSuperAdmin()) {
-        return; // Silently discard — never send reset emails to Super Admin
+    {
+        if ($this->isSuperAdmin()) {
+            return; // Silently discard — never send reset emails to Super Admin
+        }
+
+        $this->notify(new \App\Notifications\SetInitialPasswordNotification(
+            $token,
+            'your account'
+        ));
     }
 
-    $this->notify(new \App\Notifications\SetInitialPasswordNotification(
-        $token,
-        'your account'
-    ));
-}
+    public function employeeProfile(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(EmployeeProfile::class);
+    }
+
+    public function salaryDraws(): HasMany
+    {
+        return $this->hasMany(SalaryDraw::class);
+    }
 }

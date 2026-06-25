@@ -85,6 +85,9 @@ class ShopSettings extends Component
 
     public ?int $editingBranchId = null;
 
+    // ── Business Rules ────────────────────────────────────────────────────────
+    public string $expenseApprovalThreshold = '0';
+
     public function mount(): void
     {
         $shop = $this->shop;
@@ -97,9 +100,10 @@ class ShopSettings extends Component
         $this->vatEnabled = $shop->vat_enabled;
         $this->vatRegistrationNumber = $shop->vat_registration_number ?? '';
         $this->defaultVatRate = (string) $shop->default_vat_rate;
+        $this->expenseApprovalThreshold = (string) $shop->expense_approval_threshold;
     }
 
-    // ── Computed Properties (v4 style — cached per render) ────────────────────
+    // ── Computed Properties ────────────────────
 
     #[Computed]
     public function shop(): Shop
@@ -409,5 +413,17 @@ class ShopSettings extends Component
         $fp->update(['is_active' => ! $fp->is_active]);
         unset($this->financePartners);
         $this->dispatch('notify', type: 'success', message: 'Updated.');
+    }
+
+    public function saveBusinessRules(): void
+    {
+        $this->validateOnly('expenseApprovalThreshold',
+            ['expenseApprovalThreshold' => 'required|numeric|min:0']);
+
+        $this->shop->update([
+            'expense_approval_threshold' => (float) $this->expenseApprovalThreshold,
+        ]);
+        unset($this->shop);
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Business rules saved.']);
     }
 }

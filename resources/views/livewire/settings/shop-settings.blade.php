@@ -10,6 +10,7 @@
                     ['key' => 'finance_partners', 'label' => 'Finance Partners (EMI)'],
                     ['key' => 'branches', 'label' => 'Branches'],
                     ['key' => 'vat', 'label' => 'VAT / Tax'],
+                    ['key' => 'rules', 'label' => 'Business Rules'],
                 ];
             @endphp
             @foreach ($tabs as $tab)
@@ -441,6 +442,34 @@
                 <button wire:click="saveVat" class="btn-primary" data-loading:class="opacity-50">
                     Save VAT Settings
                 </button>
+            </div>
+        </div>
+        {{-- ── BUSINESS RULES TAB ── --}}
+        <div wire:show="activeTab === 'rules'" class="p-6 space-y-5">
+            <h3 class="font-semibold text-gray-900">Business Rules</h3>
+
+            <div class="card p-5 bg-amber-50 border-amber-200 space-y-4">
+                <div>
+                    <h4 class="font-semibold text-amber-900 text-sm">Expense Approval Threshold</h4>
+                    <p class="text-xs text-amber-700 mt-0.5">
+                        Expenses <strong>above</strong> this amount will require owner approval before the accounting
+                        entry is posted.
+                        Set to <strong>0</strong> to auto-approve all expenses.
+                    </p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-amber-800 font-medium">৳</span>
+                    <input wire:model="expenseApprovalThreshold" type="number" min="0" step="100"
+                        class="input w-40">
+                    <span class="text-xs text-amber-600">
+                        @if ((float) $expenseApprovalThreshold > 0)
+                            Expenses above ৳{{ number_format((float) $expenseApprovalThreshold, 0) }} need approval
+                        @else
+                            All expenses auto-approved
+                        @endif
+                    </span>
+                </div>
+                <button wire:click="saveBusinessRules" class="btn-primary btn-sm">Save Rules</button>
             </div>
         </div>
     </div>

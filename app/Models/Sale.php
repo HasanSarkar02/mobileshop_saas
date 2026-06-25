@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'item_discount_amount', 'order_discount_amount', 'total_discount_amount',
     'vat_amount', 'grand_total', 'total_cost', 'gross_profit', 'due_collection_amount',
     'notes', 'created_by', 'voided_by', 'void_reason', 'void_journal_entry_id',
-    'confirmed_at', 'voided_at',
+    'confirmed_at', 'voided_at', 'return_processed',
 ])]
 class Sale extends Model
 {
@@ -36,6 +36,7 @@ class Sale extends Model
             'due_collection_amount' => 'decimal:2',
             'confirmed_at'  => 'datetime',
             'voided_at'     => 'datetime',
+            'return_processed' => 'boolean',
         ];
     }
 
@@ -74,14 +75,49 @@ class Sale extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function creditNotes(): HasMany
+    {
+        return $this->hasMany(\App\Models\CreditNote::class, 'original_sale_id');
+    }
+
+    /**
+     * A sale is returnable if it is confirmed AND no completed credit note
+     * has already been issued for it. Voided sales cannot be returned.
+     */
+    public function isReturnable(): bool
+    {
+        if ($this->status !== SaleStatus::Confirmed) {
+            return false;
+        }
+
+        if ($this->return_processed) {
+            return false;
+        }
+
+        $lockDate = $this->shop?->books_locked_through;
+        if ($lockDate && $this->confirmed_at?->lte($lockDate)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Voidable: confirmed, not returned, not locked.
+     * Deliberately separate from isReturnable().
+     */
     public function isVoidable(): bool
     {
         if ($this->status !== SaleStatus::Confirmed) {
             return false;
         }
-        $lockDate = $this->shop?->books_locked_through;
 
-        return ! ($lockDate && $this->confirmed_at?->lte($lockDate));
+        if ($this->return_processed) {
+            return false;
+        }
+
+        $lockDate = $this->shop?->books_locked_through;
+        return !($lockDate && $this->confirmed_at?->lte($lockDate));
     }
 
     public function paymentSummary(): string

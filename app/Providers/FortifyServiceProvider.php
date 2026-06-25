@@ -49,6 +49,12 @@ class FortifyServiceProvider extends ServiceProvider
                 ]);
             }
 
+            if (! $user->has_system_access) {
+                throw ValidationException::withMessages([
+                    Fortify::username() => 'This account does not have system access.',
+                ]);
+            }
+
             $shop = $user->shop;
 
             if ($shop && (! $shop->is_active || in_array($shop->status, [ShopStatus::Suspended, ShopStatus::Expired], true))) {

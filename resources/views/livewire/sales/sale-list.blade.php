@@ -47,7 +47,9 @@
                     @forelse($sales as $sale)
                         <tr class="hover:bg-gray-50 {{ $sale->status->value === 'voided' ? 'opacity-60' : '' }}">
                             <td class="table-td font-mono font-semibold text-indigo-700 text-sm">
-                                {{ $sale->sale_number }}
+                                <a href="{{ route('sales.show', $sale) }}" wire:navigate class="hover:underline">
+                                    {{ $sale->sale_number }}
+                                </a>
                             </td>
                             <td class="table-td">
                                 <div class="font-medium text-sm text-gray-900">

@@ -15,10 +15,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Super Admin automatically passes every permission/policy check —
-        // no need to assign roles to the platform owner.
+        // SuperAdmin and Owner bypass ALL permission checks.
+        // Employees go through Spatie permission checks.
         Gate::before(function (User $user, string $ability) {
-            return $user->isSuperAdmin() ? true : null;
+            if ($user->isSuperAdmin()) return true;
+            if ($user->isOwner()) return true;
+            return null; // Employee → checked by Spatie
         });
     }
 }

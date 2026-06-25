@@ -116,6 +116,14 @@ class CustomerProfile extends Component
             ->latest()
             ->paginate(15, pageName: 'tPage');
 
-        return view('livewire.customers.customer-profile', compact('transactions'));
+        $sales = \App\Models\Sale::withoutGlobalScopes()
+            ->where('shop_id', $this->customer->shop_id)
+            ->where('customer_id', $this->customer->id)
+            ->with(['items.variant.product.brand', 'items.productUnit', 'payments'])
+            ->latest('confirmed_at')
+            ->paginate(10, pageName: 'sPage');
+
+        return view('livewire.customers.customer-profile',
+            compact('transactions', 'sales'));
     }
 }

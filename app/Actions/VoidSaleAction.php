@@ -53,24 +53,38 @@ class VoidSaleAction
             // ── 2. Restore inventory ───────────────────────────────────────────
             foreach ($sale->items as $item) {
                 if ($item->product_unit_id) {
+                    // Force direct update to bypass any model casting issues
                     ProductUnit::withoutGlobalScopes()
                         ->where('id', $item->product_unit_id)
                         ->update([
-                            'status'           => UnitStatus::InStock->value,
+                            'status'           => 'in_stock',   // direct string value
                             'sold_at'          => null,
                             'is_archived'      => false,
                             'disposition_type' => null,
                             'disposition_id'   => null,
                         ]);
                 } else {
-                    BranchStock::withoutGlobalScopes()
+                    // Non-serialized — restore at the ORIGINAL sale's branch
+                    $existing = BranchStock::withoutGlobalScopes()
                         ->where('shop_id', $sale->shop_id)
                         ->where('branch_id', $sale->branch_id)
                         ->where('product_variant_id', $item->product_variant_id)
-                        ->increment('quantity', $item->quantity);
+                        ->first();
+
+                    if ($existing) {
+                        $existing->increment('quantity', $item->quantity);
+                    } else {
+                        // Create stock row if it doesn't exist (edge case)
+                        BranchStock::create([
+                            'shop_id'            => $sale->shop_id,
+                            'branch_id'          => $sale->branch_id,
+                            'product_variant_id' => $item->product_variant_id,
+                            'quantity'           => $item->quantity,
+                            'average_cost'       => $item->cost_price,
+                        ]);
+                    }
                 }
             }
-
             // ── 3. Reverse customer baki ───────────────────────────────────────
             $bakiPayments = $sale->payments->where('payment_type', 'customer_credit');
 

@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             SuperAdminSeeder::class,
             DefaultCatalogSeeder::class,
+            ExpenseCategorySeeder::class,
         ]);
     }
 }
