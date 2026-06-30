@@ -34,8 +34,12 @@ class ServiceList extends Component
         return [
             'active'   => ServiceTicket::whereNotIn('status', ['delivered', 'cancelled'])->count(),
             'ready'    => ServiceTicket::where('status', ServiceTicketStatus::Ready->value)->count(),
-            'due'      => (float) ServiceTicket::whereNotIn('status', ['delivered', 'cancelled'])
+
+
+            'due'      => (float) ServiceTicket::where('status', '!=', ServiceTicketStatus::Cancelled->value)
+                             ->where('amount_due', '>', 0)
                              ->sum('amount_due'),
+
             'this_month_revenue' => (float) \App\Models\ServicePayment::withoutGlobalScopes()
                 ->whereMonth('payment_date', now()->month)
                 ->whereYear('payment_date', now()->year)

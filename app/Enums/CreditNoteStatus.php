@@ -8,6 +8,15 @@ enum CreditNoteStatus: string
     case Completed = 'completed';
     case Rejected  = 'rejected';
 
+    public function label(): string
+    {
+        return match ($this) {
+            self::Draft     => 'Draft',
+            self::Completed => 'Completed',
+            self::Rejected  => 'Rejected',
+        };
+    }
+
     public function badgeClass(): string
     {
         return match ($this) {

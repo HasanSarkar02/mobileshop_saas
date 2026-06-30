@@ -9,17 +9,35 @@
                 <span>Branch: {{ $sale->branch?->name }}</span>
                 <span>Cashier: {{ $sale->cashier?->name }}</span>
             </div>
+            <div class="flex flex-wrap gap-2 mt-2">
+                @php $badge = $sale->displayStatusBadge(); @endphp
+                <span class="badge {{ $badge['class'] }}">{{ $badge['label'] }}</span>
+                @if ($sale->hasPartialReturn())
+                    <span class="text-xs text-gray-500">
+                        ({{ $sale->items->sum('returned_quantity') }} of {{ $sale->items->sum('quantity') }} units
+                        returned)
+                    </span>
+                @endif
+                @if ($sale->status->value === 'voided')
+                    <span class="text-xs text-red-500 font-medium">
+                        Void reason: {{ $sale->void_reason }}
+                    </span>
+                @endif
+            </div>
         </div>
         <div class="flex items-center gap-3 flex-wrap">
-            <span class="badge {{ $sale->status->badgeClass() }}">{{ $sale->status->label() }}</span>
-            <span class="text-2xl font-bold text-indigo-700">৳{{ number_format($sale->grand_total, 2) }}</span>
+            <span
+                class="text-2xl font-bold {{ $sale->status->value === 'voided' ? 'line-through text-gray-400' : 'text-indigo-700' }}">
+                ৳{{ number_format($sale->grand_total, 2) }}
+            </span>
         </div>
     </div>
 
     {{-- Customer --}}
     <div class="card p-4 flex items-center gap-4">
         <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-            <span class="font-bold text-indigo-600">{{ strtoupper(substr($sale->customer?->name ?? 'W', 0, 1)) }}</span>
+            <span
+                class="font-bold text-indigo-600">{{ strtoupper(substr($sale->customer?->name ?? 'W', 0, 1)) }}</span>
         </div>
         <div class="flex-1">
             @if ($sale->customer?->customer_type?->value !== 'walk_in')
@@ -29,7 +47,7 @@
                 <div class="font-semibold text-gray-500">Walk-in Customer</div>
             @endif
         </div>
-        @if ($sale->isVoidable())
+        @if ($sale->isReturnable())
             <div class="flex gap-2">
                 <a href="{{ route('sales.return', $sale) }}" wire:navigate class="btn-secondary btn-sm">
                     ↩ Process Return
@@ -87,7 +105,8 @@
             <div class="flex justify-end">
                 <div class="space-y-1.5 min-w-[220px] text-sm">
                     <div class="flex justify-between text-gray-600">
-                        <span>Subtotal</span><span>৳{{ number_format($sale->subtotal, 2) }}</span></div>
+                        <span>Subtotal</span><span>৳{{ number_format($sale->subtotal, 2) }}</span>
+                    </div>
                     @if ($sale->total_discount_amount > 0)
                         <div class="flex justify-between text-red-500">
                             <span>Discount</span><span>−৳{{ number_format($sale->total_discount_amount, 2) }}</span>
@@ -95,7 +114,8 @@
                     @endif
                     @if ($sale->vat_amount > 0)
                         <div class="flex justify-between text-gray-600">
-                            <span>VAT</span><span>৳{{ number_format($sale->vat_amount, 2) }}</span></div>
+                            <span>VAT</span><span>৳{{ number_format($sale->vat_amount, 2) }}</span>
+                        </div>
                     @endif
                     <div class="flex justify-between font-bold text-base border-t border-gray-200 pt-1.5">
                         <span>Grand Total</span>
@@ -110,6 +130,62 @@
             </div>
         </div>
     </div>
+
+    {{-- Credit Notes (if any returns were processed) --}}
+    @if ($sale->creditNotes->isNotEmpty())
+        <div class="card overflow-hidden border-amber-200">
+            <div class="px-5 py-3 bg-amber-50 border-b border-amber-200">
+                <h3 class="font-semibold text-amber-900 text-sm">
+                    ↩ Returns / Credit Notes ({{ $sale->creditNotes->count() }})
+                </h3>
+            </div>
+            @foreach ($sale->creditNotes as $cn)
+                <div class="px-5 py-4 border-b border-amber-100 last:border-0">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <div class="font-mono font-semibold text-amber-700">{{ $cn->credit_note_number }}</div>
+                            <div class="text-xs text-gray-500 mt-0.5">
+                                {{ $cn->created_at->format('d M Y H:i') }} ·
+                                {{ $cn->refund_method->label() }}
+                            </div>
+                            @if ($cn->reason)
+                                <div class="text-xs text-gray-500 mt-0.5">Reason: {{ $cn->reason }}</div>
+                            @endif
+                            <div class="mt-2 space-y-1">
+                                @foreach ($cn->items as $item)
+                                    <div class="text-xs text-gray-600">
+                                        • {{ $item->product_name }}
+                                        @if ($item->serial_number)
+                                            <span class="font-mono text-indigo-400">{{ $item->serial_number }}</span>
+                                        @endif
+                                        × {{ $item->quantity }}
+                                        <span
+                                            class="badge {{ $item->condition->label() !== 'Good condition' ? 'badge-red' : 'badge-green' }} ml-1">
+                                            {{ $item->condition->label() }}
+                                        </span>
+                                        @if ($item->restock)
+                                            <span class="text-green-600 ml-1">✓ Restocked</span>
+                                        @else
+                                            <span class="text-red-500 ml-1">✗ Not Restocked</span>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <div class="text-xs text-gray-400">Refund Amount</div>
+                            <div class="font-bold text-red-600 text-lg">
+                                −৳{{ number_format($cn->refund_amount, 2) }}
+                            </div>
+                            <span class="badge {{ $cn->status->badgeClass() }} text-xs">
+                                {{ $cn->status->label() }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
 
     {{-- Payments --}}
     <div class="card p-5">

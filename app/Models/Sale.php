@@ -90,16 +90,16 @@ class Sale extends Model
             return false;
         }
 
-        if ($this->return_processed) {
-            return false;
-        }
-
         $lockDate = $this->shop?->books_locked_through;
         if ($lockDate && $this->confirmed_at?->lte($lockDate)) {
             return false;
         }
 
-        return true;
+        if ($this->relationLoaded('items')) {
+            return $this->items->contains(fn ($i) => $i->returned_quantity < $i->quantity);
+        }
+
+        return $this->items()->whereColumn('returned_quantity', '<', 'quantity')->exists();
     }
 
     /**
@@ -111,13 +111,38 @@ class Sale extends Model
         if ($this->status !== SaleStatus::Confirmed) {
             return false;
         }
-
         if ($this->return_processed) {
             return false;
         }
-
         $lockDate = $this->shop?->books_locked_through;
         return !($lockDate && $this->confirmed_at?->lte($lockDate));
+    }
+
+    public function isFullyReturned(): bool
+    {
+        if (! $this->return_processed) return false;
+
+        if ($this->relationLoaded('items')) {
+            return ! $this->items->contains(fn ($i) => $i->returned_quantity < $i->quantity);
+        }
+        return ! $this->items()->whereColumn('returned_quantity', '<', 'quantity')->exists();
+    }
+
+    public function hasPartialReturn(): bool
+    {
+        return $this->return_processed && ! $this->isFullyReturned();
+    }
+
+    public function totalRefunded(): float
+    {
+        if ($this->relationLoaded('creditNotes')) {
+            return (float) $this->creditNotes
+                ->where('status', \App\Enums\CreditNoteStatus::Completed)
+                ->sum('refund_amount');
+        }
+        return (float) $this->creditNotes()
+            ->where('status', \App\Enums\CreditNoteStatus::Completed->value)
+            ->sum('refund_amount');
     }
 
     public function paymentSummary(): string
@@ -126,5 +151,34 @@ class Sale extends Model
             ->groupBy('payment_type')
             ->map(fn ($p, $type) => ucfirst($type) . ': ৳' . number_format($p->sum('amount'), 2))
             ->implode(' | ');
+    }
+
+    /**
+     * Single source of truth for the status badge shown in UI.
+     * Replaces showing base status + return status as two separate badges.
+     */
+    public function displayStatusBadge(): array
+    {
+        if ($this->status->value === 'voided') {
+            return ['label' => 'Voided', 'class' => 'badge-red'];
+        }
+
+        if ($this->status->value === 'draft') {
+            return ['label' => 'Draft', 'class' => 'badge-gray'];
+        }
+
+        // status is Confirmed past this point
+        if ($this->isFullyReturned()) {
+            return ['label' => '↩ Fully Returned', 'class' => 'badge-red'];
+        }
+
+        if ($this->hasPartialReturn()) {
+            return [
+                'label' => '↩ Partial Return (৳' . number_format($this->totalRefunded(), 0) . ')',
+                'class' => 'badge-yellow',
+            ];
+        }
+
+        return ['label' => 'Confirmed', 'class' => 'badge-green'];
     }
 }

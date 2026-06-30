@@ -59,10 +59,17 @@
                             @if ($item['serial_number'])
                                 <div class="text-xs font-mono text-indigo-500">{{ $item['serial_number'] }}</div>
                             @endif
+                            @if ($item['returned_quantity'] > 0)
+                                <div class="text-xs text-amber-600 font-medium mt-0.5">
+                                    ⚠ {{ $item['returned_quantity'] }} of {{ $item['original_qty'] }} already returned
+                                    previously
+                                    — {{ $item['available_qty'] }} available now
+                                </div>
+                            @endif
                         </div>
                         <div class="text-right shrink-0">
-                            <div class="text-xs text-gray-400">Original</div>
-                            <div class="font-bold text-gray-900">৳{{ number_format($item['line_total'], 2) }}</div>
+                            <div class="text-xs text-gray-400">Available to Return</div>
+                            <div class="font-bold text-gray-900">৳{{ number_format($item['max_refund'], 2) }}</div>
                         </div>
                     </div>
 
@@ -93,13 +100,13 @@
                             </div>
 
                             {{-- Quantity (non-serialized only) --}}
-                            @if (!$item['serial_number'] && $item['original_qty'] > 1)
+                            @if (!$item['serial_number'] && $item['available_qty'] > 1)
                                 <div>
                                     <label class="text-xs text-gray-600 font-semibold mb-1 block">Qty to Return</label>
                                     <input wire:model.live="returnItems.{{ $idx }}.quantity" type="number"
-                                        min="1" max="{{ $item['original_qty'] }}" class="input text-sm">
+                                        min="1" max="{{ $item['available_qty'] }}" class="input text-sm">
                                     <p class="text-xs text-gray-400 mt-0.5">
-                                        Max: {{ $item['original_qty'] }}
+                                        Max: {{ $item['available_qty'] }}
                                     </p>
                                 </div>
                             @endif
@@ -190,7 +197,7 @@
                 <div class="sm:col-span-2">
                     <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-sm text-indigo-800">
                         💡 Refund will be distributed proportionally across the original payment methods.
-                        Finance partner receivables will be cancelled/adjusted automatically.
+                        Finance partner receivables will be reduced proportionally — not fully cancelled.
                     </div>
                 </div>
             @elseif($refundMethod === 'store_credit')

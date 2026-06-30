@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'product_name', 'variant_label', 'sku', 'serial_number',
     'quantity', 'unit_price', 'original_price', 'cost_price',
     'discount_type', 'discount_value', 'discount_amount',
-    'line_subtotal', 'vat_rate', 'vat_amount', 'line_total', 'profit_amount',
+    'line_subtotal', 'vat_rate', 'vat_amount', 'line_total', 'profit_amount', 'returned_quantity',
 ])]
 class SaleItem extends Model
 {
@@ -26,6 +26,7 @@ class SaleItem extends Model
             'vat_amount'       => 'decimal:2',
             'line_total'       => 'decimal:2',
             'profit_amount'    => 'decimal:2',
+            'returned_quantity' => 'integer',
         ];
     }
 

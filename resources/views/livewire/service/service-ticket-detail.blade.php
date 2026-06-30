@@ -148,10 +148,21 @@
     @endif
 
     {{-- Collect Payment --}}
-    @if ($ticket->amount_due > 0 && !$ticket->status->isTerminal())
-        <div class="card p-5">
+    {{-- Collect Payment — show whenever there's a balance due, even after delivery --}}
+    @if ($ticket->amount_due > 0 && $ticket->status !== \App\Enums\ServiceTicketStatus::Cancelled)
+        <div
+            class="card p-5 {{ $ticket->status === \App\Enums\ServiceTicketStatus::Delivered ? 'border-amber-200 bg-amber-50' : '' }}">
             <div class="flex items-center justify-between mb-3">
-                <h3 class="font-semibold text-gray-900 text-sm">Collect Payment</h3>
+                <div>
+                    <h3 class="font-semibold text-gray-900 text-sm">
+                        {{ $ticket->status === \App\Enums\ServiceTicketStatus::Delivered ? '⚠ Outstanding Balance (Delivered but not fully paid)' : 'Collect Payment' }}
+                    </h3>
+                    @if ($ticket->status === \App\Enums\ServiceTicketStatus::Delivered)
+                        <p class="text-xs text-amber-700 mt-0.5">
+                            Device was delivered but customer has an unpaid balance.
+                        </p>
+                    @endif
+                </div>
                 <button wire:click="$toggle('showPayForm')" class="btn-success btn-sm">
                     + Collect ৳{{ number_format($ticket->amount_due, 2) }}
                 </button>
@@ -160,10 +171,13 @@
             <div wire:show="showPayForm" class="space-y-4 mt-4 pt-4 border-t border-gray-100">
                 <div class="grid sm:grid-cols-3 gap-4">
                     <div>
-                        <label class="label text-xs">Amount *</label>
+                        <label class="label text-xs">Amount (৳) *</label>
                         <input wire:model="payAmount" type="number" step="0.01" min="0.01"
                             max="{{ $ticket->amount_due }}"
                             class="input text-sm font-semibold @error('payAmount') input-error @enderror">
+                        <p class="text-xs text-gray-400 mt-0.5">
+                            Max: ৳{{ number_format($ticket->amount_due, 2) }}
+                        </p>
                         @error('payAmount')
                             <p class="error">{{ $message }}</p>
                         @enderror
@@ -172,7 +186,7 @@
                         <label class="label text-xs">Received Via *</label>
                         <select wire:model="payAccountId"
                             class="input text-sm @error('payAccountId') input-error @enderror">
-                            <option value="0">Select…</option>
+                            <option value="0">Select account…</option>
                             @foreach ($this->paymentAccounts as $pa)
                                 <option value="{{ $pa->id }}">{{ $pa->name }}</option>
                             @endforeach
@@ -183,19 +197,31 @@
                     </div>
                     <div>
                         <label class="label text-xs">Date *</label>
-                        <input wire:model="payDate" type="date" class="input text-sm">
+                        <input wire:model="payDate" type="date"
+                            class="input text-sm @error('payDate') input-error @enderror">
                         @error('payDate')
                             <p class="error">{{ $message }}</p>
                         @enderror
                     </div>
+                    <div class="sm:col-span-3">
+                        <label class="label text-xs">Notes</label>
+                        <input wire:model="payNotes" type="text" class="input text-sm"
+                            placeholder="Reference, collected by…">
+                    </div>
                 </div>
                 <div class="flex gap-3">
-                    <button wire:click="recordPayment" class="btn-success btn-sm" wire:loading.attr="disabled">
-                        Record Payment
+                    <button wire:click="recordPayment" class="btn-success btn-sm" wire:loading.attr="disabled"
+                        wire:target="recordPayment">
+                        <span wire:loading.remove wire:target="recordPayment">Record Payment</span>
+                        <span wire:loading wire:target="recordPayment">Processing…</span>
                     </button>
                     <button wire:click="$set('showPayForm', false)" class="btn-secondary btn-sm">Cancel</button>
                 </div>
             </div>
+        </div>
+    @elseif($ticket->amount_due <= 0 && !$ticket->status->isTerminal())
+        <div class="card p-4 bg-green-50 border-green-200">
+            <p class="text-sm text-green-700 font-medium">✓ Fully paid — no outstanding balance.</p>
         </div>
     @endif
 

@@ -1,7 +1,7 @@
 <div class="space-y-4">
     {{-- Today's Summary --}}
     <div class="grid grid-cols-3 gap-4">
-        @foreach ([['label' => "Today's Sales", 'value' => $this->todaySummary['count'] . ' orders', 'color' => 'bg-indigo-50 text-indigo-700'], ['label' => "Today's Revenue", 'value' => '৳' . number_format($this->todaySummary['revenue'], 2), 'color' => 'bg-green-50 text-green-700'], ['label' => "Today's Profit", 'value' => '৳' . number_format($this->todaySummary['profit'], 2), 'color' => 'bg-amber-50 text-amber-700']] as $card)
+        @foreach ([['label' => "Today's Sales", 'value' => $this->todaySummary['count'] . ' orders', 'color' => 'bg-indigo-50 text-indigo-700'], ['label' => "Today's Net Revenue", 'value' => '৳' . number_format($this->todaySummary['revenue'], 2), 'color' => 'bg-green-50 text-green-700'], ['label' => "Today's Net Profit", 'value' => '৳' . number_format($this->todaySummary['profit'], 2), 'color' => 'bg-amber-50 text-amber-700']] as $card)
             <div class="card p-4 border-0 {{ $card['color'] }}">
                 <div class="text-xl font-bold">{{ $card['value'] }}</div>
                 <div class="text-xs font-medium opacity-75 mt-0.5">{{ $card['label'] }}</div>
@@ -74,15 +74,19 @@
                                 </div>
                             </td>
                             <td class="table-td">
-                                <span class="badge {{ $sale->status->badgeClass() }}">
-                                    {{ $sale->status->label() }}
+                                @php $badge = $sale->displayStatusBadge(); @endphp
+                                <span class="badge {{ $badge['class'] }}">
+                                    {{ $badge['label'] }}
                                 </span>
                             </td>
                             <td class="table-td">
                                 <div class="flex items-center gap-2">
+                                    <a href="{{ route('sales.show', $sale) }}" wire:navigate
+                                        class="text-xs text-indigo-600 hover:underline font-medium">Detail</a>
                                     <a href="{{ route('sales.receipt', $sale) }}" target="_blank"
                                         class="text-xs text-indigo-600 hover:underline font-medium">Receipt</a>
-                                    @if ($sale->isVoidable())
+                                    {{-- Only show Void if not returned and voidable --}}
+                                    @if ($sale->isVoidable() && !$sale->return_processed)
                                         <button wire:click="openVoidModal({{ $sale->id }})"
                                             class="text-xs text-red-500 hover:underline font-medium">Void</button>
                                     @endif

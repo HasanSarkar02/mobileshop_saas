@@ -42,29 +42,51 @@ class ProcessReturn extends Component
             return;
         }
 
-        $this->sale = $sale->load(['items.variant.product', 'items.productUnit', 'payments']);
+        $sale->load(['items.variant.product', 'items.productUnit', 'payments']);
+
+        if (! $sale->isReturnable()) {
+            session()->flash('error', 'All items in this sale have already been returned.');
+            $this->redirect(route('sales.show', $sale), navigate: true);
+            return;
+        }
+
+        $this->sale = $sale;
 
         $defaultBranchId = Auth::user()->branch_id
             ?? Branch::where('shop_id', Auth::user()->shop_id)
                      ->where('is_main', true)->value('id')
             ?? 0;
 
-        $this->returnItems = $sale->items->map(fn ($item) => [
-            'sale_item_id'      => $item->id,
-            'product_name'      => $item->product_name,
-            'variant_label'     => $item->variant_label,
-            'serial_number'     => $item->serial_number,
-            'original_qty'      => $item->quantity,
-            'line_total'        => (float) $item->line_total,
-            'max_refund'        => (float) $item->line_total,
-            'selected'          => false,
-            'quantity'          => $item->quantity,
-            'refund_amount'     => number_format((float) $item->line_total, 2, '.', ''),
-            'condition'         => ReturnCondition::Good->value,
-            'restock'           => true,
-            'restock_branch_id' => $defaultBranchId,
-            'condition_notes'   => '',
-        ])->toArray();
+        $this->returnItems = $sale->items
+            ->map(function ($item) use ($defaultBranchId) {
+                $availableQty = $item->quantity - $item->returned_quantity;
+                $maxRefund    = $availableQty > 0
+                    ? round((float) $item->line_total * $availableQty / max($item->quantity, 1), 2)
+                    : 0;
+
+                return [
+                    'sale_item_id'      => $item->id,
+                    'product_name'      => $item->product_name,
+                    'variant_label'     => $item->variant_label,
+                    'serial_number'     => $item->serial_number,
+                    'original_qty'      => $item->quantity,
+                    'returned_quantity' => $item->returned_quantity, // already returned previously
+                    'available_qty'     => $availableQty,
+                    'line_total'        => (float) $item->line_total,
+                    'max_refund'        => $maxRefund,
+                    'selected'          => false,
+                    'quantity'          => max(1, $availableQty),
+                    'refund_amount'     => number_format($maxRefund, 2, '.', ''),
+                    'condition'         => ReturnCondition::Good->value,
+                    'restock'           => true,
+                    'restock_branch_id' => $defaultBranchId,
+                    'condition_notes'   => '',
+                ];
+            })
+            // Hide items that are already 100% returned — nothing left to return
+            ->filter(fn ($i) => $i['available_qty'] > 0)
+            ->values()
+            ->toArray();
     }
 
     public function selectAll(): void
@@ -76,14 +98,14 @@ class ProcessReturn extends Component
 
     public function updatedReturnItems(mixed $value, string $key): void
     {
-        // When quantity changes on non-serialized items, update refund proportionally
         [$idx, $field] = array_pad(explode('.', $key, 2), 2, null);
         $idx = (int) $idx;
 
         if ($field === 'quantity' && isset($this->returnItems[$idx])) {
             $item     = $this->returnItems[$idx];
+            $availQty = (int) $item['available_qty'];
             $origQty  = (int) $item['original_qty'];
-            $newQty   = max(1, min((int) $value, $origQty));
+            $newQty   = max(1, min((int) $value, $availQty));
             $maxRef   = round($item['line_total'] * $newQty / max($origQty, 1), 2);
 
             $this->returnItems[$idx]['quantity']      = $newQty;
@@ -91,9 +113,8 @@ class ProcessReturn extends Component
             $this->returnItems[$idx]['refund_amount'] = number_format($maxRef, 2, '.', '');
         }
 
-        // When selected → set full refund as default
         if ($field === 'selected' && $value) {
-            if (empty($this->returnItems[$idx]['refund_amount'])) {
+            if (empty($this->returnItems[$idx]['refund_amount']) || (float)$this->returnItems[$idx]['refund_amount'] === 0.0) {
                 $this->returnItems[$idx]['refund_amount'] =
                     number_format($this->returnItems[$idx]['max_refund'], 2, '.', '');
             }

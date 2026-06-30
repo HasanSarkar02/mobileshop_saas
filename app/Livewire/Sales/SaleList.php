@@ -44,10 +44,19 @@ class SaleList extends Component
             ->selectRaw('COUNT(*) as count, SUM(grand_total) as revenue, SUM(gross_profit) as profit')
             ->first();
 
+        $returnsToday = \App\Models\CreditNote::where('status', \App\Enums\CreditNoteStatus::Completed->value)
+            ->whereDate('created_at', today())
+            ->get(['refund_amount', 'restock_value']);
+
+        $returnRevenue      = (float) $returnsToday->sum('refund_amount');
+        $returnProfitImpact = (float) $returnsToday->sum(
+            fn ($cn) => (float) $cn->refund_amount - (float) $cn->restock_value
+        );
+
         return [
             'count'   => $today->count ?? 0,
-            'revenue' => $today->revenue ?? 0,
-            'profit'  => $today->profit ?? 0,
+            'revenue' => max(0, (float) ($today->revenue ?? 0) - $returnRevenue),
+            'profit'  => (float) ($today->profit ?? 0) - $returnProfitImpact,
         ];
     }
 
@@ -80,7 +89,7 @@ class SaleList extends Component
 
     public function render()
     {
-        $sales = Sale::with(['customer', 'branch', 'cashier'])
+        $sales = Sale::with(['customer', 'branch', 'cashier', 'items', 'creditNotes'])
             ->when($this->search, fn ($q) =>
                 $q->where('sale_number', 'like', "%{$this->search}%")
                   ->orWhereHas('customer', fn ($cq) => $cq->where('name', 'like', "%{$this->search}%"))

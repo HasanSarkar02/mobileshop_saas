@@ -19,11 +19,17 @@ class RecordServicePaymentAction
     {
         return DB::transaction(function () use ($ticket, $data, $shop, $actor) {
 
-            if ($ticket->status->isTerminal()) {
-                throw new RuntimeException("Cannot record payment on a {$ticket->status->label()} ticket.");
+            // Only block payment for CANCELLED tickets.
+            // Delivered tickets can still collect outstanding dues.
+            if ($ticket->status === \App\Enums\ServiceTicketStatus::Cancelled) {
+                throw new RuntimeException("Cannot record payment on a cancelled ticket.");
             }
 
-            $amount = (float) $data['amount'];
+            if ((float) $ticket->amount_due <= 0) {
+                throw new RuntimeException("This ticket has no outstanding balance.");
+            }
+
+            $amount = min((float) $data['amount'], (float) $ticket->amount_due);
 
             $payment = ServicePayment::create([
                 'ticket_id'          => $ticket->id,
@@ -35,21 +41,22 @@ class RecordServicePaymentAction
                 'created_by'         => $actor->id,
             ]);
 
-            // Update ticket totals
             $ticket->recalculateTotals();
 
             // Journal: Dr Cash/Bank → Cr Service Revenue
             $serviceRevAcc = Account::withoutGlobalScopes()
                 ->where('shop_id', $shop->id)->where('code', '4030')->firstOrFail();
-            $pa    = PaymentAccount::withoutGlobalScopes()->findOrFail($data['payment_account_id']);
-            $glPa  = Account::withoutGlobalScopes()->findOrFail($pa->account_id);
+            $pa   = PaymentAccount::withoutGlobalScopes()->findOrFail($data['payment_account_id']);
+            $glPa = Account::withoutGlobalScopes()->findOrFail($pa->account_id);
 
             $this->accounting->postEntry(
                 shop: $shop,
                 description: "Service payment — {$ticket->ticket_number}: {$ticket->customer_name}",
                 lines: [
-                    ['account_id' => $glPa->id,        'debit'  => $amount, 'description' => "Service payment"],
-                    ['account_id' => $serviceRevAcc->id,'credit' => $amount, 'description' => "Service revenue"],
+                    ['account_id' => $glPa->id,         'debit'  => $amount,
+                     'description' => "Service payment"],
+                    ['account_id' => $serviceRevAcc->id, 'credit' => $amount,
+                     'description' => "Service revenue"],
                 ],
                 reference: $payment,
                 branchId: $ticket->branch_id,

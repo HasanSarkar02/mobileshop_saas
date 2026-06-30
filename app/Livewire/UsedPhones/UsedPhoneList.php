@@ -29,33 +29,50 @@ class UsedPhoneList extends Component
     {
         $shopId = auth()->user()->shop_id;
 
-        $totalSpent = UsedPhoneAcquisition::where('shop_id', $shopId)->sum('purchase_price');
-        $totalCount = UsedPhoneAcquisition::where('shop_id', $shopId)->count();
-
-        // Get revenue from sold used phones
+        // All acquisition unit IDs for this shop
         $unitIds = UsedPhoneAcquisition::where('shop_id', $shopId)
             ->whereNotNull('product_unit_id')
-            ->pluck('product_unit_id');
+            ->pluck('product_unit_id')
+            ->filter()
+            ->toArray();
 
-        $totalRevenue = SaleItem::whereIn('product_unit_id', $unitIds)
-            ->whereHas('sale', fn ($q) => $q->where('status', 'confirmed'))
-            ->sum('line_total');
+        $totalCount = UsedPhoneAcquisition::where('shop_id', $shopId)->count();
+        $totalSpent = (float) UsedPhoneAcquisition::where('shop_id', $shopId)->sum('purchase_price');
 
-        $soldCount = SaleItem::whereIn('product_unit_id', $unitIds)
-            ->whereHas('sale', fn ($q) => $q->where('status', 'confirmed'))
-            ->distinct('product_unit_id')->count();
+        // Revenue: only confirmed sales that have NOT been returned or voided
+        $soldItems = SaleItem::whereIn('product_unit_id', $unitIds)
+            ->whereHas('sale', fn ($q) =>
+                $q->where('status', 'confirmed')    // exclude voided
+                  ->where('return_processed', false) // exclude returned
+            )
+            ->get(['product_unit_id', 'line_total', 'cost_price']);
 
-        $inventoryValue = UsedPhoneAcquisition::where('shop_id', $shopId)
-            ->whereHas('productUnit', fn ($q) => $q->where('status', 'in_stock'))
+        $totalRevenue = (float) $soldItems->sum('line_total');
+        $soldUnitIds  = $soldItems->pluck('product_unit_id')->filter()->unique()->toArray();
+        $soldCount    = count($soldUnitIds);
+
+        // Net profit = revenue from sold phones − what we paid for those specific phones
+        // NOT total_spent (which includes phones still in inventory)
+        $costOfSoldUnits = (float) UsedPhoneAcquisition::where('shop_id', $shopId)
+            ->whereIn('product_unit_id', $soldUnitIds)
+            ->sum('purchase_price');
+
+        // Inventory value = current purchase_price of phones that are IN STOCK right now
+        // This automatically updates after void (unit back to in_stock) or
+        // return (unit back to in_stock or damaged)
+        $inventoryValue = (float) UsedPhoneAcquisition::where('shop_id', $shopId)
+            ->whereHas('productUnit', fn ($q) =>
+                $q->where('status', 'in_stock')
+            )
             ->sum('purchase_price');
 
         return [
             'total_count'     => $totalCount,
-            'total_spent'     => (float) $totalSpent,
-            'total_revenue'   => (float) $totalRevenue,
-            'net_profit'      => (float) $totalRevenue - (float) $totalSpent,
+            'total_spent'     => $totalSpent,
+            'total_revenue'   => $totalRevenue,
+            'net_profit'      => $totalRevenue - $costOfSoldUnits, // profit on sold units only
             'sold_count'      => $soldCount,
-            'inventory_value' => (float) $inventoryValue,
+            'inventory_value' => $inventoryValue,
         ];
     }
 

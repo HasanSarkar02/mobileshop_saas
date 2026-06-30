@@ -24,6 +24,7 @@ class SaleDetail extends Component
             'branch',
             'cashier',
             'financePartnerReceivable.financePartner',
+            'creditNotes.items',
         ]);
     }
 

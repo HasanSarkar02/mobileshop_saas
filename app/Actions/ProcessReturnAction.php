@@ -44,8 +44,9 @@ class ProcessReturnAction
             $sale->load(['items', 'payments', 'customer', 'financePartnerReceivable']);
 
             // ── 1. Build return lines using user-specified refund amounts ──────
-            $returnLines   = [];
-            $totalRefund   = 0.0;
+            // ── 1. Build return lines — validate against remaining quantity ────
+            $returnLines       = [];
+            $totalRefund       = 0.0;
             $totalCostRestored = 0.0;
 
             foreach ($data['items'] as $line) {
@@ -54,9 +55,19 @@ class ProcessReturnAction
                     throw new RuntimeException("Sale item #{$line['sale_item_id']} not found.");
                 }
 
+                $availableQty = $saleItem->quantity - $saleItem->returned_quantity;
+                $requestedQty = (int) $line['quantity'];
+
+                if ($requestedQty > $availableQty) {
+                    throw new RuntimeException(
+                        "Cannot return {$requestedQty} of \"{$saleItem->product_name}\" — " .
+                        "only {$availableQty} remaining (already returned: {$saleItem->returned_quantity})."
+                    );
+                }
+
                 $refundAmount = (float) ($line['refund_amount'] ?? $saleItem->line_total);
-                $refundAmount = min($refundAmount, (float) $saleItem->line_total); // cap at original
-                $lineCost     = (float) $saleItem->cost_price * (int) $line['quantity'];
+                $refundAmount = min($refundAmount, (float) $saleItem->line_total);
+                $lineCost     = (float) $saleItem->cost_price * $requestedQty;
 
                 $returnLines[] = array_merge($line, [
                     'sale_item'     => $saleItem,
@@ -118,6 +129,7 @@ class ProcessReturnAction
                     'restock_branch_id'     => $line['restock_branch_id'],
                     'condition_notes'       => $line['condition_notes'] ?? null,
                 ]);
+                 $saleItem->increment('returned_quantity', $line['quantity']);
 
                 if ($saleItem->product_unit_id) {
                     $unit = ProductUnit::withoutGlobalScopes()->findOrFail($saleItem->product_unit_id);
@@ -192,7 +204,7 @@ class ProcessReturnAction
             $this->updateCustomerLedger($sale, $totalRefund, $creditNote, $actor);
 
             // ── 6. Finance partner receivable ──────────────────────────────────
-            $this->handleFinancePartnerOnReturn($sale);
+            $this->handleFinancePartnerOnReturn($sale, $totalRefund, $shop);
             $sale->update(['return_processed' => true]);
 
             return $creditNote->fresh(['items', 'originalSale', 'customer']);
@@ -328,15 +340,53 @@ class ProcessReturnAction
         $customer->update(['current_balance' => $newBal]);
     }
 
-    private function handleFinancePartnerOnReturn(Sale $sale): void
+    /**
+     * Reduce the finance partner receivable by ONLY the proportional share
+     * of THIS return — never blanket-cancel the whole receivable. A ৳250
+     * accessory return out of a ৳30,350 EMI sale should only reduce the
+     * receivable by its proportional share, not wipe out the entire
+     * ৳20,350 the EMI company still owes the shop.
+     */
+    private function handleFinancePartnerOnReturn(Sale $sale, float $totalRefund, Shop $shop): void
     {
+        $fpPayment = $sale->payments->firstWhere('payment_type', 'finance_partner');
+        if (! $fpPayment) return;
+
         $fpReceivable = FinancePartnerReceivable::withoutGlobalScopes()
             ->where('sale_id', $sale->id)
+            ->where('shop_id', $shop->id)
             ->whereIn('status', [FPReceivableStatus::Pending->value, FPReceivableStatus::Partial->value])
+            ->lockForUpdate()
             ->first();
 
-        if ($fpReceivable) {
-            $fpReceivable->update(['status' => FPReceivableStatus::Cancelled->value]);
+        if (! $fpReceivable) return;
+
+        $saleTotal = max((float) $sale->grand_total, 0.01);
+        $ratio     = $totalRefund / $saleTotal;
+        $fpShare   = round((float) $fpPayment->amount * $ratio, 2);
+
+        $remainingPending = (float) $fpReceivable->total_amount - (float) $fpReceivable->settled_amount;
+        $fpShare = min($fpShare, max(0, $remainingPending));
+
+        if ($fpShare <= 0) return;
+
+        $newTotal = max(0, (float) $fpReceivable->total_amount - $fpShare);
+
+        if ($newTotal <= 0.01) {
+            // Entire remaining unsettled portion has been returned —
+            // collapse total to whatever the partner already settled, so
+            // pending = 0 cleanly, without losing the settlement history.
+            $fpReceivable->update([
+                'total_amount' => round((float) $fpReceivable->settled_amount, 2),
+                'status'       => FPReceivableStatus::Cancelled->value,
+            ]);
+        } else {
+            $fpReceivable->update([
+                'total_amount' => $newTotal,
+                'status'       => (float) $fpReceivable->settled_amount > 0
+                    ? FPReceivableStatus::Partial->value
+                    : FPReceivableStatus::Pending->value,
+            ]);
         }
     }
 
