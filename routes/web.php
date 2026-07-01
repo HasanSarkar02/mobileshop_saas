@@ -40,6 +40,11 @@ use App\Livewire\Employees\EmployeeList;
 use App\Livewire\Service\ServiceList;
 use App\Livewire\Service\ServiceTicketDetail;
 use App\Livewire\Service\ServiceTicketForm;
+use App\Livewire\Reports\CustomerDueReport;
+use App\Livewire\Reports\ProfitLossReport;
+use App\Livewire\Reports\SalesReport;
+use App\Livewire\Reports\StockValuationReport;
+
 
 // ─── Super Admin ──────────────────────────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -145,4 +150,13 @@ Route::middleware(['auth:web'])->group(function () {
     Route::livewire('service/create', ServiceTicketForm::class)->name('service.create');
     Route::livewire('service/{ticket}/edit', ServiceTicketForm::class)->name('service.edit');
     Route::livewire('service/{ticket}', ServiceTicketDetail::class)->name('service.show');
+
+
+
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::livewire('profit-loss',       ProfitLossReport::class)->name('pl');
+        Route::livewire('sales',             SalesReport::class)->name('sales');
+        Route::livewire('stock-valuation',   StockValuationReport::class)->name('stock');
+        Route::livewire('customer-due',      CustomerDueReport::class)->name('customer-due');
+    });
 });

@@ -71,11 +71,11 @@ class SalesRepository extends BaseReportRepository
             ->whereBetween('sales.confirmed_at', [$filter->dateRange->from, $filter->dateRange->to])
             ->when($filter->branchId, fn ($q) => $q->where('sales.branch_id', $filter->branchId))
             ->selectRaw('
-                COALESCE(payment_accounts.provider, sale_payments.payment_type) AS provider,
+                payment_accounts.provider AS provider,
                 COUNT(DISTINCT sales.id) AS sale_count,
-                COALESCE(SUM(sale_payments.amount), 0) AS total_amount
+                SUM(sale_payments.amount) AS total_amount
             ')
-            ->groupBy('provider')
+            ->groupBy('payment_accounts.provider')
             ->orderByRaw('total_amount DESC')
             ->get();
     }

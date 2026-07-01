@@ -18,7 +18,7 @@ class CustomerRepository extends BaseReportRepository
             ->orderByDesc('current_balance')
             ->get([
                 'id', 'name', 'phone', 'customer_type',
-                'current_balance', 'credit_limit', 'created_at',
+                'current_balance', 'credit_limit', 'created_at','total_purchase_amount',
             ]);
     }
 

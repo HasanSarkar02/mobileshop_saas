@@ -150,6 +150,30 @@
                             'd' =>
                                 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
                         ],
+                        // Reports section separator group
+                        [
+                            'route' => 'reports.pl',
+                            'label' => 'P&L Report',
+                            'd' =>
+                                'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+                        ],
+                        [
+                            'route' => 'reports.sales',
+                            'label' => 'Sales Report',
+                            'd' =>
+                                'M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+                        ],
+                        [
+                            'route' => 'reports.stock',
+                            'label' => 'Stock Report',
+                            'd' => 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+                        ],
+                        [
+                            'route' => 'reports.customer-due',
+                            'label' => 'Due Report',
+                            'd' =>
+                                'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 0V5m0 2a2 2 0 01-2 2m2-2a2 2 0 012 2m-2 4a2 2 0 01-2-2m2 2a2 2 0 012-2m-6 4a9 9 0 1118 0A9 9 0 010 12z',
+                        ],
                         [
                             'route' => 'settings',
                             'label' => 'Settings',
