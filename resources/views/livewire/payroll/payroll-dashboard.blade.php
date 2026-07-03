@@ -208,9 +208,9 @@
                             </td>
                             <td class="table-td">
                                 <div class="flex items-center gap-2">
-                                    <a href="{{ route('payroll.manage', $run) }}" wire:navigate
+                                    <a href="{{ route('documents.payroll', $run) }}" target="_blank"
                                         class="text-xs text-indigo-600 hover:underline font-medium">
-                                        {{ $run->status === \App\Enums\PayrollStatus::Paid ? 'View' : 'Review' }}
+                                        🖨 Print
                                     </a>
                                     @if ($run->status === \App\Enums\PayrollStatus::Draft)
                                         <button wire:click="approve({{ $run->id }})"

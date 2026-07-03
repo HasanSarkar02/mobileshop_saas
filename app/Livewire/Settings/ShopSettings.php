@@ -14,13 +14,30 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
 #[Title('Settings')]
 class ShopSettings extends Component
 {
+    use WithFileUploads;
     // ── Active Tab ─────────────────────────────────────────────────────────────
     public string $activeTab = 'profile';
+
+    public $shopLogo = null;  // temp upload
+    public string $tradeLicenseNumber = '';
+    public string $website            = '';
+    public string $documentFooterNote = '';
+    public bool   $showConfidential   = false;
+
+    // ── SMS Settings ──────────────────────────────────────────────────────────
+    public bool   $smsEnabled       = false;
+    public string $smsProvider      = 'bulk_sms_bd';
+    public string $smsApiKey        = '';
+    public string $smsSenderId      = '';
+    public bool   $smsOnSale        = false;
+    public bool   $smsOnDueReminder = false;
+    public bool   $smsOnServiceReady= false;
 
     // ── Shop Profile ───────────────────────────────────────────────────────────
     #[Validate('required|string|max:255')]
@@ -101,6 +118,17 @@ class ShopSettings extends Component
         $this->vatRegistrationNumber = $shop->vat_registration_number ?? '';
         $this->defaultVatRate = (string) $shop->default_vat_rate;
         $this->expenseApprovalThreshold = (string) $shop->expense_approval_threshold;
+        $this->tradeLicenseNumber = $shop->trade_license_number ?? '';
+        $this->website            = $shop->website ?? '';
+        $this->documentFooterNote = $shop->document_footer_note ?? '';
+        $this->showConfidential   = (bool) $shop->show_document_confidential;
+        $this->smsEnabled        = (bool) $shop->sms_enabled;
+        $this->smsProvider       = $shop->sms_provider ?? 'bulk_sms_bd';
+        $this->smsApiKey         = $shop->sms_api_key ?? '';
+        $this->smsSenderId       = $shop->sms_sender_id ?? '';
+        $this->smsOnSale         = (bool) $shop->sms_on_sale;
+        $this->smsOnDueReminder  = (bool) $shop->sms_on_due_reminder;
+        $this->smsOnServiceReady = (bool) $shop->sms_on_service_ready;
     }
 
     // ── Computed Properties ────────────────────
@@ -133,17 +161,29 @@ class ShopSettings extends Component
     {
         $this->validateOnly('shopName,shopPhone,shopEmail,shopAddress,timezone,currency');
 
-        $this->shop->update([
-            'name' => $this->shopName,
-            'phone' => $this->shopPhone ?: null,
-            'email' => $this->shopEmail ?: null,
-            'address' => $this->shopAddress ?: null,
-            'timezone' => $this->timezone,
-            'currency' => $this->currency,
-        ]);
+        $updates = [
+            'name'                     => $this->shopName,
+            'phone'                    => $this->shopPhone ?: null,
+            'email'                    => $this->shopEmail ?: null,
+            'address'                  => $this->shopAddress ?: null,
+            'timezone'                 => $this->timezone,
+            'currency'                 => $this->currency,
+            'trade_license_number'     => $this->tradeLicenseNumber ?: null,
+            'website'                  => $this->website ?: null,
+            'document_footer_note'     => $this->documentFooterNote ?: null,
+            'show_document_confidential' => $this->showConfidential,
+        ];
 
+        if ($this->shopLogo) {
+            $this->validate(['shopLogo' => 'image|max:2048|mimes:jpg,jpeg,png,webp']);
+            $updates['logo_path'] = $this->shopLogo->store(
+                "shops/{$this->shop->id}/branding", 'public'
+            );
+        }
+
+        $this->shop->update($updates);
         unset($this->shop);
-        $this->dispatch('notify', type: 'success', message: 'Shop profile updated.');
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Shop profile updated.']);
     }
 
     public function saveVat(): void
@@ -425,5 +465,44 @@ class ShopSettings extends Component
         ]);
         unset($this->shop);
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Business rules saved.']);
+    }
+
+    public function saveSmsSettings(): void
+    {
+        $this->shop->update([
+            'sms_enabled'         => $this->smsEnabled,
+            'sms_provider'        => $this->smsProvider,
+            'sms_api_key'         => $this->smsApiKey ?: null,
+            'sms_sender_id'       => $this->smsSenderId ?: null,
+            'sms_on_sale'         => $this->smsOnSale,
+            'sms_on_due_reminder' => $this->smsOnDueReminder,
+            'sms_on_service_ready'=> $this->smsOnServiceReady,
+        ]);
+        unset($this->shop);
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'SMS settings saved.']);
+    }
+
+    public function testSms(): void
+    {
+        $shop  = $this->shop;
+        $phone = auth()->user()->phone;
+
+        if (! $phone) {
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Your user account has no phone number to test with.']);
+            return;
+        }
+
+        $result = app(\App\Services\SmsService::class)->send(
+            shop:      $shop,
+            to:        $phone,
+            message:   "{$shop->name}: SMS test successful. Sent at " . now()->format('H:i d M Y') . ".",
+            template:  'test',
+            createdBy: auth()->id(),
+        );
+
+        $this->dispatch('notify', [
+            'type'    => $result ? 'success' : 'error',
+            'message' => $result ? "Test SMS sent to {$phone}." : 'SMS failed. Check your API key.',
+        ]);
     }
 }

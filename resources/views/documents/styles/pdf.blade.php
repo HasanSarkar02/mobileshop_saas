@@ -1,0 +1,616 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+ENTERPRISE DOCUMENT SYSTEM — Print & PDF Standard
+Compatible with: A4 Portrait, A4 Landscape, Chrome, Firefox, Edge
+═══════════════════════════════════════════════════════════════════════════ */
+
+/* Google Fonts — Noto Sans supports Latin + Bengali */
+@import
+url('https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+Bengali:wght@300;400;500;600;700&family=Noto+Mono:wght@400;500&display=swap');
+
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Root Variables ───────────────────────────────────────────────────────── */
+:root {
+--doc-font: 'Noto Sans', 'Noto Sans Bengali', Arial, sans-serif;
+--doc-mono: 'Noto Mono', 'Courier New', monospace;
+--doc-black: #0d0d0d;
+--doc-gray-900: #111827;
+--doc-gray-700: #374151;
+--doc-gray-500: #6B7280;
+--doc-gray-300: #D1D5DB;
+--doc-gray-100: #F3F4F6;
+--doc-gray-50: #F9FAFB;
+--doc-accent: #1e3a5f; /* professional dark blue — not flashy */
+--doc-accent-light: #dbeafe;
+--doc-accent-text: #1e40af;
+--doc-red: #dc2626;
+--doc-green: #16a34a;
+--doc-border: #d1d5db;
+--doc-header-bg: #1e3a5f;
+--doc-header-text: #ffffff;
+--doc-line-height: 1.5;
+--doc-font-size: 9pt;
+--doc-margin-page: 15mm;
+}
+
+/* ── Base Styles ──────────────────────────────────────────────────────────── */
+html, body {
+font-family: var(--doc-font);
+font-size: var(--doc-font-size);
+line-height: var(--doc-line-height);
+color: var(--doc-black);
+background: #fff;
+-webkit-font-smoothing: antialiased;
+}
+
+/* ── Page Setup ───────────────────────────────────────────────────────────── */
+@page {
+size: A4 portrait;
+margin: 15mm 18mm 20mm 18mm;
+@bottom-center {
+content: "Page " counter(page) " of " counter(pages);
+font-size: 7pt;
+color: #6B7280;
+}
+}
+
+@page landscape {
+size: A4 landscape;
+margin: 12mm 15mm 18mm 15mm;
+}
+
+.doc-landscape { page: landscape; }
+
+/* ── Print Rules ──────────────────────────────────────────────────────────── */
+@media print {
+* {
+-webkit-print-color-adjust: exact !important;
+print-color-adjust: exact !important;
+}
+
+.no-print { display: none !important; }
+
+/* Repeat table headers on every page */
+thead { display: table-header-group; }
+tfoot { display: table-footer-group; }
+
+/* Avoid breaking rows mid-print */
+tr { page-break-inside: avoid; }
+img { page-break-inside: avoid; }
+
+/* Section page breaks */
+.page-break { page-break-before: always; break-before: page; }
+.page-break-avoid { page-break-inside: avoid; break-inside: avoid; }
+.no-page-break { page-break-before: avoid; }
+
+/* Don't print screen-only UI chrome */
+.doc-export-bar { display: none !important; }
+}
+
+/* ── Layout Wrappers ──────────────────────────────────────────────────────── */
+.doc-page {
+width: 100%;
+max-width: 794px; /* A4 width at 96dpi */
+margin: 0 auto;
+padding: 10mm;
+background: #fff;
+}
+
+@media screen {
+body.doc-body {
+background: #e5e7eb;
+padding: 20px 10px;
+}
+.doc-page {
+box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+margin: 20px auto;
+padding: 20mm;
+min-height: 297mm;
+}
+}
+
+/* ── Document Header ──────────────────────────────────────────────────────── */
+.doc-header {
+display: flex;
+justify-content: space-between;
+align-items: flex-start;
+padding-bottom: 6mm;
+border-bottom: 2px solid var(--doc-accent);
+margin-bottom: 5mm;
+}
+
+.doc-header-left {
+display: flex;
+align-items: flex-start;
+gap: 4mm;
+flex: 1;
+}
+
+.doc-logo {
+max-height: 16mm;
+max-width: 40mm;
+object-fit: contain;
+flex-shrink: 0;
+}
+
+.doc-logo-placeholder {
+width: 14mm;
+height: 14mm;
+background: var(--doc-accent);
+border-radius: 2px;
+display: flex;
+align-items: center;
+justify-content: center;
+flex-shrink: 0;
+}
+
+.doc-company-name {
+font-size: 14pt;
+font-weight: 700;
+color: var(--doc-accent);
+line-height: 1.2;
+margin-bottom: 1mm;
+}
+
+.doc-company-meta {
+font-size: 7.5pt;
+color: var(--doc-gray-500);
+line-height: 1.6;
+}
+
+.doc-company-meta strong {
+color: var(--doc-gray-700);
+font-weight: 600;
+}
+
+.doc-header-right {
+text-align: right;
+flex-shrink: 0;
+min-width: 55mm;
+}
+
+.doc-title {
+font-size: 15pt;
+font-weight: 700;
+color: var(--doc-accent);
+text-transform: uppercase;
+letter-spacing: 0.03em;
+line-height: 1.2;
+}
+
+.doc-subtitle {
+font-size: 9pt;
+color: var(--doc-gray-500);
+margin-top: 1mm;
+}
+
+.doc-number {
+display: inline-block;
+background: var(--doc-accent);
+color: #fff;
+font-size: 8.5pt;
+font-weight: 600;
+padding: 1mm 3mm;
+border-radius: 2px;
+margin-top: 2mm;
+font-family: var(--doc-mono);
+}
+
+/* ── Document Meta Band (Date, Period, Branch, etc.) ─────────────────────── */
+.doc-meta-band {
+display: grid;
+grid-template-columns: repeat(4, 1fr);
+gap: 0;
+background: var(--doc-gray-50);
+border: 1px solid var(--doc-border);
+border-radius: 2px;
+margin-bottom: 4mm;
+overflow: hidden;
+}
+
+.doc-meta-cell {
+padding: 2mm 3mm;
+border-right: 1px solid var(--doc-border);
+}
+
+.doc-meta-cell:last-child { border-right: none; }
+
+.doc-meta-label {
+font-size: 6.5pt;
+font-weight: 600;
+text-transform: uppercase;
+letter-spacing: 0.04em;
+color: var(--doc-gray-500);
+display: block;
+margin-bottom: 0.5mm;
+}
+
+.doc-meta-value {
+font-size: 7.5pt;
+font-weight: 600;
+color: var(--doc-gray-900);
+}
+
+.doc-meta-band.doc-meta-3col { grid-template-columns: repeat(3, 1fr); }
+.doc-meta-band.doc-meta-2col { grid-template-columns: repeat(2, 1fr); }
+
+/* ── Party Information Block (Bill To / From) ────────────────────────────── */
+.doc-parties {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 4mm;
+margin-bottom: 4mm;
+}
+
+.doc-party {
+border: 1px solid var(--doc-border);
+border-radius: 2px;
+overflow: hidden;
+}
+
+.doc-party-header {
+background: var(--doc-accent);
+color: #fff;
+font-size: 7pt;
+font-weight: 700;
+text-transform: uppercase;
+letter-spacing: 0.05em;
+padding: 1.5mm 3mm;
+}
+
+.doc-party-body {
+padding: 2.5mm 3mm;
+font-size: 8pt;
+line-height: 1.7;
+}
+
+.doc-party-name {
+font-weight: 700;
+font-size: 9pt;
+color: var(--doc-gray-900);
+}
+
+.doc-party-detail {
+color: var(--doc-gray-700);
+}
+
+.doc-party-detail-label {
+color: var(--doc-gray-500);
+font-size: 7pt;
+}
+
+/* ── Tables ───────────────────────────────────────────────────────────────── */
+.doc-table {
+width: 100%;
+border-collapse: collapse;
+font-size: 8.5pt;
+margin-bottom: 0;
+}
+
+.doc-table thead tr {
+background: var(--doc-accent);
+color: #fff;
+}
+
+.doc-table thead th {
+padding: 2.5mm 3mm;
+text-align: left;
+font-weight: 600;
+font-size: 7.5pt;
+text-transform: uppercase;
+letter-spacing: 0.03em;
+white-space: nowrap;
+}
+
+.doc-table thead th.right { text-align: right; }
+.doc-table thead th.center { text-align: center; }
+
+.doc-table tbody tr:nth-child(even) {
+background: var(--doc-gray-50);
+}
+
+.doc-table tbody tr:hover {
+background: var(--doc-accent-light);
+}
+
+.doc-table tbody td {
+padding: 2mm 3mm;
+border-bottom: 0.3pt solid var(--doc-gray-300);
+vertical-align: top;
+color: var(--doc-gray-900);
+}
+
+.doc-table tbody td.right { text-align: right; }
+.doc-table tbody td.center { text-align: center; }
+.doc-table tbody td.mono { font-family: var(--doc-mono); font-size: 8pt; }
+.doc-table tbody td.muted { color: var(--doc-gray-500); font-size: 7.5pt; }
+
+.doc-table tfoot tr { background: var(--doc-gray-100); }
+
+.doc-table tfoot td {
+padding: 2mm 3mm;
+font-weight: 600;
+font-size: 8.5pt;
+border-top: 1pt solid var(--doc-accent);
+}
+
+.doc-table tfoot td.right { text-align: right; }
+
+/* Subtotal rows */
+.doc-table .subtotal-row td {
+font-weight: 600;
+background: var(--doc-gray-50);
+border-top: 0.5pt solid var(--doc-gray-300);
+}
+
+.doc-table .grand-total-row td {
+font-weight: 700;
+font-size: 10pt;
+background: var(--doc-accent);
+color: #fff;
+border-top: 2pt solid var(--doc-accent);
+}
+
+/* ── Totals Block ─────────────────────────────────────────────────────────── */
+.doc-totals {
+display: flex;
+justify-content: flex-end;
+margin-top: 2mm;
+margin-bottom: 4mm;
+}
+
+.doc-totals-table {
+min-width: 70mm;
+border: 1px solid var(--doc-border);
+border-radius: 2px;
+overflow: hidden;
+}
+
+.doc-totals-row {
+display: flex;
+justify-content: space-between;
+padding: 1.5mm 3mm;
+font-size: 8.5pt;
+border-bottom: 0.3pt solid var(--doc-gray-300);
+gap: 10mm;
+}
+
+.doc-totals-row:last-child { border-bottom: none; }
+
+.doc-totals-row.discount { color: var(--doc-red); }
+.doc-totals-row.vat { color: var(--doc-gray-700); }
+
+.doc-totals-row.grand {
+background: var(--doc-accent);
+color: #fff;
+font-size: 11pt;
+font-weight: 700;
+padding: 2.5mm 3mm;
+border-top: 2pt solid var(--doc-accent);
+}
+
+.doc-totals-row .label { font-weight: 500; }
+.doc-totals-row .amount { font-weight: 600; font-family: var(--doc-mono); }
+
+/* ── Status Badge ─────────────────────────────────────────────────────────── */
+.doc-stamp {
+display: inline-block;
+border: 2.5pt solid;
+font-size: 12pt;
+font-weight: 800;
+text-transform: uppercase;
+letter-spacing: 0.08em;
+padding: 2mm 6mm;
+transform: rotate(-12deg);
+opacity: 0.75;
+pointer-events: none;
+}
+
+.doc-stamp-paid { border-color: var(--doc-green); color: var(--doc-green); }
+.doc-stamp-partial { border-color: #d97706; color: #d97706; }
+.doc-stamp-void { border-color: var(--doc-red); color: var(--doc-red); }
+.doc-stamp-draft { border-color: var(--doc-gray-500); color: var(--doc-gray-500); }
+
+.doc-stamp-container {
+position: absolute;
+right: 18mm;
+top: 70mm;
+z-index: 10;
+}
+
+/* ── Notes / Remarks Box ──────────────────────────────────────────────────── */
+.doc-notes {
+border: 1px solid var(--doc-border);
+border-radius: 2px;
+padding: 2.5mm 3mm;
+font-size: 7.5pt;
+color: var(--doc-gray-700);
+margin-bottom: 4mm;
+background: var(--doc-gray-50);
+}
+
+.doc-notes-label {
+font-weight: 700;
+font-size: 7pt;
+text-transform: uppercase;
+letter-spacing: 0.04em;
+color: var(--doc-gray-500);
+display: block;
+margin-bottom: 1mm;
+}
+
+/* ── Signature Block ──────────────────────────────────────────────────────── */
+.doc-signatures {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 6mm;
+margin-top: 12mm;
+margin-bottom: 4mm;
+}
+
+.doc-signature-2col { grid-template-columns: repeat(2, 1fr); }
+.doc-signature-4col { grid-template-columns: repeat(4, 1fr); }
+
+.doc-signature-block {
+text-align: center;
+}
+
+.doc-signature-line {
+border-top: 1pt solid var(--doc-black);
+margin-bottom: 1.5mm;
+margin-top: 10mm;
+}
+
+.doc-signature-name {
+font-size: 7.5pt;
+font-weight: 600;
+color: var(--doc-gray-900);
+}
+
+.doc-signature-title {
+font-size: 7pt;
+color: var(--doc-gray-500);
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+.doc-footer {
+border-top: 1pt solid var(--doc-border);
+padding-top: 2.5mm;
+margin-top: 4mm;
+display: flex;
+justify-content: space-between;
+align-items: flex-end;
+font-size: 6.5pt;
+color: var(--doc-gray-500);
+}
+
+.doc-footer-center { text-align: center; flex: 1; }
+
+.doc-confidential {
+display: inline-block;
+border: 1pt solid var(--doc-red);
+color: var(--doc-red);
+font-size: 6pt;
+font-weight: 700;
+text-transform: uppercase;
+letter-spacing: 0.06em;
+padding: 0.5mm 2mm;
+}
+
+.doc-qr-placeholder {
+width: 15mm;
+height: 15mm;
+border: 1pt solid var(--doc-gray-300);
+display: flex;
+align-items: center;
+justify-content: center;
+font-size: 5pt;
+color: var(--doc-gray-300);
+text-align: center;
+font-family: var(--doc-mono);
+}
+
+/* ── Amount Words ─────────────────────────────────────────────────────────── */
+.doc-amount-words {
+background: var(--doc-gray-50);
+border: 1px solid var(--doc-border);
+padding: 2mm 3mm;
+font-size: 7.5pt;
+margin-bottom: 3mm;
+border-radius: 2px;
+}
+
+.doc-amount-words strong { color: var(--doc-accent-text); }
+
+/* ── Utility ──────────────────────────────────────────────────────────────── */
+.doc-section-title {
+font-size: 8pt;
+font-weight: 700;
+text-transform: uppercase;
+letter-spacing: 0.05em;
+color: var(--doc-accent);
+border-bottom: 1pt solid var(--doc-accent);
+padding-bottom: 1mm;
+margin-bottom: 2mm;
+margin-top: 3mm;
+}
+
+.doc-two-col {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 4mm;
+}
+
+.doc-three-col {
+display: grid;
+grid-template-columns: 1fr 1fr 1fr;
+gap: 4mm;
+}
+
+.doc-kv-row {
+display: flex;
+justify-content: space-between;
+font-size: 8pt;
+padding: 1mm 0;
+border-bottom: 0.3pt solid var(--doc-gray-100);
+}
+
+.doc-kv-label { color: var(--doc-gray-500); font-weight: 500; }
+.doc-kv-value { color: var(--doc-gray-900); font-weight: 600; }
+
+.doc-text-red { color: var(--doc-red); }
+.doc-text-green { color: var(--doc-green); }
+.doc-text-accent { color: var(--doc-accent); }
+.doc-text-muted { color: var(--doc-gray-500); }
+.doc-text-bold { font-weight: 700; }
+.doc-text-right { text-align: right; }
+.doc-text-center { text-align: center; }
+.doc-mono { font-family: var(--doc-mono); }
+.doc-divider { border: none; border-top: 1pt solid var(--doc-border); margin: 3mm 0; }
+.doc-divider-thick { border-top: 2pt solid var(--doc-accent); }
+.doc-spacer { height: 3mm; }
+.doc-spacer-lg { height: 6mm; }
+
+/* ── Export Bar (Screen Only) ─────────────────────────────────────────────── */
+.doc-export-bar {
+position: sticky;
+top: 0;
+z-index: 100;
+background: #1e3a5f;
+color: white;
+display: flex;
+align-items: center;
+gap: 8px;
+padding: 10px 20px;
+box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.doc-export-bar-title {
+flex: 1;
+font-weight: 600;
+font-size: 13px;
+}
+
+.doc-export-btn {
+display: inline-flex;
+align-items: center;
+gap: 5px;
+background: rgba(255,255,255,0.15);
+color: white;
+border: 1px solid rgba(255,255,255,0.25);
+padding: 6px 14px;
+border-radius: 6px;
+font-size: 12px;
+font-weight: 500;
+cursor: pointer;
+text-decoration: none;
+transition: background 0.15s;
+}
+
+.doc-export-btn:hover { background: rgba(255,255,255,0.25); }
+.doc-export-btn-primary {
+background: #3b82f6;
+border-color: #2563eb;
+}
+.doc-export-btn-primary:hover { background: #2563eb; }

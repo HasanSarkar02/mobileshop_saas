@@ -49,4 +49,74 @@ class ExpenseRepository extends BaseReportRepository
             ->orderByRaw('total DESC')
             ->get();
     }
+
+    public function trend(ReportFilter $filter): Collection
+    {
+        return DB::table('expenses')
+            ->join('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
+            ->where('expenses.shop_id', $filter->shopId)
+            ->where('expenses.status', 'approved')
+            ->whereBetween('expenses.expense_date', [
+                $filter->dateRange->from->toDateString(),
+                $filter->dateRange->to->toDateString(),
+            ])
+            ->when($filter->branchId, fn ($q) => $q->where('expenses.branch_id', $filter->branchId))
+            ->selectRaw('
+                DATE(expenses.expense_date) AS expense_date,
+                COUNT(*) AS count,
+                COALESCE(SUM(expenses.amount), 0) AS total
+            ')
+            ->groupByRaw('DATE(expenses.expense_date)')
+            ->orderBy('expense_date')
+            ->get();
+    }
+
+    public function byBranch(ReportFilter $filter): Collection
+    {
+        return DB::table('expenses')
+            ->join('branches', 'branches.id', '=', 'expenses.branch_id')
+            ->where('expenses.shop_id', $filter->shopId)
+            ->where('expenses.status', 'approved')
+            ->whereBetween('expenses.expense_date', [
+                $filter->dateRange->from->toDateString(),
+                $filter->dateRange->to->toDateString(),
+            ])
+            ->selectRaw('
+                branches.id, branches.name,
+                COUNT(*) AS count,
+                COALESCE(SUM(expenses.amount), 0) AS total
+            ')
+            ->groupBy('branches.id', 'branches.name')
+            ->orderByRaw('total DESC')
+            ->get();
+    }
+
+    public function list(ReportFilter $filter): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        return DB::table('expenses')
+            ->join('expense_categories', 'expense_categories.id', '=', 'expenses.expense_category_id')
+            ->leftJoin('expense_categories AS parent', 'parent.id', '=', 'expense_categories.parent_id')
+            ->join('payment_accounts', 'payment_accounts.id', '=', 'expenses.payment_account_id')
+            ->leftJoin('branches', 'branches.id', '=', 'expenses.branch_id')
+            ->leftJoin('users', 'users.id', '=', 'expenses.created_by')
+            ->where('expenses.shop_id', $filter->shopId)
+            ->when($filter->branchId, fn ($q) => $q->where('expenses.branch_id', $filter->branchId))
+            ->when($filter->status, fn ($q) => $q->where('expenses.status', $filter->status))
+            ->when(!$filter->status, fn ($q) => $q->where('expenses.status', 'approved'))
+            ->whereBetween('expenses.expense_date', [
+                $filter->dateRange->from->toDateString(),
+                $filter->dateRange->to->toDateString(),
+            ])
+            ->selectRaw('
+                expenses.*,
+                COALESCE(parent.name, expense_categories.name) AS category_name,
+                expense_categories.name AS sub_category,
+                payment_accounts.name AS payment_account_name,
+                branches.name AS branch_name,
+                users.name AS created_by_name
+            ')
+            ->orderByDesc('expenses.expense_date')
+            ->orderByDesc('expenses.id')
+            ->paginate($filter->perPage);
+    }
 }

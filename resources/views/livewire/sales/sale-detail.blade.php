@@ -226,9 +226,12 @@
 
     {{-- Actions --}}
     <div class="flex gap-3 flex-wrap">
-        <a href="{{ route('sales.receipt', $sale) }}" target="_blank" class="btn-secondary btn-sm">
-            🖨 Print Receipt
-        </a>
-        <a href="{{ route('sales.index') }}" wire:navigate class="btn-secondary btn-sm">← Back to Sales</a>
+        <a href="{{ route('documents.sale', $sale) }}" target="_blank" class="btn-secondary btn-sm">🖨 Print
+            Invoice</a>
+        <a href="{{ route('documents.sale.pdf', $sale) }}" class="btn-secondary btn-sm">📄 PDF</a>
+        @if ($sale->isReturnable())
+            <a href="{{ route('sales.return', $sale) }}" wire:navigate class="btn-secondary btn-sm">↩ Return</a>
+        @endif
+        <a href="{{ route('sales.index') }}" wire:navigate class="btn-secondary btn-sm">← Back</a>
     </div>
 </div>

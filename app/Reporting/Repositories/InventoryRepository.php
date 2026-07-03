@@ -161,4 +161,51 @@ class InventoryRepository extends BaseReportRepository
 
         return $serialized->concat($nonSerialized)->sortByDesc('total_cost_value')->values();
     }
+
+    public function imeiLedger(ReportFilter $filter, string $search = ''): \Illuminate\Contracts\Pagination\LengthAwarePaginator
+    {
+        return DB::table('product_units')
+            ->join('product_variants', 'product_variants.id', '=', 'product_units.product_variant_id')
+            ->join('products', 'products.id', '=', 'product_variants.product_id')
+            ->leftJoin('brands', 'brands.id', '=', 'products.brand_id')
+            ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
+            ->leftJoin('branches', 'branches.id', '=', 'product_units.branch_id')
+            // Join sale item to find which sale this was sold in
+            ->leftJoin('sale_items', 'sale_items.product_unit_id', '=', 'product_units.id')
+            ->leftJoin('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->leftJoin('customers', 'customers.id', '=', 'sales.customer_id')
+            ->where('product_units.shop_id', $filter->shopId)
+            ->when($filter->branchId, fn ($q) => $q->where('product_units.branch_id', $filter->branchId))
+            ->when($filter->status, fn ($q) => $q->where('product_units.status', $filter->status))
+            ->when($filter->categoryId, fn ($q) => $q->where('products.category_id', $filter->categoryId))
+            ->when($filter->brandId, fn ($q) => $q->where('products.brand_id', $filter->brandId))
+            ->when($search, fn ($q) =>
+                $q->where('product_units.serial_number', 'like', "%{$search}%")
+                  ->orWhere('product_units.secondary_serial_number', 'like', "%{$search}%")
+            )
+            ->selectRaw('
+                product_units.id,
+                product_units.serial_number,
+                product_units.secondary_serial_number,
+                product_units.status,
+                product_units.cost_price,
+                product_units.created_at AS received_at,
+                product_units.sold_at,
+                product_units.manufacturer_warranty_months,
+                product_units.shop_warranty_days,
+                products.name AS product_name,
+                product_variants.sku,
+                product_variants.attributes_label AS variant_label,
+                COALESCE(brands.name, "—") AS brand,
+                COALESCE(categories.name, "—") AS category,
+                branches.name AS branch_name,
+                sales.sale_number,
+                sales.grand_total AS sale_amount,
+                sales.confirmed_at AS sale_date,
+                customers.name AS customer_name,
+                customers.phone AS customer_phone
+            ')
+            ->orderByDesc('product_units.created_at')
+            ->paginate($filter->perPage);
+    }
 }

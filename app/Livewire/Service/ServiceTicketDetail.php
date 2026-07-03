@@ -71,6 +71,10 @@ class ServiceTicketDetail extends Component
             if ($this->showDeductParts) {
                 $this->deductInventoryParts();
             }
+            try {
+                $shop = Auth::user()->shop()->withoutGlobalScopes()->findOrFail(Auth::user()->shop_id);
+                app(\App\Services\SmsService::class)->sendServiceReady($shop, $this->ticket);
+            } catch (\Throwable) {}
         }
 
         $this->ticket->update($updates);

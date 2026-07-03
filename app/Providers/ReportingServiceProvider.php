@@ -9,6 +9,7 @@ use App\Reporting\Repositories\InventoryRepository;
 use App\Reporting\Repositories\PayrollRepository;
 use App\Reporting\Repositories\SalesRepository;
 use App\Reporting\Repositories\ServiceRepository;
+use App\Reporting\Repositories\UsedPhoneRepository;
 use App\Reporting\Services\ExecutiveDashboardService;
 use App\Reporting\Services\FinancialReportService;
 use App\Reporting\Services\SalesReportService;
@@ -47,5 +48,6 @@ class ReportingServiceProvider extends ServiceProvider
         $this->app->bind(FinancialReportService::class, fn ($app) =>
             new FinancialReportService($app->make(FinancialRepository::class))
         );
+        $this->app->bind(UsedPhoneRepository::class);
     }
 }

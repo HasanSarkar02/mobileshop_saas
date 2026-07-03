@@ -11,6 +11,7 @@
                     ['key' => 'branches', 'label' => 'Branches'],
                     ['key' => 'vat', 'label' => 'VAT / Tax'],
                     ['key' => 'rules', 'label' => 'Business Rules'],
+                    ['key' => 'sms', 'label' => 'SMS Notifications'],
                 ];
             @endphp
             @foreach ($tabs as $tab)
@@ -64,6 +65,47 @@
                         <option value="USD">USD — US Dollar ($)</option>
                     </select>
                 </div>
+            </div>
+            {{-- Logo Upload --}}
+            <div class="sm:col-span-2">
+                <label class="label">Shop Logo</label>
+                <div class="flex items-center gap-4">
+                    @if ($shopLogo)
+                        <img src="{{ $shopLogo->temporaryUrl() }}" class="h-16 w-auto rounded border">
+                    @elseif($this->shop->logo_path)
+                        <img src="{{ Storage::url($this->shop->logo_path) }}" class="h-16 w-auto rounded border">
+                    @else
+                        <div
+                            class="h-16 w-24 bg-gray-100 rounded border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-400">
+                            No logo</div>
+                    @endif
+                    <div>
+                        <input wire:model="shopLogo" type="file" accept="image/*"
+                            class="block text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:font-medium file:bg-indigo-50 file:text-indigo-700 cursor-pointer">
+                        <p class="text-xs text-gray-400 mt-1">Used on all invoices, reports, and vouchers. Max 2MB.</p>
+                        <div wire:loading wire:target="shopLogo" class="text-xs text-indigo-500 mt-1">Uploading…</div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <label class="label">Trade License Number</label>
+                <input wire:model="tradeLicenseNumber" type="text" class="input" placeholder="TRAD-XXXXXX">
+            </div>
+            <div>
+                <label class="label">Website</label>
+                <input wire:model="website" type="url" class="input" placeholder="https://example.com">
+            </div>
+            <div class="sm:col-span-2">
+                <label class="label">Document Footer Note</label>
+                <input wire:model="documentFooterNote" type="text" class="input"
+                    placeholder="e.g. Thank you for your business. All transactions subject to our terms.">
+            </div>
+            <div class="sm:col-span-2">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input wire:model="showConfidential" type="checkbox"
+                        class="rounded border-gray-300 text-indigo-600">
+                    <span class="text-sm text-gray-700">Mark all documents as CONFIDENTIAL</span>
+                </label>
             </div>
             <div class="pt-2">
                 <button wire:click="saveProfile" class="btn-primary" data-loading:class="opacity-50 cursor-not-allowed">
@@ -132,7 +174,8 @@
                     @endif
                     @if (!$editingPaymentId)
                         <div>
-                            <label class="label">Branch <span class="text-gray-400 font-normal">(optional — blank = all
+                            <label class="label">Branch <span class="text-gray-400 font-normal">(optional — blank =
+                                    all
                                     branches)</span></label>
                             <select wire:model="paymentBranchId" class="input">
                                 <option value="">All branches (shop-wide)</option>
@@ -144,7 +187,8 @@
                     @endif
                 </div>
                 <div class="flex gap-2 pt-1">
-                    <button wire:click="savePaymentAccount" class="btn-primary btn-sm" data-loading:class="opacity-50">
+                    <button wire:click="savePaymentAccount" class="btn-primary btn-sm"
+                        data-loading:class="opacity-50">
                         {{ $editingPaymentId ? 'Update' : 'Add Account' }}
                     </button>
                     <button wire:click="$set('showPaymentForm', false)" class="btn-secondary btn-sm">
@@ -470,6 +514,75 @@
                     </span>
                 </div>
                 <button wire:click="saveBusinessRules" class="btn-primary btn-sm">Save Rules</button>
+            </div>
+        </div>
+        {{-- ── SMS TAB ── --}}
+        <div wire:show="activeTab === 'sms'" class="p-6 space-y-6">
+            <h3 class="font-semibold text-gray-900">SMS Notifications</h3>
+            <p class="text-sm text-gray-500">
+                Send automatic SMS to customers. Supports BulkSMSBD and SSLCommerz SMS.
+            </p>
+
+            {{-- Enable --}}
+            <div class="flex items-center gap-3">
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input wire:model.live="smsEnabled" type="checkbox" class="sr-only peer">
+                    <div
+                        class="w-9 h-5 bg-gray-200 rounded-full peer peer-checked:bg-indigo-600
+                        peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-0.5
+                        after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-transform">
+                    </div>
+                </label>
+                <span class="text-sm font-medium text-gray-700">
+                    {{ $smsEnabled ? 'SMS Enabled' : 'SMS Disabled' }}
+                </span>
+            </div>
+
+            <div wire:show="smsEnabled" class="space-y-4">
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="label">SMS Provider *</label>
+                        <select wire:model="smsProvider" class="input">
+                            <option value="bulk_sms_bd">BulkSMSBD</option>
+                            <option value="ssl_commerz">SSLCommerz SMS</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="label">Sender ID</label>
+                        <input wire:model="smsSenderId" type="text" class="input"
+                            placeholder="Your shop name or short code">
+                        <p class="text-xs text-gray-400 mt-0.5">Max 11 characters. Must be approved by provider.</p>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="label">API Key *</label>
+                        <input wire:model="smsApiKey" type="password" class="input"
+                            placeholder="Enter your SMS API key">
+                    </div>
+                </div>
+
+                {{-- Feature toggles --}}
+                <div class="space-y-3 border border-gray-200 rounded-xl p-4">
+                    <h4 class="text-sm font-semibold text-gray-700">Automatic SMS Events</h4>
+                    @foreach ([['field' => 'smsOnSale', 'label' => 'Send SMS on Sale Confirmation', 'desc' => 'Customer receives invoice summary after every sale'], ['field' => 'smsOnDueReminder', 'label' => 'Enable Due Reminders (Manual)', 'desc' => 'Owner can send due reminders from Customer Profile'], ['field' => 'smsOnServiceReady', 'label' => 'Send SMS when Repair is Ready', 'desc' => 'Customer notified when service ticket is Ready for Pickup']] as $toggle)
+                        <label class="flex items-start gap-3 cursor-pointer group">
+                            <input wire:model="{{ $toggle['field'] }}" type="checkbox"
+                                class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                            <div>
+                                <div class="text-sm font-medium text-gray-700 group-hover:text-gray-900">
+                                    {{ $toggle['label'] }}</div>
+                                <div class="text-xs text-gray-400">{{ $toggle['desc'] }}</div>
+                            </div>
+                        </label>
+                    @endforeach
+                </div>
+
+                <div class="flex gap-3">
+                    <button wire:click="saveSmsSettings" class="btn-primary">Save SMS Settings</button>
+                    <button wire:click="testSms" class="btn-secondary" wire:loading.attr="disabled">
+                        <span wire:loading.remove wire:target="testSms">📱 Send Test SMS</span>
+                        <span wire:loading wire:target="testSms">Sending…</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

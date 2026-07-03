@@ -55,6 +55,12 @@
                     </button>
                 @endif
             </div>
+            @if ($customer->current_balance > 0 && auth()->user()->isOwner())
+                <button wire:click="sendDueReminder" wire:confirm="Send due reminder SMS to {{ $customer->name }}?"
+                    class="btn-secondary btn-sm">
+                    📱 Send Due Reminder
+                </button>
+            @endif
         </div>
     </div>
 

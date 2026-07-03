@@ -126,4 +126,20 @@ class CustomerProfile extends Component
         return view('livewire.customers.customer-profile',
             compact('transactions', 'sales'));
     }
+
+    public function sendDueReminder(): void
+    {
+        if ($this->customer->current_balance <= 0) {
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'No outstanding balance.']);
+            return;
+        }
+
+        $shop   = Auth::user()->shop()->withoutGlobalScopes()->findOrFail(Auth::user()->shop_id);
+        $result = app(\App\Services\SmsService::class)->sendDueReminder($shop, $this->customer);
+
+        $this->dispatch('notify', [
+            'type'    => $result ? 'success' : 'error',
+            'message' => $result ? "Due reminder sent to {$this->customer->phone}." : 'SMS failed or SMS not enabled.',
+        ]);
+    }
 }

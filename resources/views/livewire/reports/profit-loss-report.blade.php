@@ -7,6 +7,20 @@
         <p class="text-gray-500 text-xs">{{ $periodLabel }}</p>
     </div>
 
+    {{-- Export Bar --}}
+    <x-document.export-bar title="Profit & Loss — {{ $periodLabel }}" :printUrl="route('reports.pl.print', [
+        'period' => $period,
+        'branch' => $branchId,
+        'from' => $dateFrom,
+        'to' => $dateTo,
+    ])" :pdfUrl="route('reports.pl.pdf', [
+        'period' => $period,
+        'branch' => $branchId,
+        'from' => $dateFrom,
+        'to' => $dateTo,
+    ])"
+        :csvUrl="route('reports.pl.csv', ['period' => $period, 'branch' => $branchId])" />
+
     {{-- Filter --}}
     <div class="print:hidden">
         <div class="flex items-center justify-between mb-3">

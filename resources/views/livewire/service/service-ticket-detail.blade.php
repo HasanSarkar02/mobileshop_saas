@@ -265,4 +265,12 @@
             <div>Delivered: {{ $ticket->delivered_at->format('d M Y H:i') }}</div>
         @endif
     </div>
+    <div class="flex gap-3 flex-wrap mt-4">
+        <a href="{{ route('documents.service-invoice', $ticket) }}" target="_blank" class="btn-secondary btn-sm">
+            🖨 Print Service Invoice
+        </a>
+        <a href="{{ route('documents.service-invoice.pdf', $ticket) }}" class="btn-secondary btn-sm">
+            📄 PDF
+        </a>
+    </div>
 </div>

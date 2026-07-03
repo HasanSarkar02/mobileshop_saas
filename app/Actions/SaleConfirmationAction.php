@@ -326,6 +326,14 @@ class SaleConfirmationAction
                 );
             }
 
+            try {
+                app(\App\Services\SmsService::class)->sendSaleReceipt(
+                    $shop, $customer, $sale
+                );
+            } catch (\Throwable) {
+                // SMS failure never blocks a confirmed sale
+            }
+
             return $sale->fresh(['items', 'payments', 'customer', 'branch', 'cashier',
                                   'financePartnerReceivable.financePartner']);
         });

@@ -44,7 +44,7 @@ use App\Livewire\Reports\CustomerDueReport;
 use App\Livewire\Reports\ProfitLossReport;
 use App\Livewire\Reports\SalesReport;
 use App\Livewire\Reports\StockValuationReport;
-
+use App\Http\Controllers\DocumentController;
 
 // ─── Super Admin ──────────────────────────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -92,6 +92,7 @@ Route::middleware(['auth:web'])->group(function () {
 
     // Settings
     Route::livewire('settings', ShopSettings::class)->name('settings');
+    Route::livewire('settings/activity-log', \App\Livewire\Settings\ActivityLogViewer::class)->name('settings.activity-log');
 
 
     // Customers
@@ -154,9 +155,65 @@ Route::middleware(['auth:web'])->group(function () {
 
 
     Route::prefix('reports')->name('reports.')->group(function () {
-        Route::livewire('profit-loss',       ProfitLossReport::class)->name('pl');
-        Route::livewire('sales',             SalesReport::class)->name('sales');
-        Route::livewire('stock-valuation',   StockValuationReport::class)->name('stock');
-        Route::livewire('customer-due',      CustomerDueReport::class)->name('customer-due');
+    // existing:
+    Route::livewire('profit-loss',     ProfitLossReport::class)->name('pl');
+    Route::livewire('sales',           SalesReport::class)->name('sales');
+    Route::livewire('stock-valuation', StockValuationReport::class)->name('stock');
+    Route::livewire('customer-due',    CustomerDueReport::class)->name('customer-due');
+
+    // NEW:
+    Route::livewire('expenses',        \App\Livewire\Reports\ExpenseReport::class)->name('expenses');
+    Route::livewire('service',         \App\Livewire\Reports\ServiceReport::class)->name('service');
+    Route::livewire('used-phones',     \App\Livewire\Reports\UsedPhoneReport::class)->name('used-phones');
+    Route::livewire('imei-ledger',     \App\Livewire\Reports\ImeiLedgerReport::class)->name('imei-ledger');
+
+    // Print/PDF/CSV:
+    Route::get('profit-loss/print',    [DocumentController::class, 'profitLossPrint'])->name('pl.print');
+    Route::get('profit-loss/pdf',      [DocumentController::class, 'profitLossPdf'])->name('pl.pdf');
+    Route::get('profit-loss/csv',      [DocumentController::class, 'profitLossCsv'])->name('pl.csv');
+    Route::get('expenses/print',       [DocumentController::class, 'expenseReportPrint'])->name('expenses.print');
+});
+
+
+
+    // ── Documents ─────────────────────────────────────────────────────────────
+    Route::prefix('documents')->name('documents.')->group(function () {
+
+        // Sale Invoice
+        Route::get('sale/{sale}',         [DocumentController::class, 'saleInvoice'])->name('sale');
+        Route::get('sale/{sale}/pdf',     [DocumentController::class, 'saleInvoicePdf'])->name('sale.pdf');
+
+        // Credit Note
+        Route::get('credit-note/{creditNote}',     [DocumentController::class, 'creditNote'])->name('credit-note');
+        Route::get('credit-note/{creditNote}/pdf', [DocumentController::class, 'creditNotePdf'])->name('credit-note.pdf');
+
+        // Purchase Invoice
+        Route::get('purchase/{purchase}',     [DocumentController::class, 'purchaseInvoice'])->name('purchase');
+        Route::get('purchase/{purchase}/pdf', [DocumentController::class, 'purchaseInvoicePdf'])->name('purchase.pdf');
+
+        // Service Invoice
+        Route::get('service/{ticket}',     [DocumentController::class, 'serviceInvoice'])->name('service-invoice');
+        Route::get('service/{ticket}/pdf', [DocumentController::class, 'serviceInvoicePdf'])->name('service-invoice.pdf');
+
+        // Warranty Slip
+        Route::get('warranty/{unit}', [DocumentController::class, 'warrantySlip'])->name('warranty');
+
+        // Payroll Sheet
+        Route::get('payroll/{run}',     [DocumentController::class, 'payrollSheet'])->name('payroll');
+        Route::get('payroll/{run}/pdf', [DocumentController::class, 'payrollSheetPdf'])->name('payroll.pdf');
+
+        // Used Phone Receipt
+        Route::get('used-phone/{acquisition}',     [DocumentController::class, 'usedPhoneReceipt'])->name('used-phone');
+        Route::get('used-phone/{acquisition}/pdf', [DocumentController::class, 'usedPhoneReceiptPdf'])->name('used-phone.pdf');
+    });
+
+    // ── Report Print/Export ────────────────────────────────────────────────────
+    Route::prefix('reports')->name('reports.')->group(function () {
+        // P&L
+        Route::get('profit-loss/print', [DocumentController::class, 'profitLossPrint'])->name('pl.print');
+        Route::get('profit-loss/pdf',   [DocumentController::class, 'profitLossPdf'])->name('pl.pdf');
+        Route::get('profit-loss/csv',   [DocumentController::class, 'profitLossCsv'])->name('pl.csv');
+
+        // (Add sales, stock, customer-due similarly)
     });
 });
