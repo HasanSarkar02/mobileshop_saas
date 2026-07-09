@@ -26,6 +26,11 @@ class ProductList extends Component
     #[Url]
     public int $categoryId = 0;
 
+    public bool   $showAddBrand    = false;
+    public bool   $showAddCategory = false;
+    public string $newBrandName    = '';
+    public string $newCategoryName = '';
+
     public function updatingSearch(): void { $this->resetPage(); }
     public function updatingTrackingType(): void { $this->resetPage(); }
     public function updatingCategoryId(): void { $this->resetPage(); }
@@ -56,5 +61,35 @@ class ProductList extends Component
         $categories = Category::orderBy('name')->get();
 
         return view('livewire.products.product-list', compact('products', 'categories'));
+    }
+
+    public function addBrand(): void
+    {
+        $this->validate(['newBrandName' => 'required|string|max:100']);
+
+        \App\Models\Brand::firstOrCreate(
+            ['name' => $this->newBrandName, 'shop_id' => \Illuminate\Support\Facades\Auth::user()->shop_id],
+            ['is_active' => true]
+        );
+
+        unset($this->brands);
+        $this->showAddBrand  = false;
+        $this->newBrandName  = '';
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Brand added.']);
+    }
+
+    public function addCategory(): void
+    {
+        $this->validate(['newCategoryName' => 'required|string|max:100']);
+
+        \App\Models\Category::firstOrCreate(
+            ['name' => $this->newCategoryName, 'shop_id' => \Illuminate\Support\Facades\Auth::user()->shop_id],
+            ['is_active' => true]
+        );
+
+        unset($this->categories);
+        $this->showAddCategory  = false;
+        $this->newCategoryName  = '';
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Category added.']);
     }
 }

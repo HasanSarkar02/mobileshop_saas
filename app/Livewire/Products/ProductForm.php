@@ -257,4 +257,14 @@ class ProductForm extends Component
 
         return view('livewire.products.product-form', compact('brands', 'categories'));
     }
+
+    public function toggleBrandForm(): void
+    {
+        $this->showBrandForm = ! $this->showBrandForm;
+    }
+
+    public function toggleCategoryForm(): void
+    {
+        $this->showCategoryForm = ! $this->showCategoryForm;
+    }
 }

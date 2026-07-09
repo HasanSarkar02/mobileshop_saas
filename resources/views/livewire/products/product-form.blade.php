@@ -39,8 +39,10 @@
                                     </option>
                                 @endforeach
                             </select>
-                            <button type="button" wire:click="$set('showBrandForm', !$showBrandForm)"
-                                class="btn-secondary btn-sm shrink-0" title="Add brand">+</button>
+                            <button type="button" wire:click="toggleBrandForm" class="btn-secondary btn-sm shrink-0"
+                                title="Add brand">
+                                +
+                            </button>
                         </div>
                         @if ($showBrandForm)
                             <div class="mt-2 flex gap-2">
@@ -68,8 +70,10 @@
                                     </option>
                                 @endforeach
                             </select>
-                            <button type="button" wire:click="$set('showCategoryForm', !$showCategoryForm)"
-                                class="btn-secondary btn-sm shrink-0" title="Add category">+</button>
+                            <button type="button" wire:click="toggleCategoryForm" class="btn-secondary btn-sm shrink-0"
+                                title="Add category">
+                                +
+                            </button>
                         </div>
                         @if ($showCategoryForm)
                             <div class="mt-2 flex gap-2">

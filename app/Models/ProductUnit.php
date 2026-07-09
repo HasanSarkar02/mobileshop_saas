@@ -69,4 +69,19 @@ class ProductUnit extends Model
 
         return $expiry && $expiry->isFuture();
     }
+
+    public function isUnderManufacturerWarranty(): bool
+    {
+        $exp = $this->warrantyExpiresAt();
+        return $exp && $exp->isFuture();
+    }
+
+    /**
+     * Is shop warranty still active?
+     */
+    public function isUnderShopWarranty(): bool
+    {
+        $exp = $this->shopWarrantyExpiresAt();
+        return $exp && $exp->isFuture();
+    }
 }

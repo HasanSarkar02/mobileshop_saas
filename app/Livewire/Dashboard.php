@@ -52,6 +52,61 @@ class Dashboard extends Component
 
     public function render()
     {
-        return view('livewire.dashboard');
+        $user = \Illuminate\Support\Facades\Auth::user();
+
+        // Employees get a limited view — no revenue, profit, or cash details
+        if ($user->isEmployee()) {
+            return view('livewire.employee-dashboard', [
+                'employeeSales'   => $this->employeeSales($user),
+                'myTickets'       => $this->myTickets($user),
+                'pendingExpenses' => $this->pendingExpenses($user),
+            ]);
+        }
+
+        // Owner / SuperAdmin — full executive summary
+        return view('livewire.dashboard', [
+            'branches'    => $this->branches,
+            'periodLabel' => $this->selectedPeriodLabel,
+        ]);
+    }
+
+    private function employeeSales(\App\Models\User $user): array
+    {
+        $today = \App\Models\Sale::where('cashier_id', $user->id)
+            ->where('status', 'confirmed')
+            ->whereDate('confirmed_at', today())
+            ->selectRaw('COUNT(*) as count, COALESCE(SUM(grand_total), 0) as revenue')
+            ->first();
+
+        $month = \App\Models\Sale::where('cashier_id', $user->id)
+            ->where('status', 'confirmed')
+            ->whereMonth('confirmed_at', now()->month)
+            ->whereYear('confirmed_at', now()->year)
+            ->selectRaw('COUNT(*) as count, COALESCE(SUM(grand_total), 0) as revenue')
+            ->first();
+
+        return [
+            'today_count'    => (int)   ($today->count   ?? 0),
+            'today_revenue'  => (float) ($today->revenue ?? 0),
+            'month_count'    => (int)   ($month->count   ?? 0),
+            'month_revenue'  => (float) ($month->revenue ?? 0),
+        ];
+    }
+
+    private function myTickets(\App\Models\User $user): \Illuminate\Support\Collection
+    {
+        return \App\Models\ServiceTicket::where('technician_id', $user->id)
+            ->whereNotIn('status', ['delivered', 'cancelled'])
+            ->latest()
+            ->take(8)
+            ->get(['id', 'ticket_number', 'customer_name', 'device_model', 'status', 'amount_due']);
+    }
+
+    private function pendingExpenses(\App\Models\User $user): int
+    {
+        // Show only expenses created by this employee that are pending
+        return \App\Models\Expense::where('created_by', $user->id)
+            ->where('status', 'pending')
+            ->count();
     }
 }

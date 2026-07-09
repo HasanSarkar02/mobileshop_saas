@@ -13,6 +13,7 @@ use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use App\Models\SalaryDraw;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use \App\Models\Concerns\BelongsToShop;
 
 #[Fillable(['name', 'email', 'password', 'shop_id', 'branch_id', 'user_type', 'phone', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
@@ -79,5 +80,10 @@ class User extends Authenticatable
     public function salaryDraws(): HasMany
     {
         return $this->hasMany(SalaryDraw::class);
+    }
+
+    public function scopeForShop($query, int $shopId): void
+    {
+        $query->where('shop_id', $shopId);
     }
 }

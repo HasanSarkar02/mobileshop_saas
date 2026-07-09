@@ -2,6 +2,7 @@
     <div class="flex items-center justify-between">
         <h2 class="text-xl font-bold text-gray-900">IMEI Ledger</h2>
         <span class="text-xs text-gray-400">Full lifecycle of every serialized unit ever received</span>
+        <x-document.export-bar title="IMEI Ledger" :printUrl="route('reports.imei-ledger.print', ['branch' => $branchId, 'status' => $unitStatus, 'q' => $search])" />
     </div>
 
     {{-- Filters --}}

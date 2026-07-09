@@ -516,5 +516,21 @@ class ShopSettings extends Component
             'type'    => $result ? 'success' : 'error',
             'message' => $result ? "Test SMS sent to {$phone}." : 'SMS failed. Check your API key.',
         ]);
+
+    }
+
+    public function togglePaymentAccount(int $id): void
+    {
+        $acc = \App\Models\PaymentAccount::where('shop_id', Auth::user()->shop_id)
+            ->findOrFail($id);
+
+        $acc->update(['is_active' => ! $acc->is_active]);
+
+        $this->dispatch('notify', [
+            'type'    => 'success',
+            'message' => $acc->is_active
+                ? "{$acc->name} deactivated. It will no longer appear in POS or payment forms."
+                : "{$acc->name} reactivated.",
+        ]);
     }
 }

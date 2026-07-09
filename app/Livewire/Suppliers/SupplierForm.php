@@ -11,9 +11,18 @@ use Livewire\Component;
 
 #[Layout('components.layouts.app')]
 #[Title('Supplier')]
+
+
 class SupplierForm extends Component
 {
     public ?Supplier $supplier = null;
+
+    public string $bankName          = '';
+    public string $bankAccountNumber = '';
+    public string $bankBranchName    = '';
+    public string $bankRoutingNumber = '';
+    public string $paymentTerms      = '';
+    public string $creditLimit       = '0';
 
     #[Validate('required|string|max:255')]
     public string $name = '';
@@ -37,6 +46,12 @@ class SupplierForm extends Component
                 'email' => $supplier->email ?? '',
                 'address' => $supplier->address ?? '',
             ]);
+            $this->bankName          = $supplier->bank_name ?? '';
+            $this->bankAccountNumber = $supplier->bank_account_number ?? '';
+            $this->bankBranchName    = $supplier->bank_branch_name ?? '';
+            $this->bankRoutingNumber = $supplier->bank_routing_number ?? '';
+            $this->paymentTerms      = $supplier->payment_terms ?? '';
+            $this->creditLimit       = (string) ($supplier->credit_limit ?? 0);
         }
     }
 
@@ -49,6 +64,12 @@ class SupplierForm extends Component
             'phone' => $this->phone ?: null,
             'email' => $this->email ?: null,
             'address' => $this->address ?: null,
+            'bank_name'           => $this->bankName ?: null,
+            'bank_account_number' => $this->bankAccountNumber ?: null,
+            'bank_branch_name'    => $this->bankBranchName ?: null,
+            'bank_routing_number' => $this->bankRoutingNumber ?: null,
+            'payment_terms'       => $this->paymentTerms ?: null,
+            'credit_limit'        => (float) $this->creditLimit,
         ];
 
         if ($this->supplier?->exists) {

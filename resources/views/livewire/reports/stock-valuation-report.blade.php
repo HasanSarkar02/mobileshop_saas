@@ -3,27 +3,24 @@
     <div class="flex items-center justify-between">
         <h2 class="text-xl font-bold text-gray-900">Stock Valuation Report</h2>
         <span class="text-xs text-gray-400">As of {{ $periodLabel }}</span>
+        <x-document.export-bar title="Stock Valuation — {{ $periodLabel }}" :printUrl="route('reports.stock.print', ['branch' => $branchId])" />
     </div>
 
     {{-- Filter (branch only — stock is always current, not date-ranged) --}}
-    <div class="card p-4">
-        <div class="flex items-center gap-3">
-            @if ($this->branches->count() > 1)
-                <div>
-                    <label class="label text-xs">Branch</label>
-                    <select wire:model.live="branchId" class="input text-sm w-40">
-                        <option value="0">All Branches</option>
-                        @foreach ($this->branches as $b)
-                            <option value="{{ $b->id }}">{{ $b->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            @endif
-            <div class="ml-auto">
-                <button onclick="window.print()" class="btn-secondary btn-sm">🖨 Print</button>
+    <div class="flex items-center gap-3">
+        @if ($this->branches->count() > 1)
+            <div>
+                <label class="label text-xs">Branch</label>
+                <select wire:model.live="branchId" class="input text-sm w-40">
+                    <option value="0">All Branches</option>
+                    @foreach ($this->branches as $b)
+                        <option value="{{ $b->id }}">{{ $b->name }}</option>
+                    @endforeach
+                </select>
             </div>
-        </div>
+        @endif
     </div>
+
 
     {{-- Summary Cards --}}
     @php $sm = $this->summary; @endphp

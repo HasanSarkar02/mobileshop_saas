@@ -1,9 +1,15 @@
 <div class="space-y-5">
     <div class="flex items-center justify-between">
         <h2 class="text-xl font-bold text-gray-900">Service & Repair Report</h2>
+        <x-document.export-bar title="Service Report — {{ $periodLabel }}" :printUrl="route('reports.service.print', [
+            'period' => $period,
+            'branch' => $branchId,
+            'from' => $dateFrom,
+            'to' => $dateTo,
+        ])" />
     </div>
 
-    <x-report-filter :period="$period" :dateFrom="$dateFrom" :dateTo="$dateTo" :branchId="$branchId" :branches="$branches" />
+
 
     @php $stats = $this->stats; @endphp
 

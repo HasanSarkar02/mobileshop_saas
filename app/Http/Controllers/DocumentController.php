@@ -339,4 +339,208 @@ class DocumentController extends Controller
             period:    $period,
         );
     }
+
+    // ── Sales Report Print ────────────────────────────────────────────────────
+
+    public function salesReportPrint(Request $request)
+    {
+        $shopId  = Auth::user()->shop_id;
+        $filter  = $this->buildFilterFromRequest($request, $shopId);
+
+        $service  = app(\App\Reporting\Services\SalesReportService::class);
+        $summary  = $service->summary($filter);
+        $trend    = $service->dailyTrend($filter);
+        $byProduct= $service->topProducts($filter, 50);
+
+        $periodLabel = $filter->dateRange->toDisplayString();
+
+        return view('documents.report-sales', compact(
+            'summary', 'trend', 'byProduct', 'periodLabel'
+        ));
+    }
+
+    // ── Stock Valuation Print ─────────────────────────────────────────────────
+
+    public function stockValuationPrint(Request $request)
+    {
+        $shopId       = Auth::user()->shop_id;
+        $branchId     = $request->branchId ? (int) $request->branchId : null;
+        $valuation    = app(\App\Reporting\Repositories\InventoryRepository::class)
+            ->stockValuation(new \App\Reporting\DTOs\ReportFilter(
+                shopId:    $shopId,
+                dateRange: \App\Reporting\DTOs\DateRange::today(),
+                branchId:  $branchId,
+            ));
+        $summary      = app(\App\Reporting\Repositories\InventoryRepository::class)
+            ->totalValue($shopId, $branchId);
+        $periodLabel  = now()->format('d M Y H:i');
+
+        return view('documents.report-stock-valuation', compact(
+            'valuation', 'summary', 'periodLabel', 'branchId'
+        ));
+    }
+
+    // ── Customer Due Print ────────────────────────────────────────────────────
+
+    public function customerDuePrint(Request $request)
+    {
+        $shopId    = Auth::user()->shop_id;
+        $custRepo  = app(\App\Reporting\Repositories\CustomerRepository::class);
+
+        $customerDues   = $custRepo->dueAging($shopId);
+        $fpReceivables  = $custRepo->fpReceivablesAging($shopId);
+        $customerStats  = $custRepo->stats($shopId);
+        $periodLabel    = now()->format('d M Y');
+
+        return view('documents.report-customer-due', compact(
+            'customerDues', 'fpReceivables', 'customerStats', 'periodLabel'
+        ));
+    }
+
+    // ── Expense Report Print ──────────────────────────────────────────────────
+
+    public function expenseReportPrint(Request $request)
+    {
+        $shopId      = Auth::user()->shop_id;
+        $filter      = $this->buildFilterFromRequest($request, $shopId);
+        $expRepo     = app(\App\Reporting\Repositories\ExpenseRepository::class);
+
+        $aggregate   = $expRepo->aggregate($filter);
+        $byCategory  = $expRepo->byCategory($filter);
+        $byBranch    = $expRepo->byBranch($filter);
+        $periodLabel = $filter->dateRange->toDisplayString();
+
+        return view('documents.report-expenses', compact(
+            'aggregate', 'byCategory', 'byBranch', 'periodLabel'
+        ));
+    }
+
+    // ── Service Report Print ──────────────────────────────────────────────────
+
+    public function serviceReportPrint(Request $request)
+    {
+        $shopId      = Auth::user()->shop_id;
+        $filter      = $this->buildFilterFromRequest($request, $shopId);
+        $svcRepo     = app(\App\Reporting\Repositories\ServiceRepository::class);
+
+        $stats         = $svcRepo->stats($shopId);
+        $openTickets   = $svcRepo->openTickets($shopId);
+        $techPerf      = $svcRepo->technicianPerformance($filter);
+        $periodRevenue = $svcRepo->revenueInPeriod($filter);
+        $periodLabel   = $filter->dateRange->toDisplayString();
+
+        return view('documents.report-service', compact(
+            'stats', 'openTickets', 'techPerf', 'periodRevenue', 'periodLabel'
+        ));
+    }
+
+    // ── IMEI Ledger Print ─────────────────────────────────────────────────────
+
+    public function imeiLedgerPrint(Request $request)
+    {
+        $shopId   = Auth::user()->shop_id;
+        $filter   = new \App\Reporting\DTOs\ReportFilter(
+            shopId:    $shopId,
+            dateRange: \App\Reporting\DTOs\DateRange::custom('2000-01-01', now()->toDateString()),
+            branchId:  $request->branchId ? (int) $request->branchId : null,
+            status:    $request->status ?: null,
+            perPage:   9999,
+        );
+
+        $records     = app(\App\Reporting\Repositories\InventoryRepository::class)
+            ->imeiLedger($filter, $request->q ?? '');
+        $periodLabel = now()->format('d M Y H:i');
+
+        return view('documents.report-imei-ledger', compact('records', 'periodLabel'));
+    }
+
+    // ── Supplier Statement ────────────────────────────────────────────────────
+
+    public function supplierStatementPrint(Request $request, \App\Models\Supplier $supplier)
+    {
+        if ($supplier->shop_id !== Auth::user()->shop_id) abort(403);
+
+        $from = $request->get('from', now()->startOfMonth()->toDateString());
+        $to   = $request->get('to',   now()->toDateString());
+
+        $statement = $this->buildSupplierStatement($supplier, $from, $to);
+
+        return view('documents.supplier-statement', compact('statement'));
+    }
+
+    public function supplierStatementPdf(Request $request, \App\Models\Supplier $supplier)
+    {
+        if ($supplier->shop_id !== Auth::user()->shop_id) abort(403);
+
+        $from = $request->get('from', now()->startOfMonth()->toDateString());
+        $to   = $request->get('to',   now()->toDateString());
+
+        $statement = $this->buildSupplierStatement($supplier, $from, $to);
+
+        return Pdf::loadView('documents.supplier-statement', compact('statement'))
+            ->setPaper('A4', 'portrait')
+            ->download("supplier-statement-{$supplier->name}.pdf");
+    }
+
+    private function buildSupplierStatement(
+        \App\Models\Supplier $supplier,
+        string $from,
+        string $to
+    ): array {
+        $purchases = \Illuminate\Support\Facades\DB::table('purchases')
+            ->where('supplier_id', $supplier->id)
+            ->selectRaw("purchase_date AS txn_date, 'Purchase' AS txn_type,
+                reference_number AS reference, total_amount AS debit, 0 AS credit")
+            ->get();
+
+        $payments = \Illuminate\Support\Facades\DB::table('supplier_payments')
+            ->where('supplier_id', $supplier->id)
+            ->selectRaw("payment_date AS txn_date, 'Payment' AS txn_type,
+                reference_number AS reference, 0 AS debit, amount AS credit")
+            ->get();
+
+        $returns = \Illuminate\Support\Facades\DB::table('purchase_returns')
+            ->where('supplier_id', $supplier->id)
+            ->selectRaw("return_date AS txn_date, 'Return' AS txn_type,
+                return_number AS reference, 0 AS debit, total_amount AS credit")
+            ->get();
+
+        $running = 0.0;
+        $ledger  = $purchases->concat($payments)->concat($returns)
+            ->sortBy('txn_date')
+            ->map(function ($row) use (&$running) {
+                $running += (float) $row->debit - (float) $row->credit;
+                $row->running_balance = $running;
+                return $row;
+            })->values();
+
+        // Aging
+        $today   = now()->toDateString();
+        $unpaid  = \Illuminate\Support\Facades\DB::table('purchases')
+            ->where('supplier_id', $supplier->id)
+            ->whereIn('payment_status', ['unpaid', 'partial'])
+            ->selectRaw("purchase_date, total_amount, DATEDIFF(?, purchase_date) AS days", [$today])
+            ->get();
+
+        $aging = ['current' => 0, '1_30' => 0, '31_60' => 0, '61_90' => 0, 'over_90' => 0];
+        foreach ($unpaid as $p) {
+            $d = (int) $p->days;
+            $a = (float) $p->total_amount;
+            if ($d <= 0)      $aging['current'] += $a;
+            elseif ($d <= 30) $aging['1_30']    += $a;
+            elseif ($d <= 60) $aging['31_60']   += $a;
+            elseif ($d <= 90) $aging['61_90']   += $a;
+            else              $aging['over_90'] += $a;
+        }
+
+        return [
+            'supplier'        => $supplier,
+            'ledger'          => $ledger,
+            'aging'           => $aging,
+            'closing_balance' => $running,
+            'period_label'    => \Carbon\Carbon::parse($from)->format('d M Y') . ' – ' . \Carbon\Carbon::parse($to)->format('d M Y'),
+            'from'            => $from,
+            'to'              => $to,
+        ];
+    }
 }

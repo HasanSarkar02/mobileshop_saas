@@ -13,6 +13,7 @@
                 <option value="{{ $cat->id }}">{{ $cat->name }}</option>
             @endforeach
         </select>
+
         <a href="{{ route('products.create') }}" wire:navigate class="btn-primary sm:ml-auto whitespace-nowrap">
             + Add Product
         </a>

@@ -88,6 +88,7 @@ Route::middleware(['auth:web'])->group(function () {
     Route::livewire('suppliers', SupplierList::class)->name('suppliers.index');
     Route::livewire('suppliers/create', SupplierForm::class)->name('suppliers.create');
     Route::livewire('suppliers/{supplier}/edit', SupplierForm::class)->name('suppliers.edit');
+    Route::livewire('suppliers/{supplier}', \App\Livewire\Suppliers\SupplierProfile::class)->name('suppliers.show');
 
     // Purchases
     Route::livewire('purchases', PurchaseList::class)->name('purchases.index');
@@ -209,6 +210,10 @@ Route::middleware(['auth:web'])->group(function () {
         // Used Phone Receipt
         Route::get('used-phone/{acquisition}',     [DocumentController::class, 'usedPhoneReceipt'])->name('used-phone');
         Route::get('used-phone/{acquisition}/pdf', [DocumentController::class, 'usedPhoneReceiptPdf'])->name('used-phone.pdf');
+
+        // Supplier Statement
+        Route::get('documents/supplier/{supplier}/statement',[\App\Http\Controllers\DocumentController::class, 'supplierStatementPrint'])->name('supplier-statement');
+        Route::get('documents/supplier/{supplier}/statement/pdf',[\App\Http\Controllers\DocumentController::class, 'supplierStatementPdf'])->name('supplier-statement.pdf');
     });
 
     // ── Report Print/Export ────────────────────────────────────────────────────
@@ -225,10 +230,12 @@ Route::middleware(['auth:web'])->group(function () {
         Route::get('account-statement/pdf',[\App\Http\Controllers\DocumentController::class, 'accountStatementPdf'])->name('account-statement.pdf');
         Route::get('cash-flow/print',[\App\Http\Controllers\DocumentController::class, 'cashFlowPrint'])->name('cash-flow.print');
 
-        // (Add sales, stock, customer-due similarly)
-        Route::get('sales/print',[\App\Http\Controllers\DocumentController::class, 'salesReportPrint'])->name('sales.print');
-        Route::get('stock-valuation/print',[\App\Http\Controllers\DocumentController::class, 'stockValuationPrint'])->name('stock-valuation.print');
-        Route::get('customer-due/print',[\App\Http\Controllers\DocumentController::class, 'customerDuePrint'])->name('customer-due.print');
+        Route::get('sales/print',            [DocumentController::class, 'salesReportPrint'])->name('sales.print');
+        Route::get('stock-valuation/print',  [DocumentController::class, 'stockValuationPrint'])->name('stock.print');
+        Route::get('customer-due/print',     [DocumentController::class, 'customerDuePrint'])->name('customer-due.print');
+        Route::get('expenses/print',         [DocumentController::class, 'expenseReportPrint'])->name('expenses.print');
+        Route::get('service/print',          [DocumentController::class, 'serviceReportPrint'])->name('service.print');
+        Route::get('imei-ledger/print',      [DocumentController::class, 'imeiLedgerPrint'])->name('imei-ledger.print');
     });
 
 

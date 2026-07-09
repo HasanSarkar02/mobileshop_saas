@@ -3,6 +3,12 @@
     {{-- Header --}}
     <div class="flex items-center justify-between">
         <h2 class="text-xl font-bold text-gray-900">Sales Analysis</h2>
+        <x-document.export-bar title="Sales Report — {{ $periodLabel }}" :printUrl="route('reports.sales.print', [
+            'period' => $period,
+            'branch' => $branchId,
+            'from' => $dateFrom,
+            'to' => $dateTo,
+        ])" />
     </div>
 
     {{-- Filter --}}

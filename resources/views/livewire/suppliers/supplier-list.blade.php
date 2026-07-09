@@ -19,11 +19,17 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse($suppliers as $supplier)
                         <tr class="hover:bg-gray-50">
+                            {{-- Replace plain name with linked name --}}
                             <td class="table-td">
-                                <div class="font-medium text-gray-900">{{ $supplier->name }}</div>
+                                <a href="{{ route('suppliers.show', $supplier) }}" wire:navigate
+                                    class="font-semibold text-indigo-600 hover:underline">
+                                    {{ $supplier->name }}
+                                </a>
+                                @if ($supplier->contact_person)
+                                    <div class="text-xs text-gray-400">{{ $supplier->contact_person }}</div>
+                                @endif
                                 @if ($supplier->address)
-                                    <div class="text-xs text-gray-400 truncate max-w-[200px]">{{ $supplier->address }}
-                                    </div>
+                                    <div class="text-xs text-gray-400">{{ $supplier->address }}</div>
                                 @endif
                             </td>
                             <td class="table-td">
@@ -33,10 +39,13 @@
                             <td class="table-td">
                                 <span class="badge badge-gray">{{ $supplier->purchases_count }}</span>
                             </td>
+
                             <td class="table-td">
-                                <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ route('suppliers.show', $supplier) }}" wire:navigate
+                                        class="text-xs text-indigo-600 hover:underline font-medium">Profile</a>
                                     <a href="{{ route('suppliers.edit', $supplier) }}" wire:navigate
-                                        class="text-xs text-indigo-600 hover:underline font-medium">Edit</a>
+                                        class="text-xs text-gray-500 hover:underline font-medium">Edit</a>
                                     @if ($supplier->purchases_count === 0)
                                         <button wire:click="delete({{ $supplier->id }})"
                                             wire:confirm="Delete {{ $supplier->name }}?"

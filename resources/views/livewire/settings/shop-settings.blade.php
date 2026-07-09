@@ -212,44 +212,39 @@
             @endphp
 
             <div class="space-y-2">
-                @forelse($this->paymentAccounts as $payment)
-                    <div class="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:bg-gray-50">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="font-medium text-gray-900 text-sm">{{ $payment->name }}</span>
-                                <span
-                                    class="badge {{ $providerLabels[$payment->provider]['color'] ?? 'badge-gray' }}">
-                                    {{ $providerLabels[$payment->provider]['label'] ?? $payment->provider }}
-                                </span>
-                                @if ($payment->branch)
-                                    <span class="badge badge-gray">{{ $payment->branch->name }}</span>
-                                @endif
+                @forelse (\App\Models\PaymentAccount::where('shop_id', auth()->user()->shop_id)->get() as $pa)
+                    <div
+                        class="flex items-center justify-between p-3 border border-gray-200 rounded-xl
+            {{ !$pa->is_active ? 'opacity-50 bg-gray-50' : '' }}">
+
+                        <div>
+                            <div class="font-medium text-sm text-gray-900">
+                                {{ $pa->name }}
                             </div>
-                            <div class="text-xs text-gray-400 mt-0.5 flex items-center gap-3">
-                                @if ($payment->account_number)
-                                    <span>{{ $payment->account_number }}</span>
-                                @endif
-                                @if ($payment->bank_name)
-                                    <span>{{ $payment->bank_name }}</span>
-                                @endif
-                                <span class="font-mono text-indigo-400">GL: {{ $payment->account?->code }}</span>
+
+                            <div class="text-xs text-gray-400">
+                                {{ ucfirst($pa->provider) }}
                             </div>
                         </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            @if ($payment->provider !== 'cash')
-                                <button wire:click="openPaymentForm({{ $payment->id }})"
-                                    class="text-xs text-indigo-600 hover:underline font-medium">
-                                    Edit
-                                </button>
+
+                        <div class="flex items-center gap-2">
+                            @if (!$pa->is_active)
+                                <span class="badge badge-red text-xs">Inactive</span>
                             @endif
-                            <button wire:click="deactivatePaymentAccount({{ $payment->id }})"
-                                wire:confirm="Remove {{ $payment->name }}? If it has transactions, it will be deactivated instead of deleted."
-                                class="text-xs text-red-500 hover:underline font-medium">
-                                Remove
+
+                            <button wire:click="togglePaymentAccount({{ $pa->id }})"
+                                wire:confirm="{{ $pa->is_active
+                                    ? 'Deactivate this account? It will be hidden from POS and payment forms.'
+                                    : 'Reactivate this account?' }}"
+                                class="text-xs {{ $pa->is_active ? 'text-red-500 hover:underline' : 'text-green-600 hover:underline' }}">
+                                {{ $pa->is_active ? 'Deactivate' : 'Reactivate' }}
                             </button>
                         </div>
+
                     </div>
+
                 @empty
+
                     <div class="text-center py-10 text-gray-400 text-sm">
                         No payment accounts yet.
                         <button wire:click="openPaymentForm()" class="text-indigo-600 hover:underline ml-1">

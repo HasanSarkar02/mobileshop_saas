@@ -82,6 +82,26 @@ class SaleConfirmationAction
                     ->findOrFail($data['customer_id'])
                 : Customer::getWalkInForShop($shop->id);
 
+            // ── Credit limit check ─────────────────────────────────────────────
+            if ($customer && $customer->customer_type->value !== 'walk_in') {
+                $creditPayment = collect($data['payments'])
+                    ->where('type', 'customer_credit')
+                    ->sum('amount');
+
+                if ($creditPayment > 0 && $customer->credit_limit > 0) {
+                    $newBalance = (float) $customer->current_balance + $creditPayment;
+                    if ($newBalance > (float) $customer->credit_limit) {
+                        throw new \RuntimeException(
+                            "Credit limit exceeded for {$customer->name}. " .
+                            "Limit: ৳" . number_format($customer->credit_limit, 2) . ", " .
+                            "Current balance: ৳" . number_format($customer->current_balance, 2) . ", " .
+                            "This credit: ৳" . number_format($creditPayment, 2) . ". " .
+                            "Available credit: ৳" . number_format(max(0, $customer->credit_limit - $customer->current_balance), 2)
+                        );
+                    }
+                }
+            }
+
             // ── 2. Lock IMEI units (race-condition protection) ─────────────────
             $units = [];
             foreach ($data['items'] as $item) {

@@ -145,13 +145,13 @@ class Sale extends Model
             ->sum('refund_amount');
     }
 
-    public function paymentSummary(): string
-    {
-        return $this->payments
-            ->groupBy('payment_type')
-            ->map(fn ($p, $type) => ucfirst($type) . ': ৳' . number_format($p->sum('amount'), 2))
-            ->implode(' | ');
-    }
+    // public function paymentSummary(): string
+    // {
+    //     return $this->payments
+    //         ->groupBy('payment_type')
+    //         ->map(fn ($p, $type) => ucfirst($type) . ': ৳' . number_format($p->sum('amount'), 2))
+    //         ->implode(' | ');
+    // }
 
     /**
      * Single source of truth for the status badge shown in UI.
@@ -180,5 +180,21 @@ class Sale extends Model
         }
 
         return ['label' => 'Confirmed', 'class' => 'badge-green'];
+    }
+
+    public function paymentSummary(): string
+    {
+        if (! $this->relationLoaded('payments')) {
+            $this->load(['payments.paymentAccount', 'payments.financePartner']);
+        }
+
+        return $this->payments
+            ->map(function ($payment) {
+                $method = $payment->paymentAccount?->name
+                    ?? $payment->financePartner?->name
+                    ?? ucfirst(str_replace('_', ' ', $payment->payment_type));
+                return "{$method}: ৳" . number_format($payment->amount, 0);
+            })
+            ->join(' | ');
     }
 }
