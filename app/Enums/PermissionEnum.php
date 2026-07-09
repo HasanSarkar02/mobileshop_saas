@@ -80,7 +80,17 @@ enum PermissionEnum: string
     case EmployeesManagePermissions = 'employees.manage_permissions'; // assign roles/permissions — rarely delegated
     case RolesManage = 'roles.manage'; // create / edit / delete custom roles
 
-    // Settings
+
+    // ── Treasury ──────────────────────────────────────────────────────────────
+    case TreasuryView       = 'treasury.view';
+    case TreasuryTransfer   = 'treasury.create_transfer';   // A-type + petty cash
+    case TreasuryEquity     = 'treasury.create_equity';     // B-type (capital, drawings)
+    case TreasuryAdjust     = 'treasury.create_adjustment'; // C-type (cash over/short)
+    case TreasuryBankFinance= 'treasury.create_bank_finance'; // D-type (bank, loans)
+    case TreasuryApprove    = 'treasury.approve';
+    case TreasuryReverse    = 'treasury.reverse';
+
+        // Settings
     case SettingsManage = 'settings.manage';
 
     // NOTE: "Owner's Drawing" is intentionally NOT a permission here.
@@ -138,6 +148,13 @@ enum PermissionEnum: string
             self::EmployeesManage => 'Add / edit / activate / deactivate employees',
             self::EmployeesManagePermissions => 'Assign roles & permissions to employees',
             self::RolesManage => 'Create / edit / delete custom roles',
+            self::TreasuryView        => 'View treasury transactions & cash position',
+            self::TreasuryTransfer    => 'Create internal transfers (account, branch, bank, wallet)',
+            self::TreasuryEquity      => 'Create owner capital, drawings & partner transactions',
+            self::TreasuryAdjust      => 'Create cash adjustments (over/short/opening balance)',
+            self::TreasuryBankFinance => 'Create bank charges, loans & interest entries',
+            self::TreasuryApprove     => 'Approve or reject pending treasury transactions',
+            self::TreasuryReverse     => 'Reverse completed treasury transactions',
             self::SettingsManage => 'Manage shop settings',
         };
     }
@@ -160,6 +177,7 @@ enum PermissionEnum: string
             in_array($this, [self::PayrollView, self::PayrollManage]) => 'Payroll',
             in_array($this, [self::AccountingViewBasicReports, self::AccountingViewFullReports, self::AccountingManageEntries, self::AccountingReverseEntry, self::AccountingManagePeriodLocks, self::ReportsExport]) => 'Accounting & Reports',
             in_array($this, [self::EmployeesView, self::EmployeesManage, self::EmployeesManagePermissions, self::RolesManage]) => 'Employees & Roles',
+            in_array($this, [self::TreasuryView, self::TreasuryTransfer, self::TreasuryEquity, self::TreasuryAdjust, self::TreasuryBankFinance, self::TreasuryApprove, self::TreasuryReverse]) => 'Treasury',
             $this === self::SettingsManage => 'Settings',
             default => 'Other',
         };

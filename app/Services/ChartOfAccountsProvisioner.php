@@ -21,21 +21,27 @@ class ChartOfAccountsProvisioner
         ['code' => '1110', 'name' => 'Accounts Receivable - Finance Partners', 'type' => AccountType::Asset],
         ['code' => '1120', 'name' => 'VAT Receivable (Input VAT)', 'type' => AccountType::Asset],
         ['code' => '1200', 'name' => 'Inventory Asset', 'type' => AccountType::Asset],
+        ['code' => '1300', 'name' => 'Petty Cash Control', 'type' => AccountType::Asset],
 
         ['code' => '2000', 'name' => 'Accounts Payable - Suppliers', 'type' => AccountType::Liability],
         ['code' => '2010', 'name' => 'VAT Payable (Output VAT)', 'type' => AccountType::Liability],
         ['code' => '2020', 'name' => 'Customer Advances / Deposits', 'type' => AccountType::Liability],
         ['code' => '2030', 'name' => 'Salary Payable', 'type' => AccountType::Liability],
         ['code' => '2040', 'name' => 'Due to Finance Partners', 'type' => AccountType::Liability],
+        ['code' => '2100', 'name' => 'Short-term Loans Payable', 'type' => AccountType::Liability],
+        ['code' => '2200', 'name' => 'Long-term Loans Payable', 'type' => AccountType::Liability],
 
         ['code' => '3000', 'name' => "Owner's Equity", 'type' => AccountType::Equity],
         ['code' => '3010', 'name' => "Owner's Drawings", 'type' => AccountType::Equity],
         ['code' => '3020', 'name' => 'Opening Balance Equity', 'type' => AccountType::Equity],
+         ['code' => '3030', 'name' => 'Partner Capital', 'type' => AccountType::Equity],
 
         ['code' => '4000', 'name' => 'Sales Revenue', 'type' => AccountType::Revenue],
         ['code' => '4010', 'name' => 'Sales Returns & Allowances', 'type' => AccountType::Revenue],
         ['code' => '4020', 'name' => 'Sales Discounts', 'type' => AccountType::Revenue],
         ['code' => '4030', 'name' => 'Service Revenue', 'type' => AccountType::Revenue],
+        ['code' => '4040', 'name' => 'Interest Income', 'type' => AccountType::Revenue],
+        ['code' => '4050', 'name' => 'Miscellaneous Income', 'type' => AccountType::Revenue],
 
         ['code' => '5000', 'name' => 'Cost of Goods Sold', 'type' => AccountType::Expense],
         ['code' => '5010', 'name' => 'Purchase Returns & Allowances', 'type' => AccountType::Expense],
@@ -51,6 +57,12 @@ class ChartOfAccountsProvisioner
         ['code' => '6060', 'name' => 'Finance Partner Settlement Loss', 'type' => AccountType::Expense],
         ['code' => '6070', 'name' => 'Finance Partner Fees Expense', 'type' => AccountType::Expense],
         ['code' => '6080', 'name' => 'Warranty Expense', 'type' => AccountType::Expense],
+        ['code' => '6085', 'name' => 'Bank Charges & Fees', 'type' => AccountType::Expense],
+        ['code' => '6086', 'name' => 'MFS & Payment Gateway Fees', 'type' => AccountType::Expense],
+        ['code' => '6087', 'name' => 'Interest Expense', 'type' => AccountType::Expense],
+        ['code' => '6088', 'name' => 'Cash Short / Miscellaneous Loss', 'type' => AccountType::Expense],
+
+        
     ];
 
     public function provisionForNewShop(Shop $shop, Branch $mainBranch): void
@@ -168,5 +180,47 @@ class ChartOfAccountsProvisioner
             ->count();
 
         return (string) (1051 + $count);
+    }
+
+    /**
+     * Add treasury-specific GL accounts to an EXISTING shop without
+     * disturbing any accounts already provisioned. Safe to call multiple times —
+     * it skips codes that already exist.
+     *
+     * Called by: php artisan treasury:provision-gl-accounts
+     */
+    public function provisionTreasuryAccounts(Shop $shop): void
+    {
+        $newAccounts = [
+            ['code' => '1300', 'name' => 'Petty Cash Control',              'type' => AccountType::Asset],
+            ['code' => '2100', 'name' => 'Short-term Loans Payable',        'type' => AccountType::Liability],
+            ['code' => '2200', 'name' => 'Long-term Loans Payable',         'type' => AccountType::Liability],
+            ['code' => '3030', 'name' => 'Partner Capital',                 'type' => AccountType::Equity],
+            ['code' => '4040', 'name' => 'Interest Income',                 'type' => AccountType::Revenue],
+            ['code' => '4050', 'name' => 'Miscellaneous Income',            'type' => AccountType::Revenue],
+            ['code' => '6085', 'name' => 'Bank Charges & Fees',             'type' => AccountType::Expense],
+            ['code' => '6086', 'name' => 'MFS & Payment Gateway Fees',      'type' => AccountType::Expense],
+            ['code' => '6087', 'name' => 'Interest Expense',                'type' => AccountType::Expense],
+            ['code' => '6088', 'name' => 'Cash Short / Miscellaneous Loss', 'type' => AccountType::Expense],
+        ];
+
+        $existingCodes = Account::withoutGlobalScopes()
+            ->where('shop_id', $shop->id)
+            ->pluck('code')
+            ->toArray();
+
+        foreach ($newAccounts as $definition) {
+            if (! in_array($definition['code'], $existingCodes)) {
+                Account::create([
+                    'shop_id'   => $shop->id,
+                    'code'      => $definition['code'],
+                    'name'      => $definition['name'],
+                    'type'      => $definition['type'],
+                    'is_header' => false,
+                    'is_system' => true,
+                    'is_active' => true,
+                ]);
+            }
+        }
     }
 }

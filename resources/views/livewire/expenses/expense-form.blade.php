@@ -4,6 +4,13 @@
             <h2 class="font-semibold text-gray-900">New Expense</h2>
         </div>
         <form wire:submit="save" class="p-6 space-y-4">
+            @if (session('balance_warning'))
+                <div class="card p-4 bg-amber-50 border-amber-300">
+                    <div class="text-sm font-medium text-amber-800">
+                        ⚠ {{ session('balance_warning') }}
+                    </div>
+                </div>
+            @endif
 
             <div class="grid sm:grid-cols-2 gap-4">
                 <div>

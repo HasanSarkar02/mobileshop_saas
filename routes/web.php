@@ -45,6 +45,10 @@ use App\Livewire\Reports\ProfitLossReport;
 use App\Livewire\Reports\SalesReport;
 use App\Livewire\Reports\StockValuationReport;
 use App\Http\Controllers\DocumentController;
+use App\Livewire\Treasury\TreasuryDashboard;
+use App\Livewire\Treasury\TreasuryTransactionDetail;
+use App\Livewire\Treasury\TreasuryTransactionForm;
+
 
 // ─── Super Admin ──────────────────────────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -172,7 +176,7 @@ Route::middleware(['auth:web'])->group(function () {
     Route::get('profit-loss/pdf',      [DocumentController::class, 'profitLossPdf'])->name('pl.pdf');
     Route::get('profit-loss/csv',      [DocumentController::class, 'profitLossCsv'])->name('pl.csv');
     Route::get('expenses/print',       [DocumentController::class, 'expenseReportPrint'])->name('expenses.print');
-});
+    });
 
 
 
@@ -214,6 +218,27 @@ Route::middleware(['auth:web'])->group(function () {
         Route::get('profit-loss/pdf',   [DocumentController::class, 'profitLossPdf'])->name('pl.pdf');
         Route::get('profit-loss/csv',   [DocumentController::class, 'profitLossCsv'])->name('pl.csv');
 
+        Route::livewire('account-statement',\App\Livewire\Reports\AccountStatementReport::class)->name('account-statement');
+        Route::livewire('cash-flow',\App\Livewire\Reports\CashFlowReport::class)->name('cash-flow');
+        // Print / PDF / CSV
+        Route::get('account-statement/print',[\App\Http\Controllers\DocumentController::class, 'accountStatementPrint'])->name('account-statement.print');
+        Route::get('account-statement/pdf',[\App\Http\Controllers\DocumentController::class, 'accountStatementPdf'])->name('account-statement.pdf');
+        Route::get('cash-flow/print',[\App\Http\Controllers\DocumentController::class, 'cashFlowPrint'])->name('cash-flow.print');
+
         // (Add sales, stock, customer-due similarly)
+        Route::get('sales/print',[\App\Http\Controllers\DocumentController::class, 'salesReportPrint'])->name('sales.print');
+        Route::get('stock-valuation/print',[\App\Http\Controllers\DocumentController::class, 'stockValuationPrint'])->name('stock-valuation.print');
+        Route::get('customer-due/print',[\App\Http\Controllers\DocumentController::class, 'customerDuePrint'])->name('customer-due.print');
     });
+
+
+    Route::prefix('treasury')->name('treasury.')->group(function () {
+        Route::livewire('',                TreasuryDashboard::class)->name('index');
+        Route::livewire('create',          TreasuryTransactionForm::class)->name('create');
+        Route::livewire('{transaction}',   TreasuryTransactionDetail::class)->name('show');
+        Route::livewire('{transaction}/edit', \App\Livewire\Treasury\TreasuryTransactionEdit::class)->name('edit');
+        Route::livewire('opening-balance',\App\Livewire\Treasury\OpeningBalanceWizard::class)->name('opening-balance');
+    });
+
+    
 });

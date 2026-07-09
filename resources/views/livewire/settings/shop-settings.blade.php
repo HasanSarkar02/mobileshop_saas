@@ -513,6 +513,31 @@
                         @endif
                     </span>
                 </div>
+                <div class="card p-5 bg-blue-50 border-blue-200 space-y-4 mt-4">
+                    <div>
+                        <h4 class="font-semibold text-blue-900 text-sm">Treasury Approval Threshold</h4>
+                        <p class="text-xs text-blue-700 mt-0.5">
+                            Treasury transfers above this amount require Owner approval.
+                            Set to <strong>0</strong> to auto-approve all treasury transactions.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-blue-800 font-medium">৳</span>
+                        <input wire:model="treasuryApprovalThreshold" type="number" min="0" step="1000"
+                            class="input w-40">
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-blue-900 text-sm mt-3">Petty Cash Limit</h4>
+                        <p class="text-xs text-blue-700 mt-0.5">
+                            Maximum amount that can be issued as petty cash float at one time.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-blue-800 font-medium">৳</span>
+                        <input wire:model="pettyCashLimit" type="number" min="0" step="500"
+                            class="input w-40">
+                    </div>
+                </div>
                 <button wire:click="saveBusinessRules" class="btn-primary btn-sm">Save Rules</button>
             </div>
         </div>

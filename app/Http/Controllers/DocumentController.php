@@ -257,4 +257,86 @@ class DocumentController extends Controller
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ]);
     }
+
+    // ── Account Statement Print / PDF ─────────────────────────────────────────
+
+    public function accountStatementPrint(Request $request)
+    {
+        $shopId     = Auth::user()->shop_id;
+        $accountId  = (int) $request->account;
+        $branchId   = $request->branchId ?? null;
+
+        $account = \App\Models\PaymentAccount::findOrFail($accountId);
+        if ($account->shop_id !== $shopId) abort(403);
+
+        $filter    = $this->buildFilterFromRequest($request, $shopId);
+        $statement = app(\App\Reporting\Repositories\FinancialRepository::class)
+            ->accountStatement($shopId, $accountId, $filter->dateRange);
+
+        $periodLabel = $filter->dateRange->toDisplayString();
+
+        return view('documents.account-statement', compact(
+            'statement', 'periodLabel', 'branchId'
+        ));
+    }
+
+    public function accountStatementPdf(Request $request)
+    {
+        $shopId    = Auth::user()->shop_id;
+        $accountId = (int) $request->account;
+
+        $account = \App\Models\PaymentAccount::findOrFail($accountId);
+        if ($account->shop_id !== $shopId) abort(403);
+
+        $filter    = $this->buildFilterFromRequest($request, $shopId);
+        $statement = app(\App\Reporting\Repositories\FinancialRepository::class)
+            ->accountStatement($shopId, $accountId, $filter->dateRange);
+
+        $periodLabel = $filter->dateRange->toDisplayString();
+        $branchId    = $request->branchId ?? null;
+
+        return Pdf::loadView('documents.account-statement',
+            compact('statement', 'periodLabel', 'branchId'))
+            ->setPaper('A4', 'portrait')
+            ->download("account-statement-{$account->name}-{$periodLabel}.pdf");
+    }
+
+    // ── Cash Flow Print ───────────────────────────────────────────────────────
+
+    public function cashFlowPrint(Request $request)
+    {
+        $shopId   = Auth::user()->shop_id;
+        $filter   = $this->buildFilterFromRequest($request, $shopId);
+        $cashFlow = app(\App\Reporting\Repositories\FinancialRepository::class)
+            ->cashFlow($shopId, $filter);
+        $periodLabel = $filter->dateRange->toDisplayString();
+        $branchId    = $request->branchId ?? null;
+
+        return view('documents.cash-flow-statement', compact(
+            'cashFlow', 'periodLabel', 'branchId'
+        ));
+    }
+
+    // ── Shared helper ─────────────────────────────────────────────────────────
+
+    private function buildFilterFromRequest(
+        Request $request,
+        int     $shopId
+    ): \App\Reporting\DTOs\ReportFilter {
+        if ($request->filled('from') && $request->filled('to')) {
+            return \App\Reporting\DTOs\ReportFilter::forShopAndDateRange(
+                $shopId, $request->from, $request->to
+            );
+        }
+
+        $period = \App\Reporting\Enums\ReportPeriod::tryFrom($request->get('period', 'this_month'))
+            ?? \App\Reporting\Enums\ReportPeriod::ThisMonth;
+
+        return new \App\Reporting\DTOs\ReportFilter(
+            shopId:    $shopId,
+            dateRange: $period->toDateRange(),
+            branchId:  $request->branchId ? (int) $request->branchId : null,
+            period:    $period,
+        );
+    }
 }

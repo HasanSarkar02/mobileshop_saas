@@ -14,7 +14,10 @@ use Illuminate\Support\Facades\DB;
 
 class RecordExpenseAction
 {
-    public function __construct(private readonly AccountingService $accounting) {}
+    public function __construct(
+        private readonly AccountingService $accounting,
+        private readonly \App\Services\AccountBalanceChecker $balanceChecker,
+     ) {}
 
     public function execute(Shop $shop, array $data, User $actor): Expense
     {
@@ -28,6 +31,22 @@ class RecordExpenseAction
             // threshold > 0 means amounts ABOVE threshold need manual approval
             $needsApproval = $threshold > 0 && $amount > $threshold;
             $status        = $needsApproval ? ExpenseStatus::Pending : ExpenseStatus::Approved;
+
+            if ($needsApproval) {
+                $check = $this->balanceChecker->checkDebit(
+                    (int) $data['payment_account_id'],
+                    $amount
+                );
+
+                if (! $check['allowed']) {
+                    throw new \RuntimeException($check['message']);
+                }
+
+                // Store warning in session so Livewire can display it
+                if (isset($check['warning'])) {
+                    session()->flash('balance_warning', $check['warning']);
+                }
+            }
 
             $expense = Expense::create([
                 'shop_id'             => $shop->id,

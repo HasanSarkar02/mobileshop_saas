@@ -105,6 +105,10 @@ class ShopSettings extends Component
     // ── Business Rules ────────────────────────────────────────────────────────
     public string $expenseApprovalThreshold = '0';
 
+    //Treasury approval threshold and petty cash limit 
+    public string $treasuryApprovalThreshold = '10000';
+    public string $pettyCashLimit            = '5000';
+
     public function mount(): void
     {
         $shop = $this->shop;
@@ -129,6 +133,8 @@ class ShopSettings extends Component
         $this->smsOnSale         = (bool) $shop->sms_on_sale;
         $this->smsOnDueReminder  = (bool) $shop->sms_on_due_reminder;
         $this->smsOnServiceReady = (bool) $shop->sms_on_service_ready;
+        $this->treasuryApprovalThreshold = (string) ($shop->treasury_approval_threshold ?? 10000);
+        $this->pettyCashLimit            = (string) ($shop->petty_cash_limit ?? 5000);
     }
 
     // ── Computed Properties ────────────────────
@@ -465,6 +471,12 @@ class ShopSettings extends Component
         ]);
         unset($this->shop);
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Business rules saved.']);
+
+        $this->shop->update([
+            'expense_approval_threshold'  => (float) $this->expenseApprovalThreshold,
+            'treasury_approval_threshold' => (float) $this->treasuryApprovalThreshold,
+            'petty_cash_limit'            => (float) $this->pettyCashLimit,
+        ]);
     }
 
     public function saveSmsSettings(): void

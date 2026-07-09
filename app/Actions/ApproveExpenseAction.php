@@ -11,7 +11,10 @@ use RuntimeException;
 
 class ApproveExpenseAction
 {
-    public function __construct(private readonly RecordExpenseAction $recorder) {}
+    public function __construct(
+        private readonly RecordExpenseAction $recorder,
+        private readonly \App\Services\AccountBalanceChecker $balanceChecker,
+        ) {}
 
     public function approve(Expense $expense, User $actor): Expense
     {
@@ -20,6 +23,17 @@ class ApproveExpenseAction
         }
 
         return DB::transaction(function () use ($expense, $actor) {
+
+         $check = $this->balanceChecker->checkDebit(
+                $expense->payment_account_id,
+                (float) $expense->amount
+            );
+
+            if (! $check['allowed']) {
+                throw new RuntimeException(
+                    "Cannot approve: {$check['message']}"
+                );
+            }
             $expense->update([
                 'status'      => ExpenseStatus::Approved,
                 'approved_by' => $actor->id,
