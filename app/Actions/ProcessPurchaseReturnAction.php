@@ -150,6 +150,8 @@ class ProcessPurchaseReturnAction
 
             $return->update(['journal_entry_id' => $journalEntry->id]);
 
+            $this->recalculatePurchaseStatus($purchase);
+
             return $return->fresh(['items.variant', 'supplier', 'purchase']);
         });
     }
@@ -168,5 +170,43 @@ class ProcessPurchaseReturnAction
             ->where('counter_key', "pur_return_{$year}")
             ->value('current_value');
         return sprintf('PRN-%s-%05d', $year, $seq);
+    }
+
+    /**
+     * After a return, recalculate the purchase's effective outstanding
+     * and update payment_status accordingly.
+     *
+     * Logic:
+     *   effective_total = original_total - credit_note_returns
+     *   outstanding     = effective_total - amount_paid
+     *
+     * If outstanding <= 0 → paid
+     * If outstanding < effective_total → partial
+     * else → unpaid
+     */
+    private function recalculatePurchaseStatus(Purchase $purchase): void
+    {
+        $purchase->refresh();
+
+        // Sum of all credit-note returns on this purchase
+        $totalCreditReturns = \App\Models\PurchaseReturn::withoutGlobalScopes()
+            ->where('purchase_id', $purchase->id)
+            ->where('settlement_type', 'credit_note')
+            ->sum('total_amount');
+
+        $effectiveTotal = max(0, (float) $purchase->total_amount - (float) $totalCreditReturns);
+        $amountPaid     = (float) $purchase->amount_paid;
+        $outstanding    = $effectiveTotal - $amountPaid;
+
+        $newStatus = match (true) {
+            $outstanding <= 0.005              => 'paid',
+            $amountPaid > 0.005                => 'partial',
+            default                            => 'unpaid',
+        };
+
+        // Only update if status actually changed to avoid unnecessary writes
+        if ($purchase->payment_status !== $newStatus) {
+            $purchase->update(['payment_status' => $newStatus]);
+        }
     }
 }

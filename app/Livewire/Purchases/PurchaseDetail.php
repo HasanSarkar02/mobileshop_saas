@@ -21,6 +21,7 @@ class PurchaseDetail extends Component
             'createdBy',
             'lineItems.variant.product.brand',
             'lineItems.units',
+            'returns.items.variant',
         ]);
     }
 

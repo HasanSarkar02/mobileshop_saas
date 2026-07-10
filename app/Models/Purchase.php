@@ -45,4 +45,22 @@ class Purchase extends Model
 
         return parent::delete();
     }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(\App\Models\PurchaseReturn::class);
+    }
+
+    public function effectiveTotalAmount(): float
+    {
+        $returned = $this->returns()
+            ->where('settlement_type', 'credit_note')
+            ->sum('total_amount');
+        return max(0, (float) $this->total_amount - (float) $returned);
+    }
+
+    public function totalReturned(): float
+    {
+        return (float) $this->returns()->sum('total_amount');
+    }
 }

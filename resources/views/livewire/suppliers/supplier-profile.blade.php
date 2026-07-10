@@ -1,5 +1,4 @@
 <div class="max-w-5xl mx-auto space-y-5">
-
     {{-- Header --}}
     <div class="card p-5 flex flex-col sm:flex-row sm:items-start gap-4">
         <div class="flex-1">
@@ -29,8 +28,6 @@
             <a href="{{ route('suppliers.index') }}" wire:navigate class="btn-secondary btn-sm">← Back</a>
         </div>
     </div>
-
-    {{-- Balance Cards --}}
     {{-- Balance Cards --}}
     @php
         // Use ledger-calculated closing balance (always accurate)
@@ -193,7 +190,16 @@
                                     {{ $row->txn_type }}
                                 </span>
                             </td>
-                            <td class="table-td text-xs text-gray-500">{{ $row->reference ?? '—' }}</td>
+                            <td class="table-td">
+                                @if ($row->ref_type === 'purchase')
+                                    <a href="{{ route('purchases.show', $row->ref_id) }}" wire:navigate
+                                        class="font-mono text-xs text-indigo-600 hover:underline">
+                                        {{ $row->reference ?? '—' }}
+                                    </a>
+                                @else
+                                    <span class="text-xs text-gray-500">{{ $row->reference ?? '—' }}</span>
+                                @endif
+                            </td>
                             <td
                                 class="table-td text-right {{ $row->debit > 0 ? 'text-red-600 font-semibold' : 'text-gray-300' }}">
                                 {{ $row->debit > 0 ? '৳' . number_format($row->debit, 2) : '—' }}
@@ -243,12 +249,16 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse($purchases as $pur)
-                        <tr class="hover:bg-gray-50 cursor-pointer"
-                            wire:click="$navigate('{{ route('purchases.show', $pur) }}')">
+                        <tr class="hover:bg-gray-50 cursor-pointer">
                             <td class="table-td text-sm text-gray-500 whitespace-nowrap">
                                 {{ $pur->purchase_date->format('d M Y') }}
                             </td>
-                            <td class="table-td font-mono text-indigo-600 text-sm">{{ $pur->reference_number }}</td>
+                            <td class="table-td">
+                                <a href="{{ route('purchases.show', $pur) }}" wire:navigate
+                                    class="font-mono text-indigo-600 hover:underline text-sm font-semibold">
+                                    {{ $pur->reference_number }}
+                                </a>
+                            </td>
                             <td class="table-td text-gray-500 text-xs">{{ $pur->branch?->name }}</td>
                             <td class="table-td text-right font-bold">৳{{ number_format($pur->total_amount, 2) }}</td>
                             <td class="table-td">
