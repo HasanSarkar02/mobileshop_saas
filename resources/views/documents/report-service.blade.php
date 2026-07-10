@@ -1,4 +1,10 @@
-@php $shop = auth()->user()?->shop; @endphp
+@php
+    $shop = auth()->user()?->shop;
+    $signatories = [
+        ['title' => 'Prepared By', 'name' => auth()->user()?->name ?? ''],
+        ['title' => 'Authorized By', 'name' => ''],
+    ];
+@endphp
 
 <x-document.layout title="Service Report" :subtitle="$periodLabel" :shop="$shop">
     <x-document.report-header :title="'Service & Repair Report'" :period="$periodLabel" :branch="'All Branches'" />
@@ -86,8 +92,5 @@
         </table>
     @endif
 
-    <x-document.signatures :signatories="[
-        ['title' => 'Prepared By', 'name' => auth()->user()?->name ?? ''],
-        ['title' => 'Authorized By', 'name' => ''],
-    ]" />
+    <x-document.signatures :signatories="$signatories" />
 </x-document.layout>

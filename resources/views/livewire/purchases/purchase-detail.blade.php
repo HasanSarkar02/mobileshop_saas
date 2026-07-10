@@ -8,11 +8,56 @@
                 {{ $purchase->purchase_date->format('d M Y') }}
             </div>
         </div>
+        @if (!in_array($purchase->payment_status, ['paid']) || $purchase->lineItems->isNotEmpty())
+            @can('purchases.manage')
+                <a href="{{ route('purchases.return', $purchase) }}" wire:navigate class="btn-secondary btn-sm">
+                    ↩ Return Items
+                </a>
+            @endcan
+        @endif
         <div class="flex items-center gap-3">
             <span class="{{ $purchase->payment_status === 'paid' ? 'badge-green' : 'badge-yellow' }} badge">
                 {{ ucfirst($purchase->payment_status) }}
             </span>
             <span class="text-lg font-bold text-gray-900">৳{{ number_format($purchase->total_amount, 2) }}</span>
+        </div>
+    </div>
+
+    {{-- Payment Status --}}
+    <div class="card p-4">
+        <h3 class="font-semibold text-gray-900 text-sm mb-3">Payment Status</h3>
+        <div class="grid grid-cols-3 gap-4">
+            <div>
+                <div class="text-xs text-gray-400">Total Amount</div>
+                <div class="font-bold text-gray-900">৳{{ number_format($purchase->total_amount, 2) }}</div>
+            </div>
+            <div>
+                <div class="text-xs text-gray-400">Amount Paid</div>
+                <div class="font-bold text-green-700">৳{{ number_format($purchase->amount_paid, 2) }}</div>
+            </div>
+            <div>
+                <div class="text-xs text-gray-400">Outstanding</div>
+                <div
+                    class="font-bold {{ $purchase->total_amount - $purchase->amount_paid > 0 ? 'text-red-600' : 'text-green-600' }}">
+                    ৳{{ number_format($purchase->total_amount - $purchase->amount_paid, 2) }}
+                </div>
+            </div>
+        </div>
+        <div class="mt-3">
+            <span
+                class="badge {{ match ($purchase->payment_status) {
+                    'paid' => 'badge-green',
+                    'partial' => 'badge-yellow',
+                    default => 'badge-red',
+                } }}">
+                {{ ucfirst($purchase->payment_status) }}
+            </span>
+            @if ($purchase->total_amount - $purchase->amount_paid > 0)
+                <a href="{{ route('suppliers.show', $purchase->supplier) }}" wire:navigate
+                    class="ml-3 text-xs text-indigo-600 hover:underline">
+                    Record Payment →
+                </a>
+            @endif
         </div>
     </div>
 

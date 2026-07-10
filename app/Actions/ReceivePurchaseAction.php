@@ -71,20 +71,23 @@ class ReceivePurchaseAction
 
             $purchase->update(['total_amount' => $totalAmount]);
 
-            // ── Update supplier running balance ────────────────────────────────
-            // Uses null coalescing — form may not always send payment_status
-            $paymentStatus = $data['payment_status'] ?? $purchase->payment_status ?? 'unpaid';
-            $amountPaid    = (float) ($data['amount_paid'] ?? 0);
+            // ── Update supplier running balance for credit amount ───────────────
+            // We derive payment_status from the form data safely
+            $formPaymentStatus = $data['payment_status'] ?? 'unpaid';
+            $amountPaid        = (float) ($data['amount_paid'] ?? 0);
 
-            if ($paymentStatus !== 'paid') {
-                $creditAmount = $totalAmount - $amountPaid;
-                if ($creditAmount > 0) {
-                    // lockForUpdate not needed here — already inside DB::transaction
-                    // and supplier was loaded at start of transaction
-                    $purchase->supplier()->withoutGlobalScopes()
-                        ->where('id', $supplier->id)
-                        ->increment('current_balance', $creditAmount);
-                }
+            // Update amount_paid on purchase record
+            if ($amountPaid > 0) {
+                $purchase->update(['amount_paid' => $amountPaid]);
+            }
+
+            $creditAmount = $totalAmount - $amountPaid;
+
+            if ($creditAmount > 0.01) {
+                // Load supplier INSIDE the transaction — safe to use here
+                \App\Models\Supplier::withoutGlobalScopes()
+                    ->where('id', $purchase->supplier_id)
+                    ->increment('current_balance', $creditAmount);
             }
 
             $this->postPurchaseJournalEntry($shop, $branch, $purchase, $totalAmount, $actor);

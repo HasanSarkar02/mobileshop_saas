@@ -3,6 +3,12 @@
     $branch = $creditNote->branch;
     $sale = $creditNote->originalSale;
     $customer = $creditNote->customer;
+
+    $signatories = [
+        ['title' => 'Processed By', 'name' => ''],
+        ['title' => 'Customer Received', 'name' => ''],
+        ['title' => 'Authorized By', 'name' => ''],
+    ];
 @endphp
 
 <x-document.layout title="Credit Note" :subtitle="'Against Invoice: ' . $sale?->sale_number" :docNumber="$creditNote->credit_note_number" :shop="$shop" :branch="$branch"
@@ -68,10 +74,6 @@
         </div>
     </div>
 
-    <x-document.signatures :signatories="[
-        ['title' => 'Processed By', 'name' => ''],
-        ['title' => 'Customer Received', 'name' => ''],
-        ['title' => 'Authorized By', 'name' => ''],
-    ]" />
+    <x-document.signatures :signatories="$signatories" />
 
 </x-document.layout>

@@ -1,6 +1,12 @@
 @php
     $shop = auth()->user()?->shop;
     $cf = $cashFlow;
+
+    $signatories = [
+        ['title' => 'Prepared By', 'name' => auth()->user()?->name ?? ''],
+        ['title' => 'Reviewed By', 'name' => ''],
+        ['title' => 'Authorized By', 'name' => ''],
+    ];
 @endphp
 
 <x-document.layout title="Cash Flow Statement" :subtitle="$periodLabel" :shop="$shop">
@@ -88,10 +94,6 @@
         Internal fund transfers between accounts are excluded.
     </div>
 
-    <x-document.signatures :signatories="[
-        ['title' => 'Prepared By', 'name' => auth()->user()?->name ?? ''],
-        ['title' => 'Reviewed By', 'name' => ''],
-        ['title' => 'Authorized By', 'name' => ''],
-    ]" />
+    <x-document.signatures :signatories="$signatories" />
 
 </x-document.layout>

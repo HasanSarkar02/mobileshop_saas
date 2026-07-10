@@ -2,6 +2,12 @@
     $shop = auth()->user()?->shop;
     $branch = $branchId ? \App\Models\Branch::find($branchId) : null;
     $stmt = $statement;
+
+    $signatories = [
+        ['title' => 'Prepared By', 'name' => auth()->user()?->name ?? ''],
+        ['title' => 'Reviewed By', 'name' => ''],
+        ['title' => 'Authorized By', 'name' => ''],
+    ];
 @endphp
 
 <x-document.layout title="Account Statement" :subtitle="$stmt->account->name" :shop="$shop" :branch="$branch" :exportPdfUrl="route('reports.account-statement.pdf', request()->all())">
@@ -78,10 +84,6 @@
         Balances are derived from the double-entry General Ledger.
     </div>
 
-    <x-document.signatures :signatories="[
-        ['title' => 'Prepared By', 'name' => auth()->user()?->name ?? ''],
-        ['title' => 'Reviewed By', 'name' => ''],
-        ['title' => 'Authorized By', 'name' => ''],
-    ]" />
+    <x-document.signatures :signatories="$signatories" />
 
 </x-document.layout>

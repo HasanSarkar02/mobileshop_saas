@@ -1,6 +1,12 @@
 @php
     $shop = $run->shop ?? auth()->user()?->shop;
     $run->loadMissing('items.user.employeeProfile');
+
+    $signatories = [
+        ['title' => 'Prepared By', 'name' => $run->createdBy?->name ?? ''],
+        ['title' => 'HR / Accounts', 'name' => ''],
+        ['title' => 'Authorized By', 'name' => ''],
+    ];
 @endphp
 
 <x-document.layout title="Payroll Register" :subtitle="$run->monthName()" :docNumber="'PR-' . $run->year . '-' . str_pad($run->month, 2, '0', STR_PAD_LEFT)" :shop="$shop" :landscape="$run->items->count() > 6"
@@ -82,10 +88,6 @@
         @endif
     </div>
 
-    <x-document.signatures :signatories="[
-        ['title' => 'Prepared By', 'name' => $run->createdBy?->name ?? ''],
-        ['title' => 'HR / Accounts', 'name' => ''],
-        ['title' => 'Authorized By', 'name' => ''],
-    ]" />
+    <x-document.signatures :signatories="$signatories" />
 
 </x-document.layout>

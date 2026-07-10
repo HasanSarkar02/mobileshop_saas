@@ -2,6 +2,12 @@
     $shop = $ticket->shop ?? auth()->user()?->shop;
     $branch = $ticket->branch;
     $isPaid = $ticket->amount_due <= 0;
+
+    $signatories = [
+        ['title' => 'Technician', 'name' => $ticket->technician?->name ?? ''],
+        ['title' => 'Customer Received', 'name' => ''],
+        ['title' => 'Authorized By', 'name' => ''],
+    ];
 @endphp
 
 <x-document.layout title="Service Invoice" :subtitle="$ticket->is_warranty_service ? 'WARRANTY SERVICE — No Charge' : null" :docNumber="$ticket->ticket_number" :shop="$shop" :branch="$branch"
@@ -117,11 +123,7 @@
         </div>
     @endif
 
-    <x-document.signatures :signatories="[
-        ['title' => 'Technician', 'name' => $ticket->technician?->name ?? ''],
-        ['title' => 'Customer Received', 'name' => ''],
-        ['title' => 'Authorized By', 'name' => ''],
-    ]" />
+    <x-document.signatures :signatories="$signatories" />
 
     <div class="doc-notes" style="margin-top:3mm;">
         <strong>Warranty on Repair:</strong> 7 days on labor. Parts warranty as per manufacturer.

@@ -3,6 +3,11 @@
     $saleRec = $sale ?? ($unit->saleRecord ?? null);
     $mfrExp = $unit->warrantyExpiresAt();
     $shopExp = $unit->shopWarrantyExpiresAt();
+
+    $signatories = [
+        ['title' => 'Shop Seal & Signature', 'name' => ''],
+        ['title' => 'Customer Signature', 'name' => ''],
+    ];
 @endphp
 
 <x-document.layout title="Warranty Certificate" :docNumber="'WR-' . $unit->serial_number" :shop="$shop">
@@ -76,6 +81,6 @@
         • Software issues and accessories are not covered under warranty.
     </div>
 
-    <x-document.signatures :signatories="[['title' => 'Shop Seal & Signature', 'name' => ''], ['title' => 'Customer Signature', 'name' => '']]" />
+    <x-document.signatures :signatories="$signatories" />
 
 </x-document.layout>

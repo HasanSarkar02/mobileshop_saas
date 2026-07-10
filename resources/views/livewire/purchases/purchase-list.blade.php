@@ -38,10 +38,24 @@
                             <td class="table-td text-gray-500">{{ $purchase->purchase_date->format('d M Y') }}</td>
                             <td class="table-td font-semibold">৳{{ number_format($purchase->total_amount, 2) }}</td>
                             <td class="table-td">
-                                <span
-                                    class="{{ $purchase->payment_status === 'paid' ? 'badge-green' : 'badge-yellow' }} badge">
-                                    {{ ucfirst($purchase->payment_status) }}
-                                </span>
+                                @php
+                                    $outstanding = (float) $purchase->total_amount - (float) $purchase->amount_paid;
+                                @endphp
+                                <div class="flex flex-col gap-1">
+                                    <span
+                                        class="badge {{ match ($purchase->payment_status) {
+                                            'paid' => 'badge-green',
+                                            'partial' => 'badge-yellow',
+                                            default => 'badge-red',
+                                        } }}">
+                                        {{ ucfirst($purchase->payment_status) }}
+                                    </span>
+                                    @if ($outstanding > 0)
+                                        <span class="text-xs text-red-500 font-medium">
+                                            Due: ৳{{ number_format($outstanding, 0) }}
+                                        </span>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty

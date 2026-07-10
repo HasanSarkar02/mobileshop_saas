@@ -88,7 +88,8 @@
                 <p class="text-gray-500 text-sm">Grand Total: <strong
                         class="text-gray-900">৳{{ number_format($this->totals['grandTotal'], 2) }}</strong></p>
                 <div class="flex flex-col gap-2 pt-2">
-                    <a href="{{ route('sales.receipt', $completedSaleId) }}" target="_blank" class="btn-primary w-full">
+                    <a href="{{ route('documents.sale', $completedSaleId) }}" target="_blank"
+                        class="btn-primary w-full">
                         🖨 Print Receipt
                     </a>
                     <button wire:click="startNewSale" class="btn-secondary w-full">

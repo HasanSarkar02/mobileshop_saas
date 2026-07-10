@@ -1,9 +1,11 @@
-{{--
-  Payment Voucher — used when shop pays money OUT:
-  Supplier payment, expense payment, salary, advance, etc.
---}}
 @php
     $shop = $voucher['shop'];
+
+    $signatories = [
+        ['title' => 'Received By', 'name' => ''],
+        ['title' => 'Prepared By', 'name' => $voucher['prepared_by'] ?? ''],
+        ['title' => 'Approved By', 'name' => ''],
+    ];
 @endphp
 
 <x-document.layout title="Payment Voucher" :docNumber="$voucher['voucher_number']" :shop="$shop" :exportPdfUrl="$voucher['pdf_url'] ?? null">
@@ -54,10 +56,6 @@
         <div class="doc-notes"><span class="doc-notes-label">Notes</span>{{ $voucher['notes'] }}</div>
     @endif
 
-    <x-document.signatures :signatories="[
-        ['title' => 'Received By', 'name' => ''],
-        ['title' => 'Prepared By', 'name' => $voucher['prepared_by'] ?? ''],
-        ['title' => 'Approved By', 'name' => ''],
-    ]" />
+    <x-document.signatures :signatories="$signatories" />
 
 </x-document.layout>

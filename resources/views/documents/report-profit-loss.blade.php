@@ -1,6 +1,12 @@
 @php
     $shop = auth()->user()?->shop;
     $branch = $branchId ? \App\Models\Branch::find($branchId) : null;
+
+    $signatories = [
+        ['title' => 'Prepared By', 'name' => auth()->user()?->name ?? ''],
+        ['title' => 'Reviewed By', 'name' => ''],
+        ['title' => 'Authorized By', 'name' => ''],
+    ];
 @endphp
 
 <x-document.layout title="Profit & Loss Statement" :subtitle="$periodLabel" :shop="$shop" :branch="$branch"
@@ -128,10 +134,6 @@
         Figures are extracted from the General Ledger journal entries for the stated period.
     </div>
 
-    <x-document.signatures :signatories="[
-        ['title' => 'Prepared By', 'name' => auth()->user()?->name ?? ''],
-        ['title' => 'Reviewed By', 'name' => ''],
-        ['title' => 'Authorized By', 'name' => ''],
-    ]" />
+    <x-document.signatures :signatories="$signatories" />
 
 </x-document.layout>

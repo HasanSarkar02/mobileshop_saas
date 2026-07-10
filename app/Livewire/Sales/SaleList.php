@@ -5,6 +5,7 @@ namespace App\Livewire\Sales;
 use App\Actions\VoidSaleAction;
 use App\Enums\SaleStatus;
 use App\Models\Sale;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -67,23 +68,33 @@ class SaleList extends Component
         $this->showVoidModal = true;
     }
 
-    public function voidSale(VoidSaleAction $action): void
+    public function voidSale(int $saleId, VoidSaleAction $action): void
     {
-        $this->validate([
-            'voidReason' => 'required|string|min:5',
-        ], [
-            'voidReason.min' => 'Please provide a reason (min 5 characters).',
-        ]);
+        // Permission check — Owner bypasses via Gate::before
+        if (! Auth::user()->isOwner() && ! Auth::user()->can('sales.void')) {
+            $this->dispatch('notify', ['type' => 'error',
+                'message' => 'You do not have permission to void sales.']);
+            return;
+        }
 
-        $sale = Sale::findOrFail($this->voidSaleId);
+        $sale = Sale::findOrFail($saleId);
+
+        if (! $sale->isVoidable()) {
+            $this->dispatch('notify', ['type' => 'error',
+                'message' => 'This sale cannot be voided.']);
+            return;
+        }
+
+        $shop = Auth::user()->shop()->withoutGlobalScopes()->findOrFail(Auth::user()->shop_id);
 
         try {
-            $action->execute($sale, $this->voidReason, auth()->user());
+            $action->execute($sale, $this->voidReason, $shop, Auth::user());
             $this->showVoidModal = false;
-            $this->dispatch('notify', type: 'warning', message: "Sale {$sale->sale_number} voided.");
-            unset($this->todaySummary);
-        } catch (\RuntimeException $e) {
-            $this->dispatch('notify', type: 'error', message: $e->getMessage());
+            $this->voidReason    = '';
+            $this->dispatch('notify', ['type' => 'success',
+                'message' => "Sale {$sale->sale_number} voided."]);
+        } catch (\Exception $e) {
+            $this->dispatch('notify', ['type' => 'error', 'message' => $e->getMessage()]);
         }
     }
 

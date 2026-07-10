@@ -94,6 +94,7 @@ Route::middleware(['auth:web'])->group(function () {
     Route::livewire('purchases', PurchaseList::class)->name('purchases.index');
     Route::livewire('purchases/create', CreatePurchase::class)->name('purchases.create');
     Route::livewire('purchases/{purchase}', PurchaseDetail::class)->name('purchases.show');
+    Route::livewire('purchases/{purchase}/return',\App\Livewire\Purchases\ProcessPurchaseReturn::class)->name('purchases.return');
 
     // Settings
     Route::livewire('settings', ShopSettings::class)->name('settings');
@@ -111,8 +112,7 @@ Route::middleware(['auth:web'])->group(function () {
 
     // Sales
     Route::livewire('sales', SaleList::class)->name('sales.index');
-    Route::get('sales/{sale}/receipt', [SaleReceiptController::class, 'show'])
-        ->name('sales.receipt');
+    Route::get('sales/{sale}/receipt', [SaleReceiptController::class, 'show'])->name('sales.receipt');
 
 
     // Finance Partners 

@@ -4,17 +4,22 @@ namespace App\Actions;
 
 use App\Models\Account;
 use App\Models\PaymentAccount;
+use App\Models\Purchase;
 use App\Models\Shop;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
 use App\Models\User;
+use App\Services\AccountBalanceChecker;
 use App\Services\AccountingService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class RecordSupplierPaymentAction
 {
-    public function __construct(private readonly AccountingService $accounting) {}
+    public function __construct(
+        private readonly AccountingService    $accounting,
+        private readonly AccountBalanceChecker $balanceChecker,
+    ) {}
 
     public function execute(Shop $shop, Supplier $supplier, array $data, User $actor): SupplierPayment
     {
@@ -24,6 +29,16 @@ class RecordSupplierPaymentAction
 
             if ($amount <= 0) {
                 throw new RuntimeException('Payment amount must be greater than zero.');
+            }
+
+            // ── Check payment account has sufficient balance ────────────────────
+            $check = $this->balanceChecker->checkDebit(
+                (int) $data['payment_account_id'],
+                $amount
+            );
+
+            if (! $check['allowed']) {
+                throw new RuntimeException($check['message']);
             }
 
             // ── Create payment record ──────────────────────────────────────────
@@ -39,7 +54,6 @@ class RecordSupplierPaymentAction
                 'payment_date'       => $data['payment_date'],
                 'payment_method'     => $data['payment_method'] ?? 'cash',
                 'reference_number'   => $data['reference_number'] ?? null,
-                'bank_name'          => $data['bank_name'] ?? null,
                 'notes'              => $data['notes'] ?? null,
                 'created_by'         => $actor->id,
             ]);
@@ -73,8 +87,69 @@ class RecordSupplierPaymentAction
             // ── Update supplier denormalized balance ───────────────────────────
             $supplier->decrement('current_balance', $amount);
 
+            // ── FIFO allocation to purchases ───────────────────────────────────
+            // Apply payment to oldest unpaid/partial purchases first
+            $this->allocatePaymentToPurchases($supplier, $shop->id, $amount);
+
+            if (isset($check['warning'])) {
+                session()->flash('balance_warning', $check['warning']);
+            }
+
             return $payment->fresh(['supplier', 'paymentAccount', 'createdBy']);
         });
+    }
+
+    /**
+     * Allocate a payment amount to outstanding purchases in FIFO order.
+     * Updates amount_paid and payment_status on each purchase.
+     *
+     * Example:
+     *   Purchase A: ৳50,000 (unpaid)
+     *   Purchase B: ৳30,000 (unpaid)
+     *   Payment:    ৳65,000
+     *   → Purchase A: paid (৳50,000 applied)
+     *   → Purchase B: partial (৳15,000 applied, ৳15,000 remaining)
+     */
+    private function allocatePaymentToPurchases(
+        Supplier $supplier,
+        int      $shopId,
+        float    $paymentAmount,
+    ): void {
+        $unpaidPurchases = Purchase::withoutGlobalScopes()
+            ->where('supplier_id', $supplier->id)
+            ->where('shop_id', $shopId)
+            ->whereIn('payment_status', ['unpaid', 'partial'])
+            ->orderBy('purchase_date')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        $remaining = $paymentAmount;
+
+        foreach ($unpaidPurchases as $purchase) {
+            if ($remaining <= 0.005) break; // stop when allocation exhausted
+
+            $alreadyPaid  = (float) $purchase->amount_paid;
+            $outstanding  = (float) $purchase->total_amount - $alreadyPaid;
+
+            if ($outstanding <= 0) continue;
+
+            if ($remaining >= $outstanding) {
+                // Payment fully covers this purchase
+                $purchase->update([
+                    'amount_paid'    => $purchase->total_amount,
+                    'payment_status' => 'paid',
+                ]);
+                $remaining -= $outstanding;
+            } else {
+                // Payment partially covers this purchase
+                $purchase->update([
+                    'amount_paid'    => round($alreadyPaid + $remaining, 2),
+                    'payment_status' => 'partial',
+                ]);
+                $remaining = 0;
+            }
+        }
     }
 
     private function nextPaymentNumber(Shop $shop): string

@@ -87,8 +87,12 @@
                                         class="text-xs text-indigo-600 hover:underline font-medium">Receipt</a>
                                     {{-- Only show Void if not returned and voidable --}}
                                     @if ($sale->isVoidable() && !$sale->return_processed)
-                                        <button wire:click="openVoidModal({{ $sale->id }})"
-                                            class="text-xs text-red-500 hover:underline font-medium">Void</button>
+                                        @can('sales.void')
+                                            <button wire:click="openVoidModal({{ $sale->id }})"
+                                                class="text-xs text-red-500 hover:underline font-medium">
+                                                Void
+                                            </button>
+                                        @endcan
                                     @endif
                                 </div>
                             </td>

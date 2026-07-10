@@ -2,6 +2,12 @@
     $shop = $purchase->shop ?? auth()->user()?->shop;
     $branch = $purchase->branch;
     $supplier = $purchase->supplier;
+
+    $signatories = [
+        ['title' => 'Supplier Signature', 'name' => ''],
+        ['title' => 'Received By', 'name' => ''],
+        ['title' => 'Authorized By', 'name' => ''],
+    ];
 @endphp
 
 <x-document.layout title="Purchase Invoice" :docNumber="$purchase->reference_number" :shop="$shop" :branch="$branch" :exportPdfUrl="route('documents.purchase.pdf', $purchase)">
@@ -86,10 +92,6 @@
         <div class="doc-notes"><span class="doc-notes-label">Notes</span>{{ $purchase->notes }}</div>
     @endif
 
-    <x-document.signatures :signatories="[
-        ['title' => 'Supplier Signature', 'name' => ''],
-        ['title' => 'Received By', 'name' => ''],
-        ['title' => 'Authorized By', 'name' => ''],
-    ]" />
+    <x-document.signatures :signatories="$signatories" />
 
 </x-document.layout>

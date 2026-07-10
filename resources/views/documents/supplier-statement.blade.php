@@ -1,34 +1,33 @@
 @php
-    $shop     = auth()->user()?->shop;
+    $shop = auth()->user()?->shop;
     $supplier = $statement['supplier'];
-    $ledger   = $statement['ledger'];
-    $aging    = $statement['aging'];
+    $ledger = $statement['ledger'];
+    $aging = $statement['aging'];
+
+    $signatories = [
+        ['title' => 'Prepared By', 'name' => auth()->user()?->name ?? ''],
+        ['title' => 'Authorized By', 'name' => ''],
+        ['title' => "Supplier's Acknowledgment", 'name' => ''],
+    ];
 @endphp
 
-<x-document.layout
-    title="Supplier Statement"
-    :subtitle="$supplier->name"
-    :shop="$shop"
-    :exportPdfUrl="route('documents.supplier-statement.pdf', ['supplier' => $supplier->id, 'from' => $statement['from'], 'to' => $statement['to']])"
->
+<x-document.layout title="Supplier Statement" :subtitle="$supplier->name" :shop="$shop" :exportPdfUrl="route('documents.supplier-statement.pdf', [
+    'supplier' => $supplier->id,
+    'from' => $statement['from'],
+    'to' => $statement['to'],
+])">
     <x-document.meta :cols="4" :items="[
-        ['label' => 'Supplier',       'value' => $supplier->name],
-        ['label' => 'Phone',          'value' => $supplier->phone ?? '—'],
-        ['label' => 'Period',         'value' => $statement['period_label']],
-        ['label' => 'Generated',      'value' => now()->format('d M Y H:i')],
+        ['label' => 'Supplier', 'value' => $supplier->name],
+        ['label' => 'Phone', 'value' => $supplier->phone ?? '—'],
+        ['label' => 'Period', 'value' => $statement['period_label']],
+        ['label' => 'Generated', 'value' => now()->format('d M Y H:i')],
     ]" />
 
     {{-- Aging Summary --}}
     <div class="doc-two-col" style="margin-bottom:4mm;">
         <div>
             <div class="doc-section-title">Outstanding Balance Summary</div>
-            @foreach([
-                ['label' => 'Current (Not Yet Due)',  'val' => $aging['current']],
-                ['label' => '1–30 Days Overdue',      'val' => $aging['1_30']],
-                ['label' => '31–60 Days Overdue',     'val' => $aging['31_60']],
-                ['label' => '61–90 Days Overdue',     'val' => $aging['61_90']],
-                ['label' => 'Over 90 Days',           'val' => $aging['over_90']],
-            ] as $row)
+            @foreach ([['label' => 'Current (Not Yet Due)', 'val' => $aging['current']], ['label' => '1–30 Days Overdue', 'val' => $aging['1_30']], ['label' => '31–60 Days Overdue', 'val' => $aging['31_60']], ['label' => '61–90 Days Overdue', 'val' => $aging['61_90']], ['label' => 'Over 90 Days', 'val' => $aging['over_90']]] as $row)
                 <div class="doc-kv-row">
                     <span class="doc-kv-label">{{ $row['label'] }}</span>
                     <span class="doc-kv-value {{ $row['val'] > 0 ? 'doc-text-red' : '' }}">
@@ -44,16 +43,10 @@
             </div>
         </div>
         <div>
-            @if($supplier->bank_name || $supplier->bank_account_number)
+            @if ($supplier->bank_name || $supplier->bank_account_number)
                 <div class="doc-section-title">Supplier Bank Details</div>
-                @foreach([
-                    ['label' => 'Bank',    'value' => $supplier->bank_name],
-                    ['label' => 'Account', 'value' => $supplier->bank_account_number],
-                    ['label' => 'Branch',  'value' => $supplier->bank_branch_name],
-                    ['label' => 'Routing', 'value' => $supplier->bank_routing_number],
-                    ['label' => 'Terms',   'value' => $supplier->payment_terms],
-                ] as $row)
-                    @if($row['value'])
+                @foreach ([['label' => 'Bank', 'value' => $supplier->bank_name], ['label' => 'Account', 'value' => $supplier->bank_account_number], ['label' => 'Branch', 'value' => $supplier->bank_branch_name], ['label' => 'Routing', 'value' => $supplier->bank_routing_number], ['label' => 'Terms', 'value' => $supplier->payment_terms]] as $row)
+                    @if ($row['value'])
                         <div class="doc-kv-row">
                             <span class="doc-kv-label">{{ $row['label'] }}</span>
                             <span class="doc-kv-value">{{ $row['value'] }}</span>
@@ -77,7 +70,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($ledger as $row)
+            @foreach ($ledger as $row)
                 <tr>
                     <td>{{ \Carbon\Carbon::parse($row->txn_date)->format('d M Y') }}</td>
                     <td>{{ $row->txn_type }}</td>
@@ -106,10 +99,6 @@
         Please contact us if you find any discrepancies.
     </div>
 
-    <x-document.signatures :signatories="[
-        ['title' => 'Prepared By',    'name' => auth()->user()?->name ?? ''],
-        ['title' => 'Authorized By',  'name' => ''],
-        ['title' => "Supplier's Acknowledgment", 'name' => ''],
-    ]" />
+    <x-document.signatures :signatories="$signatories" />
 
 </x-document.layout>

@@ -1,5 +1,5 @@
 @props([
-    'signatories' => [], // [['title' => 'Prepared By', 'name' => 'Hasan']]
+    'signatories' => [],
 ])
 <div class="doc-signatures doc-signature-{{ count($signatories) }}col">
     @foreach ($signatories as $sig)

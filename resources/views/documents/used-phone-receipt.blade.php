@@ -1,5 +1,10 @@
 @php
     $shop = $acquisition->branch->shop ?? auth()->user()?->shop;
+    $signatories = [
+        ['title' => 'Seller Signature', 'name' => ''],
+        ['title' => 'Seller NID Confirmed', 'name' => ''],
+        ['title' => 'Purchased By', 'name' => $acquisition->createdBy?->name ?? ''],
+    ];
 @endphp
 
 <x-document.layout title="Used Phone Purchase Receipt" :docNumber="$acquisition->acquisition_number" :shop="$shop" :branch="$acquisition->branch"
@@ -80,10 +85,6 @@
         disputes.
     </div>
 
-    <x-document.signatures :signatories="[
-        ['title' => 'Seller Signature', 'name' => ''],
-        ['title' => 'Seller NID Confirmed', 'name' => ''],
-        ['title' => 'Purchased By', 'name' => $acquisition->createdBy?->name ?? ''],
-    ]" />
+    <x-document.signatures :signatories="$signatories" />
 
 </x-document.layout>
