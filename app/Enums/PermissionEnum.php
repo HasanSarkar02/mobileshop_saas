@@ -63,7 +63,6 @@ enum PermissionEnum: string
     case ExpensesApprove = 'expenses.approve';
 
     // Payroll
-    case PayrollView = 'payroll.view';
     case PayrollManage = 'payroll.manage';
 
     // Accounting & Reports
@@ -92,6 +91,21 @@ enum PermissionEnum: string
 
         // Settings
     case SettingsManage = 'settings.manage';
+
+
+    // ── Payroll (Enterprise) ───────────────────────────────────────────────────
+    case PayrollView             = 'payroll.view';
+    case PayrollGenerate         = 'payroll.generate';
+    case PayrollReview           = 'payroll.review';
+    case PayrollApprove          = 'payroll.approve';
+    case PayrollPay              = 'payroll.pay';
+    case PayrollReverse          = 'payroll.reverse';
+    case PayrollManageStructure  = 'payroll.manage_structure';
+    case PayrollManageComponents = 'payroll.manage_components';
+    case PayrollManageLoans      = 'payroll.manage_loans';
+    case PayrollExport           = 'payroll.export';
+    case PayrollViewSalary       = 'payroll.view_salary';
+    case PayrollManageDepartments= 'payroll.manage_departments';
 
     // NOTE: "Owner's Drawing" is intentionally NOT a permission here.
     // It's gated purely by $user->isOwner() in code — too sensitive to
@@ -136,7 +150,6 @@ enum PermissionEnum: string
             self::ExpensesView => 'View expenses',
             self::ExpensesCreate => 'Create expense entries',
             self::ExpensesApprove => 'Approve expenses',
-            self::PayrollView => 'View payroll',
             self::PayrollManage => 'Manage employee salary / payroll',
             self::AccountingViewBasicReports => 'View basic reports (daily sales, stock)',
             self::AccountingViewFullReports => 'View full financial reports (P&L, balance sheet)',
@@ -156,6 +169,18 @@ enum PermissionEnum: string
             self::TreasuryApprove     => 'Approve or reject pending treasury transactions',
             self::TreasuryReverse     => 'Reverse completed treasury transactions',
             self::SettingsManage => 'Manage shop settings',
+            self::PayrollView             => 'View payroll runs and reports',
+            self::PayrollGenerate         => 'Generate payroll runs',
+            self::PayrollReview           => 'Submit payroll for review',
+            self::PayrollApprove          => 'Approve or reject payroll',
+            self::PayrollPay              => 'Process salary payments',
+            self::PayrollReverse          => 'Reverse payroll payments or runs',
+            self::PayrollManageStructure  => 'Setup employee salary structures',
+            self::PayrollManageComponents => 'Manage payroll components and policies',
+            self::PayrollManageLoans      => 'Disburse and manage employee loans',
+            self::PayrollExport           => 'Export payroll reports and CSV',
+            self::PayrollViewSalary       => 'View sensitive salary amounts',
+            self::PayrollManageDepartments=> 'Create and manage departments',
         };
     }
 

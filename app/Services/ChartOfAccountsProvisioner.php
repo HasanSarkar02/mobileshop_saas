@@ -62,6 +62,15 @@ class ChartOfAccountsProvisioner
         ['code' => '6087', 'name' => 'Interest Expense', 'type' => AccountType::Expense],
         ['code' => '6088', 'name' => 'Cash Short / Miscellaneous Loss', 'type' => AccountType::Expense],
 
+        // ── Payroll additions ─────────────────────────────────────────────────────
+        ['code' => '1150', 'name' => 'Salary Advance Receivable','type' => AccountType::Asset],
+        ['code' => '2031', 'name' => 'Tax Payable (Withheld)','type' => AccountType::Liability],
+        ['code' => '2032', 'name' => 'Provident Fund Payable','type' => AccountType::Liability],
+        ['code' => '2033', 'name' => 'Other Payroll Deductions Payable','type' => AccountType::Liability],
+        ['code' => '6021', 'name' => 'Overtime Expense','type' => AccountType::Expense],
+        ['code' => '6022', 'name' => 'Bonus Expense','type' => AccountType::Expense],
+        ['code' => '6023', 'name' => 'Festival Bonus Expense','type' => AccountType::Expense],
+
         
     ];
 
@@ -202,6 +211,38 @@ class ChartOfAccountsProvisioner
             ['code' => '6086', 'name' => 'MFS & Payment Gateway Fees',      'type' => AccountType::Expense],
             ['code' => '6087', 'name' => 'Interest Expense',                'type' => AccountType::Expense],
             ['code' => '6088', 'name' => 'Cash Short / Miscellaneous Loss', 'type' => AccountType::Expense],
+        ];
+
+        $existingCodes = Account::withoutGlobalScopes()
+            ->where('shop_id', $shop->id)
+            ->pluck('code')
+            ->toArray();
+
+        foreach ($newAccounts as $definition) {
+            if (! in_array($definition['code'], $existingCodes)) {
+                Account::create([
+                    'shop_id'   => $shop->id,
+                    'code'      => $definition['code'],
+                    'name'      => $definition['name'],
+                    'type'      => $definition['type'],
+                    'is_header' => false,
+                    'is_system' => true,
+                    'is_active' => true,
+                ]);
+            }
+        }
+    }
+
+    public function provisionPayrollAccounts(Shop $shop): void
+    {
+        $newAccounts = [
+            ['code' => '1150', 'name' => 'Salary Advance Receivable',       'type' => AccountType::Asset],
+            ['code' => '2031', 'name' => 'Tax Payable (Withheld)',           'type' => AccountType::Liability],
+            ['code' => '2032', 'name' => 'Provident Fund Payable',          'type' => AccountType::Liability],
+            ['code' => '2033', 'name' => 'Other Payroll Deductions Payable','type' => AccountType::Liability],
+            ['code' => '6021', 'name' => 'Overtime Expense',                'type' => AccountType::Expense],
+            ['code' => '6022', 'name' => 'Bonus Expense',                   'type' => AccountType::Expense],
+            ['code' => '6023', 'name' => 'Festival Bonus Expense',          'type' => AccountType::Expense],
         ];
 
         $existingCodes = Account::withoutGlobalScopes()
