@@ -141,6 +141,7 @@
                             'd' =>
                                 'M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2',
                         ],
+                        // In $navLinks, replace old payroll entry with:
                         [
                             'route' => 'payroll.index',
                             'label' => 'Payroll',
@@ -252,6 +253,7 @@
                     </svg>
                 </button>
                 <h1 class="text-sm font-semibold text-gray-900 flex-1">{{ $title ?? 'Dashboard' }}</h1>
+                @livewire('notifications.notification-bell')
             </header>
             <main class="flex-1 p-4 lg:p-6">
                 {{ $slot }}

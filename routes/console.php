@@ -8,6 +8,8 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 use App\Console\Commands\ExpireShopTrials;
+use App\Console\Commands\EscalatePendingNotifications;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command(ExpireShopTrials::class)->daily();
+Schedule::command(EscalatePendingNotifications::class)->everyFiveMinutes();

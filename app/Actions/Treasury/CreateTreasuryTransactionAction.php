@@ -7,6 +7,7 @@ use App\Enums\TreasuryTransactionType;
 use App\Models\Shop;
 use App\Models\TreasuryTransaction;
 use App\Models\User;
+use App\Events\TreasuryPendingApproval;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -131,6 +132,10 @@ class CreateTreasuryTransactionAction
             // ── Auto-approve if no approval needed ─────────────────────────────
             if (! $needsApproval) {
                 $txn = $this->approveAction->execute($txn, $actor);
+            }
+
+            if ($needsApproval) {
+                DB::afterCommit(fn () => event(new TreasuryPendingApproval($txn, $shop)));
             }
 
             return $txn->fresh(['fromAccount', 'toAccount', 'journalEntry']);

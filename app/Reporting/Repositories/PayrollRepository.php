@@ -11,7 +11,7 @@ class PayrollRepository extends BaseReportRepository
         return (float) DB::table('payroll_runs')
             ->where('shop_id', $shopId)
             ->where('status', 'approved')
-            ->sum('total_net');
+            ->sum('total_net_payable');
     }
 
     public function currentMonthDrawsSummary(int $shopId): object

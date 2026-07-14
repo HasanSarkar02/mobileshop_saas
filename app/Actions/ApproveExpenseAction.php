@@ -6,6 +6,8 @@ use App\Enums\ExpenseStatus;
 use App\Models\Expense;
 use App\Models\Shop;
 use App\Models\User;
+use App\Events\ExpenseApproved;
+use App\Events\ExpenseRejected;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -43,7 +45,7 @@ class ApproveExpenseAction
             // Now post the journal entry (deferred from entry time)
             $shop = $expense->shop()->withoutGlobalScopes()->findOrFail($expense->shop_id);
             $this->recorder->postJournalEntry($shop, $expense, [], $actor);
-
+            DB::afterCommit(fn () => event(new ExpenseApproved($expense, $shop, $actor)));
             return $expense->fresh();
         });
     }
@@ -60,6 +62,9 @@ class ApproveExpenseAction
             'rejection_reason' => $reason,
             'rejected_at'      => now(),
         ]);
+
+        $shop = $expense->shop()->withoutGlobalScopes()->findOrFail($expense->shop_id);
+        DB::afterCommit(fn () => event(new ExpenseRejected($expense, $shop, $actor, $reason)));
 
         return $expense->fresh();
     }

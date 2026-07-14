@@ -10,6 +10,7 @@ use App\Models\PaymentAccount;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\AccountingService;
+use App\Events\ExpensePendingApproval;
 use Illuminate\Support\Facades\DB;
 
 class RecordExpenseAction
@@ -68,6 +69,10 @@ class RecordExpenseAction
             // Only post journal entry for immediately approved expenses
             if (! $needsApproval) {
                 $this->postJournalEntry($shop, $expense, $data, $actor);
+            }
+
+            if ($needsApproval) {
+                DB::afterCommit(fn () => event(new ExpensePendingApproval($expense, $shop)));
             }
 
             return $expense->fresh(['category', 'paymentAccount']);

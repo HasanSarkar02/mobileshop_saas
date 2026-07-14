@@ -48,7 +48,18 @@ use App\Http\Controllers\DocumentController;
 use App\Livewire\Treasury\TreasuryDashboard;
 use App\Livewire\Treasury\TreasuryTransactionDetail;
 use App\Livewire\Treasury\TreasuryTransactionForm;
-
+use App\Livewire\Payroll\PayrollRunList;
+use App\Livewire\Payroll\GeneratePayrollRun;
+use App\Livewire\Payroll\PayrollRunDetail;
+use App\Livewire\Payroll\PayrollSlipDetail;
+use App\Livewire\Payroll\PayEmployeesForm;
+use App\Livewire\Payroll\DepartmentManager;
+use App\Livewire\Payroll\PayrollComponentManager;
+use App\Livewire\Payroll\PayrollPolicyManager;
+use App\Livewire\Payroll\EmployeeSalarySetup;
+use App\Livewire\Payroll\PayrollLoanList;
+use App\Livewire\Notifications\NotificationCenter;
+use App\Livewire\Notifications\NotificationPreferences;
 
 // ─── Super Admin ──────────────────────────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -137,10 +148,27 @@ Route::middleware(['auth:web'])->group(function () {
     Route::livewire('expenses/create', ExpenseForm::class)->name('expenses.create');
 
     // Payroll
-    Route::livewire('payroll', PayrollDashboard::class)->name('payroll.index');
+    // Route::livewire('payroll', PayrollDashboard::class)->name('payroll.index');
     Route::livewire('payroll/employees', EmployeeProfileList::class)->name('payroll.employees');
     Route::livewire('payroll/{run}', ManagePayroll::class)->name('payroll.manage');
 
+    Route::prefix('payroll')->name('payroll.')->group(function () {
+        Route::livewire('/',                      PayrollDashboard::class)->name('index');
+        Route::livewire('/runs',                  PayrollRunList::class)->name('runs');
+        Route::livewire('/runs/generate',         GeneratePayrollRun::class)->name('generate');
+        Route::livewire('/runs/{run}',            PayrollRunDetail::class)->name('run.show');
+        Route::livewire('/slips/{slip}',          PayrollSlipDetail::class)->name('slip.show');
+        Route::livewire('/pay/{slip}',            PayEmployeesForm::class)->name('pay');
+
+        // Setup
+        Route::livewire('/setup/departments',     DepartmentManager::class)->name('departments');
+        Route::livewire('/setup/components',      PayrollComponentManager::class)->name('components');
+        Route::livewire('/setup/policies',        PayrollPolicyManager::class)->name('policies');
+        Route::livewire('/setup/salary/{user}',   EmployeeSalarySetup::class)->name('salary.setup');
+
+        // Loans
+        Route::livewire('/loans',                 PayrollLoanList::class)->name('loans');
+    });
 
 
     // Employees
@@ -214,6 +242,10 @@ Route::middleware(['auth:web'])->group(function () {
         // Supplier Statement
         Route::get('documents/supplier/{supplier}/statement',[\App\Http\Controllers\DocumentController::class, 'supplierStatementPrint'])->name('supplier-statement');
         Route::get('documents/supplier/{supplier}/statement/pdf',[\App\Http\Controllers\DocumentController::class, 'supplierStatementPdf'])->name('supplier-statement.pdf');
+        
+        //Payroll Slip
+        Route::get('documents/payroll-slip/{slip}',[\App\Http\Controllers\DocumentController::class, 'payrollSlipPrint'])->name('documents.payroll-slip');
+        Route::get('documents/payroll-slip/{slip}/pdf',[\App\Http\Controllers\DocumentController::class, 'payrollSlipPdf'])->name('documents.payroll-slip.pdf');
     });
 
     // ── Report Print/Export ────────────────────────────────────────────────────
@@ -246,6 +278,10 @@ Route::middleware(['auth:web'])->group(function () {
         Route::livewire('{transaction}/edit', \App\Livewire\Treasury\TreasuryTransactionEdit::class)->name('edit');
         Route::livewire('opening-balance',\App\Livewire\Treasury\OpeningBalanceWizard::class)->name('opening-balance');
     });
+
+    //Notifications
+    Route::livewire('notifications', NotificationCenter::class)->name('notifications.index');
+    Route::livewire('notifications/preferences', NotificationPreferences::class)->name('notifications.preferences');
 
     
 });

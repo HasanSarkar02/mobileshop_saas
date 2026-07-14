@@ -35,6 +35,9 @@
             </div>
         </div>
         <div class="flex gap-2 shrink-0">
+            <a href="{{ route('payroll.salary.setup', $employee) }}" wire:navigate class="btn-secondary btn-sm">
+                💰 Salary Setup
+            </a>
             @if (!$employee->password_changed_at)
                 <button wire:click="resendInvite" class="btn-secondary btn-sm">
                     📧 Resend Invite
@@ -45,6 +48,7 @@
                     Edit
                 </a>
             @endcan
+
         </div>
     </div>
 

@@ -5,6 +5,9 @@ namespace App\Actions\Treasury;
 use App\Enums\TreasuryTransactionStatus;
 use App\Models\TreasuryTransaction;
 use App\Models\User;
+use App\Events\TreasuryRejected;
+use App\Models\Shop;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class RejectTreasuryTransactionAction
@@ -32,7 +35,8 @@ class RejectTreasuryTransactionAction
         //     ->performedOn($txn)
         //     ->withProperties(['reason' => $reason])
         //     ->log('treasury_transaction.rejected');
-
+        $shop = Shop::withoutGlobalScopes()->findOrFail($txn->shop_id);
+        DB::afterCommit(fn () => event(new TreasuryRejected($txn, $shop, $actor, $reason)));
         return $txn->fresh();
     }
 }

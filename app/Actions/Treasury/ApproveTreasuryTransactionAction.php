@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\AccountingService;
 use App\Services\Treasury\TreasuryJournalBuilder;
 use Illuminate\Support\Facades\DB;
+use App\Events\TreasuryApproved;
 use RuntimeException;
 
 class ApproveTreasuryTransactionAction
@@ -73,7 +74,7 @@ class ApproveTreasuryTransactionAction
             //     ->performedOn($txn)
             //     ->withProperties(['journal_entry_id' => $journalEntry->id])
             //     ->log('treasury_transaction.completed');
-
+            DB::afterCommit(fn () => event(new TreasuryApproved($txn, $shop, $actor)));
             return $txn->fresh(['fromAccount', 'toAccount', 'journalEntry', 'approvedBy']);
         });
     }

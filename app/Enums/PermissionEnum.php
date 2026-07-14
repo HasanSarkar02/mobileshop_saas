@@ -92,6 +92,8 @@ enum PermissionEnum: string
         // Settings
     case SettingsManage = 'settings.manage';
 
+    case NotificationsManageSettings = 'notifications.manage_settings';
+
 
     // ── Payroll (Enterprise) ───────────────────────────────────────────────────
     case PayrollView             = 'payroll.view';
@@ -169,6 +171,7 @@ enum PermissionEnum: string
             self::TreasuryApprove     => 'Approve or reject pending treasury transactions',
             self::TreasuryReverse     => 'Reverse completed treasury transactions',
             self::SettingsManage => 'Manage shop settings',
+            self::NotificationsManageSettings => 'Manage notification channel & delivery settings',
             self::PayrollView             => 'View payroll runs and reports',
             self::PayrollGenerate         => 'Generate payroll runs',
             self::PayrollReview           => 'Submit payroll for review',
@@ -204,6 +207,7 @@ enum PermissionEnum: string
             in_array($this, [self::EmployeesView, self::EmployeesManage, self::EmployeesManagePermissions, self::RolesManage]) => 'Employees & Roles',
             in_array($this, [self::TreasuryView, self::TreasuryTransfer, self::TreasuryEquity, self::TreasuryAdjust, self::TreasuryBankFinance, self::TreasuryApprove, self::TreasuryReverse]) => 'Treasury',
             $this === self::SettingsManage => 'Settings',
+            $this === self::NotificationsManageSettings => 'Notifications',
             default => 'Other',
         };
     }

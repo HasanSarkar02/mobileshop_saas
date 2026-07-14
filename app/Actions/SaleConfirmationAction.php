@@ -21,6 +21,7 @@ use App\Services\AccountingService;
 use App\Services\CustomerLedgerService;
 use App\Services\UnitStatusTransitioner;
 use Illuminate\Support\Facades\DB;
+use App\Events\SaleConfirmed;
 use RuntimeException;
 
 class SaleConfirmationAction
@@ -353,6 +354,8 @@ class SaleConfirmationAction
             } catch (\Throwable) {
                 // SMS failure never blocks a confirmed sale
             }
+
+            DB::afterCommit(fn () => event(new SaleConfirmed($sale, $shop)));
 
             return $sale->fresh(['items', 'payments', 'customer', 'branch', 'cashier',
                                   'financePartnerReceivable.financePartner']);

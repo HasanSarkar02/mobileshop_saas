@@ -543,4 +543,44 @@ class DocumentController extends Controller
             'to'              => $to,
         ];
     }
+
+    // ── Employee Payslip ──────────────────────────────────────────────────────
+
+    public function payrollSlipPrint(\App\Models\PayrollSlip $slip)
+    {
+        if ($slip->shop_id !== Auth::user()->shop_id) abort(403);
+
+        $slip->load([
+            'payrollRun.branch',
+            'user',
+            'earnings',
+            'deductions',
+            'activePayments.paymentAccount',
+            'loanRecoveries.loan',
+        ]);
+
+        $shop = $slip->payrollRun->shop()->withoutGlobalScopes()->findOrFail($slip->shop_id);
+
+        return view('documents.payroll-slip', compact('slip', 'shop'));
+    }
+
+    public function payrollSlipPdf(\App\Models\PayrollSlip $slip)
+    {
+        if ($slip->shop_id !== Auth::user()->shop_id) abort(403);
+
+        $slip->load([
+            'payrollRun.branch',
+            'user',
+            'earnings',
+            'deductions',
+            'activePayments.paymentAccount',
+            'loanRecoveries.loan',
+        ]);
+
+        $shop = $slip->payrollRun->shop()->withoutGlobalScopes()->findOrFail($slip->shop_id);
+
+        return Pdf::loadView('documents.payroll-slip', compact('slip', 'shop'))
+            ->setPaper('A4', 'portrait')
+            ->download("payslip-{$slip->employee_name}-{$slip->payrollRun->monthName()}.pdf");
+    }
 }
