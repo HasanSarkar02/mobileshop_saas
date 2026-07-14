@@ -153,21 +153,18 @@ Route::middleware(['auth:web'])->group(function () {
     Route::livewire('payroll/{run}', ManagePayroll::class)->name('payroll.manage');
 
     Route::prefix('payroll')->name('payroll.')->group(function () {
-        Route::livewire('/',                      PayrollDashboard::class)->name('index');
-        Route::livewire('/runs',                  PayrollRunList::class)->name('runs');
-        Route::livewire('/runs/generate',         GeneratePayrollRun::class)->name('generate');
-        Route::livewire('/runs/{run}',            PayrollRunDetail::class)->name('run.show');
-        Route::livewire('/slips/{slip}',          PayrollSlipDetail::class)->name('slip.show');
-        Route::livewire('/pay/{slip}',            PayEmployeesForm::class)->name('pay');
-
-        // Setup
-        Route::livewire('/setup/departments',     DepartmentManager::class)->name('departments');
-        Route::livewire('/setup/components',      PayrollComponentManager::class)->name('components');
-        Route::livewire('/setup/policies',        PayrollPolicyManager::class)->name('policies');
-        Route::livewire('/setup/salary/{user}',   EmployeeSalarySetup::class)->name('salary.setup');
-
-        // Loans
-        Route::livewire('/loans',                 PayrollLoanList::class)->name('loans');
+        Route::get('/',                       PayrollDashboard::class)->name('index');
+        Route::get('/runs',                   PayrollRunList::class)->name('runs');
+        Route::get('/runs/generate',          GeneratePayrollRun::class)->name('generate');
+        Route::get('/runs/{run}',             PayrollRunDetail::class)->name('run.show');
+        Route::get('/slips/{slip}',           PayrollSlipDetail::class)->name('slip.show');
+        Route::get('/pay/{slip}',             PayEmployeesForm::class)->name('pay');
+        Route::get('/setup/departments',      DepartmentManager::class)->name('departments');
+        Route::get('/setup/components',       PayrollComponentManager::class)->name('components');
+        Route::get('/setup/policies',         PayrollPolicyManager::class)->name('policies');
+        Route::get('/setup/salary/{user}',    EmployeeSalarySetup::class)->name('salary.setup');
+        Route::get('/loans',                  PayrollLoanList::class)->name('loans');
+        Route::get('/reports', \App\Livewire\Payroll\PayrollReports::class)->name('reports');
     });
 
 
@@ -244,8 +241,12 @@ Route::middleware(['auth:web'])->group(function () {
         Route::get('documents/supplier/{supplier}/statement/pdf',[\App\Http\Controllers\DocumentController::class, 'supplierStatementPdf'])->name('supplier-statement.pdf');
         
         //Payroll Slip
-        Route::get('documents/payroll-slip/{slip}',[\App\Http\Controllers\DocumentController::class, 'payrollSlipPrint'])->name('documents.payroll-slip');
-        Route::get('documents/payroll-slip/{slip}/pdf',[\App\Http\Controllers\DocumentController::class, 'payrollSlipPdf'])->name('documents.payroll-slip.pdf');
+        Route::get('documents/payroll-slip/{slip}',[\App\Http\Controllers\DocumentController::class, 'payrollSlipPrint'])->name('payroll-slip');
+        Route::get('documents/payroll-slip/{slip}/pdf',[\App\Http\Controllers\DocumentController::class, 'payrollSlipPdf'])->name('payroll-slip.pdf');
+
+        // Payroll Register
+        Route::get('documents/payroll-register/{run}',[\App\Http\Controllers\DocumentController::class, 'payrollRegisterPrint'])->name('payroll-register');
+        Route::get('documents/payroll-register/{run}/pdf',[\App\Http\Controllers\DocumentController::class, 'payrollRegisterPdf'])->name('payroll-register.pdf');
     });
 
     // ── Report Print/Export ────────────────────────────────────────────────────

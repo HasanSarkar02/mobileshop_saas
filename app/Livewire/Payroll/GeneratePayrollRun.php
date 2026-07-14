@@ -87,10 +87,12 @@ class GeneratePayrollRun extends Component
             ->where('is_active', true)
             ->where('user_type', 'employee')
             ->whereHas('employeeSalaryStructures', function ($q) use ($periodTo) {
+                // ← relationship now exists on User model
                 $q->where('is_active', true)
                   ->where('effective_from', '<=', $periodTo)
                   ->where(fn ($sq) =>
-                      $sq->whereNull('effective_to')->orWhere('effective_to', '>=', $periodTo)
+                      $sq->whereNull('effective_to')
+                         ->orWhere('effective_to', '>=', $periodTo)
                   );
 
                 if ($this->departmentId) {
@@ -103,7 +105,10 @@ class GeneratePayrollRun extends Component
             ->when($this->branchId, fn ($q) => $q->where('branch_id', $this->branchId));
 
         $employees = $query
-            ->with(['employeeSalaryStructures' => fn ($q) => $q->where('is_active', true)->with(['policy', 'department'])])
+            ->with([
+                'employeeSalaryStructures' => fn ($q) =>
+                    $q->where('is_active', true)->with(['policy', 'department']),
+            ])
             ->get();
 
         $this->warnings         = [];

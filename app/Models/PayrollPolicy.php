@@ -26,7 +26,7 @@ class PayrollPolicy extends Model
 
     public function components(): BelongsToMany
     {
-        return $this->belongsToMany(PayrollComponent::class, 'payroll_policy_components')
+        return $this->belongsToMany(PayrollComponent::class, 'payroll_policy_components','policy_id','component_id')
             ->withPivot([
                 'calculation_type', 'default_value', 'percentage_of',
                 'formula', 'is_required', 'sequence',

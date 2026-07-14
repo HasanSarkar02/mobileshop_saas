@@ -128,10 +128,13 @@ class PayrollLoanList extends Component
 
             $this->resetForm();
             unset($this->loans, $this->stats);
-            $this->dispatch('notify', ['type' => 'success',
-                'message' => "{$loan->loan_type === 'advance' ? 'Advance' : 'Loan'} " .
-                             "of ৳" . number_format($loan->total_amount, 0) .
-                             " disbursed to {$employee->name}. ({$loan->loan_number})"]);
+            $type = $loan->loan_type === 'advance' ? 'Advance' : 'Loan';
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => $type .
+                    " of ৳" . number_format($loan->total_amount, 0) .
+                    " disbursed to {$employee->name}. ({$loan->loan_number})"
+            ]);
         } catch (\Exception $e) {
             $this->dispatch('notify', ['type' => 'error', 'message' => $e->getMessage()]);
         }

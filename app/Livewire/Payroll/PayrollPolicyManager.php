@@ -81,27 +81,32 @@ class PayrollPolicyManager extends Component
     {
         $this->viewingPolicyId = $id;
         $this->loadPolicyComponents($id);
+        unset($this->viewingPolicy);
     }
 
     private function loadPolicyComponents(int $policyId): void
     {
         $policy = PayrollPolicy::where('shop_id', Auth::user()->shop_id)
-            ->with('components')
             ->find($policyId);
 
         if (! $policy) return;
 
-        $existing = $policy->components->keyBy('id');
+        // Load pivot rows directly — avoids auto-guessed FK names
+        $pivotRows = DB::table('payroll_policy_components')
+            ->where('policy_id', $policyId)
+            ->get()
+            ->keyBy('component_id');
 
-        $this->policyComponents = $this->allComponents->map(function ($comp) use ($existing) {
-            $pivot = $existing->get($comp->id)?->pivot;
+        $this->policyComponents = $this->allComponents->map(function ($comp) use ($pivotRows) {
+            $pivot = $pivotRows->get($comp->id);
+
             return [
                 'component_id'     => $comp->id,
                 'name'             => $comp->name,
                 'code'             => $comp->code,
                 'component_type'   => $comp->component_type->value,
                 'is_system'        => $comp->is_system,
-                'included'         => $existing->has($comp->id),
+                'included'         => (bool) $pivot,
                 'calculation_type' => $pivot?->calculation_type ?? $comp->calculation_type->value,
                 'default_value'    => (float) ($pivot?->default_value ?? $comp->default_value ?? 0),
                 'percentage_of'    => $pivot?->percentage_of ?? $comp->percentage_of ?? '',
@@ -182,26 +187,31 @@ class PayrollPolicyManager extends Component
             ->findOrFail($this->viewingPolicyId);
 
         DB::transaction(function () use ($policy) {
-            // Clear existing
-            $policy->components()->detach();
+            // Detach all using correct FK
+            DB::table('payroll_policy_components')
+                ->where('policy_id', $policy->id)
+                ->delete();
 
             foreach ($this->policyComponents as $comp) {
                 if (! $comp['included']) continue;
 
-                $policy->components()->attach($comp['component_id'], [
+                DB::table('payroll_policy_components')->insert([
+                    'policy_id'        => $policy->id,
+                    'component_id'     => $comp['component_id'],
                     'calculation_type' => $comp['calculation_type'],
                     'default_value'    => (float) $comp['default_value'],
                     'percentage_of'    => $comp['percentage_of'] ?: null,
                     'formula'          => $comp['formula'] ?: null,
-                    'is_required'      => $comp['is_required'],
+                    'is_required'      => $comp['is_required'] ? 1 : 0,
                     'sequence'         => (int) $comp['sequence'],
+                    'created_at'       => now(),
+                    'updated_at'       => now(),
                 ]);
             }
         });
 
-        $this->dispatch('notify', ['type' => 'success',
-            'message' => 'Policy components saved.']);
         unset($this->viewingPolicy);
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Policy components saved.']);
     }
 
     public function setDefault(int $id): void
@@ -232,6 +242,11 @@ class PayrollPolicyManager extends Component
 
     public function render()
     {
-        return view('livewire.payroll.payroll-policy-manager');
+        return view('livewire.payroll.payroll-policy-manager', [
+            'policies'       => $this->policies,
+            'viewingPolicy'  => $this->viewingPolicy,
+            'allComponents'  => $this->allComponents,
+            'employmentTypes'=> $this->employmentTypes,
+        ]);
     }
 }

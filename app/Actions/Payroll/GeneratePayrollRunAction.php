@@ -197,7 +197,8 @@ class GeneratePayrollRunAction
                 $q->where('is_active', true)
                   ->where('effective_from', '<=', $asOfDate)
                   ->where(fn ($sq) =>
-                      $sq->whereNull('effective_to')->orWhere('effective_to', '>=', $asOfDate)
+                      $sq->whereNull('effective_to')
+                         ->orWhere('effective_to', '>=', $asOfDate)
                   );
 
                 if ($departmentId) {

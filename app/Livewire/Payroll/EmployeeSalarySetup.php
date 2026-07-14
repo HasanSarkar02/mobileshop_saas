@@ -89,8 +89,9 @@ class EmployeeSalarySetup extends Component
 
     private function loadComponentOverrides(EmployeeSalaryStructure $structure): void
     {
-        $policy = PayrollPolicy::with(['components' => fn ($q) => $q->orderByPivot('sequence')])
-            ->find($this->policyId);
+        $policy = PayrollPolicy::with([
+            'components' => fn ($q) => $q->orderByPivot('sequence'),
+        ])->find($this->policyId);
 
         if (! $policy) return;
 
@@ -114,17 +115,24 @@ class EmployeeSalarySetup extends Component
                 'policy_calc_type' => $comp->pivot->calculation_type,
                 'policy_pct_of'    => $comp->pivot->percentage_of,
                 'has_override'     => (bool) $override,
-                'calculation_type' => $override?->calculation_type ?? $comp->pivot->calculation_type,
-                'value'            => (float) ($override?->value ?? $comp->pivot->default_value ?? 0),
-                'percentage_of'    => $override?->percentage_of ?? $comp->pivot->percentage_of ?? '',
-                'formula'          => $override?->formula ?? $comp->pivot->formula ?? '',
+                'calculation_type' => $override?->calculation_type
+                    ?? $comp->pivot->calculation_type,
+                'value'            => (float) ($override?->value
+                    ?? $comp->pivot->default_value
+                    ?? 0),
+                'percentage_of'    => $override?->percentage_of
+                    ?? $comp->pivot->percentage_of
+                    ?? '',
+                'formula'          => $override?->formula
+                    ?? $comp->pivot->formula
+                    ?? '',
             ];
         }
     }
 
     public function updatedPolicyId(): void
     {
-        // Reload component overrides when policy changes
+        // If editing an existing structure, reload with overrides
         if ($this->editingStructureId) {
             $structure = EmployeeSalaryStructure::find($this->editingStructureId);
             if ($structure) {
@@ -133,9 +141,15 @@ class EmployeeSalarySetup extends Component
             }
         }
 
-        // Fresh load from policy defaults (no existing structure)
-        $policy = PayrollPolicy::with(['components' => fn ($q) => $q->orderByPivot('sequence')])
-            ->find($this->policyId);
+        // Fresh policy — no existing structure yet
+        if (! $this->policyId) {
+            $this->componentOverrides = [];
+            return;
+        }
+
+        $policy = PayrollPolicy::with([
+            'components' => fn ($q) => $q->orderByPivot('sequence'),
+        ])->find($this->policyId);
 
         if (! $policy) {
             $this->componentOverrides = [];
@@ -306,6 +320,13 @@ class EmployeeSalarySetup extends Component
 
     public function render()
     {
-        return view('livewire.payroll.employee-salary-setup');
+        return view('livewire.payroll.employee-salary-setup', [
+            'policies'          => $this->policies,
+            'departments'       => $this->departments,
+            'paymentAccounts'   => $this->paymentAccounts,
+            'employmentTypes'   => $this->employmentTypes,
+            'activeStructure'   => $this->activeStructure,
+            'grossSalaryPreview'=> $this->grossSalaryPreview,
+        ]);
     }
 }

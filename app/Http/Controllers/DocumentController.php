@@ -583,4 +583,34 @@ class DocumentController extends Controller
             ->setPaper('A4', 'portrait')
             ->download("payslip-{$slip->employee_name}-{$slip->payrollRun->monthName()}.pdf");
     }
+
+    // ── Payroll Register ──────────────────────────────────────────────────────
+
+    public function payrollRegisterPrint(\App\Models\PayrollRun $run)
+    {
+        if ($run->shop_id !== Auth::user()->shop_id) abort(403);
+
+        $run->load([
+            'slips.earnings', 'slips.deductions',
+            'slips.activePayments.paymentAccount',
+            'branch', 'generatedBy', 'approvedBy',
+        ]);
+
+        return view('documents.payroll-register', compact('run'));
+    }
+
+    public function payrollRegisterPdf(\App\Models\PayrollRun $run)
+    {
+        if ($run->shop_id !== Auth::user()->shop_id) abort(403);
+
+        $run->load([
+            'slips.earnings', 'slips.deductions',
+            'slips.activePayments.paymentAccount',
+            'branch', 'generatedBy', 'approvedBy',
+        ]);
+
+        return Pdf::loadView('documents.payroll-register', compact('run'))
+            ->setPaper('A4', 'landscape')
+            ->download("{$run->run_number}-register.pdf");
+    }
 }

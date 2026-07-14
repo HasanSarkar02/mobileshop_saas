@@ -50,18 +50,29 @@ class EmployeeSalaryStructure extends Model
     // Get all components merged: employee overrides take priority over policy defaults
     public function resolvedComponents(): \Illuminate\Support\Collection
     {
-        $policyComponents  = $this->policy->components()->get();
+        // Load policy components with correct FK names
+        $policyComponents = PayrollPolicy::with([
+            'components' => fn ($q) => $q->orderByPivot('sequence'),
+        ])->find($this->policy_id)?->components ?? collect();
+
         $employeeOverrides = $this->activeComponents()
-            ->with('component')->get()->keyBy('component_id');
+            ->with('component')
+            ->get()
+            ->keyBy('component_id');
 
         return $policyComponents->map(function ($comp) use ($employeeOverrides) {
             $override = $employeeOverrides->get($comp->id);
             return (object) [
                 'component'        => $comp,
-                'calculation_type' => $override?->calculation_type ?? $comp->pivot->calculation_type,
-                'value'            => $override?->value ?? $comp->pivot->default_value,
-                'percentage_of'    => $override?->percentage_of ?? $comp->pivot->percentage_of,
-                'formula'          => $override?->formula ?? $comp->pivot->formula,
+                'calculation_type' => $override?->calculation_type
+                    ?? $comp->pivot->calculation_type,
+                'value'            => (float) ($override?->value
+                    ?? $comp->pivot->default_value
+                    ?? 0),
+                'percentage_of'    => $override?->percentage_of
+                    ?? $comp->pivot->percentage_of,
+                'formula'          => $override?->formula
+                    ?? $comp->pivot->formula,
                 'sequence'         => $comp->pivot->sequence,
             ];
         })->sortBy('sequence');

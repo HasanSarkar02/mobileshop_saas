@@ -200,6 +200,10 @@
                             </td>
                             <td class="table-td">
                                 <div class="flex items-center gap-2">
+                                    @if (in_array($run->status->value, ['approved', 'processing_payment', 'partially_paid', 'paid']))
+                                        <a href="{{ route('documents.payroll-register', $run) }}" target="_blank"
+                                            class="btn-secondary btn-sm">🖨 Payroll Register</a>
+                                    @endif
                                     <a href="{{ route('payroll.slip.show', $slip) }}" wire:navigate
                                         class="text-xs text-indigo-600 hover:underline font-medium">
                                         View

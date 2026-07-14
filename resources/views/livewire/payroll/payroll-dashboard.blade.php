@@ -15,7 +15,7 @@
     @php $stats = $this->stats; @endphp
 
     {{-- Pending Approvals Banner --}}
-    @if($stats->pendingRuns > 0)
+    @if ($stats->pendingRuns > 0)
         <div class="card p-4 bg-amber-50 border-amber-300 flex items-center gap-4">
             <div class="flex-1 text-amber-800 font-medium">
                 ⏳ {{ $stats->pendingRuns }} payroll run(s) awaiting your approval
@@ -36,7 +36,7 @@
             <div class="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-1">
                 {{ now()->format('F Y') }}
             </div>
-            @if($stats->currentRun)
+            @if ($stats->currentRun)
                 <div class="text-2xl font-bold text-indigo-800">
                     ৳{{ number_format($stats->currentRun->total_net_payable, 0) }}
                 </div>
@@ -96,7 +96,9 @@
                         </div>
                         <div class="text-xs text-gray-400 mt-0.5 font-mono">
                             {{ $run->run_number }}
-                            @if($run->branch) · {{ $run->branch->name }} @endif
+                            @if ($run->branch)
+                                · {{ $run->branch->name }}
+                            @endif
                             · {{ $run->total_employees }} employees
                         </div>
                     </div>
@@ -112,7 +114,8 @@
             @empty
                 <div class="p-8 text-center text-gray-400 text-sm">
                     No payroll runs yet.
-                    <a href="{{ route('payroll.generate') }}" wire:navigate class="text-indigo-600 hover:underline ml-1">
+                    <a href="{{ route('payroll.generate') }}" wire:navigate
+                        class="text-indigo-600 hover:underline ml-1">
                         Generate first run →
                     </a>
                 </div>
@@ -157,12 +160,7 @@
     <div class="card p-5">
         <h3 class="font-semibold text-gray-900 text-sm mb-3">Setup & Configuration</h3>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            @foreach([
-                ['route' => 'payroll.departments', 'label' => '🏢 Departments',  'can' => 'payroll.manage_departments'],
-                ['route' => 'payroll.components',  'label' => '⚙ Components',    'can' => 'payroll.manage_components'],
-                ['route' => 'payroll.policies',    'label' => '📋 Policies',      'can' => 'payroll.manage_components'],
-                ['route' => 'payroll.loans',       'label' => '💳 Loans',          'can' => 'payroll.manage_loans'],
-            ] as $link)
+            @foreach ([['route' => 'payroll.departments', 'label' => '🏢 Departments', 'can' => 'payroll.manage_departments'], ['route' => 'payroll.components', 'label' => '⚙ Components', 'can' => 'payroll.manage_components'], ['route' => 'payroll.policies', 'label' => '📋 Policies', 'can' => 'payroll.manage_components'], ['route' => 'payroll.loans', 'label' => '💳 Loans', 'can' => 'payroll.manage_loans'], ['route' => 'payroll.reports', 'label' => '📊 Reports', 'can' => 'payroll.view']] as $link)
                 @can($link['can'])
                     <a href="{{ route($link['route']) }}" wire:navigate
                         class="card p-3 text-center text-sm font-medium text-gray-700

@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\AccountingService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
+use App\Events\SaleVoided;
 
 class VoidSaleAction
 {
@@ -124,6 +125,8 @@ class VoidSaleAction
                 'void_reason' => $reason,
                 'voided_at'   => now(),
             ]);
+
+            DB::afterCommit(fn () => event(new SaleVoided($sale, $shop, $actor, $reason)));
 
             return $sale->fresh();
         });

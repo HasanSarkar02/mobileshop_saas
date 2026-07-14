@@ -14,6 +14,7 @@ use Spatie\Permission\Traits\HasRoles;
 use App\Models\SalaryDraw;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use \App\Models\Concerns\BelongsToShop;
+use App\Models\EmployeeSalaryStructure;
 
 #[Fillable(['name', 'email', 'password', 'shop_id', 'branch_id', 'user_type', 'phone', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
@@ -85,5 +86,17 @@ class User extends Authenticatable
     public function scopeForShop($query, int $shopId): void
     {
         $query->where('shop_id', $shopId);
+    }
+
+    public function employeeSalaryStructures(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(EmployeeSalaryStructure::class);
+    }
+
+    public function activeSalaryStructure(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(EmployeeSalaryStructure::class)
+            ->where('is_active', true)
+            ->latestOfMany('effective_from');
     }
 }
