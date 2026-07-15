@@ -60,6 +60,7 @@ use App\Livewire\Payroll\EmployeeSalarySetup;
 use App\Livewire\Payroll\PayrollLoanList;
 use App\Livewire\Notifications\NotificationCenter;
 use App\Livewire\Notifications\NotificationPreferences;
+use App\Livewire\Payroll\PayrollReports;
 
 // ─── Super Admin ──────────────────────────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -149,8 +150,6 @@ Route::middleware(['auth:web'])->group(function () {
 
     // Payroll
     // Route::livewire('payroll', PayrollDashboard::class)->name('payroll.index');
-    Route::livewire('payroll/employees', EmployeeProfileList::class)->name('payroll.employees');
-    Route::livewire('payroll/{run}', ManagePayroll::class)->name('payroll.manage');
 
     Route::prefix('payroll')->name('payroll.')->group(function () {
         Route::get('/',                       PayrollDashboard::class)->name('index');
@@ -163,9 +162,12 @@ Route::middleware(['auth:web'])->group(function () {
         Route::get('/setup/components',       PayrollComponentManager::class)->name('components');
         Route::get('/setup/policies',         PayrollPolicyManager::class)->name('policies');
         Route::get('/setup/salary/{user}',    EmployeeSalarySetup::class)->name('salary.setup');
+        Route::get('/reports',                PayrollReports::class)->name('reports');
         Route::get('/loans',                  PayrollLoanList::class)->name('loans');
-        Route::get('/reports', \App\Livewire\Payroll\PayrollReports::class)->name('reports');
     });
+
+        Route::livewire('payroll/employees', EmployeeProfileList::class)->name('payroll.employees');
+        Route::livewire('payroll/{run}', ManagePayroll::class)->name('payroll.manage');
 
 
     // Employees

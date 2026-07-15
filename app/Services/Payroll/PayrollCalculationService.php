@@ -44,7 +44,6 @@ class PayrollCalculationService
                 ->join('payroll_components as pc', 'pc.id', '=', 'ppc.component_id')
                 ->where('ppc.policy_id', $structure->policy_id)
                 ->where('pc.is_active', true)
-                ->whereNull('pc.deleted_at')
                 ->select([
                     'pc.id', 'pc.code', 'pc.name',
                     'pc.component_type', 'pc.is_taxable',

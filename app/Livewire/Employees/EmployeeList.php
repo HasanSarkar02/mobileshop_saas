@@ -61,7 +61,7 @@ class EmployeeList extends Component
     public function render()
     {
         $employees = User::where('user_type', UserType::Employee->value)
-            ->with(['employeeProfile', 'branch', 'roles'])
+            ->with(['employeeProfile', 'branch', 'roles','activeSalaryStructure.policy',])
             ->when($this->search, fn ($q) =>
                 $q->where('name', 'like', "%{$this->search}%")
                   ->orWhere('email', 'like', "%{$this->search}%")

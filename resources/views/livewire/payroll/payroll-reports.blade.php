@@ -299,9 +299,10 @@
                                             'loan_recovered' => 'badge-blue',
                                             'loan_waived' => 'badge-yellow',
                                         ];
+                                        $actionValue = $log->action?->value ?? $log->action;
                                     @endphp
-                                    <span class="badge {{ $actionColors[$log->action] ?? 'badge-gray' }} text-xs">
-                                        {{ ucfirst(str_replace('_', ' ', $log->action)) }}
+                                    <span class="badge {{ $actionColors[$actionValue] ?? 'badge-gray' }} text-xs">
+                                        {{ ucfirst(str_replace('_', ' ', $actionValue)) }}
                                     </span>
                                 </td>
                                 <td class="table-td font-mono text-xs text-gray-500">

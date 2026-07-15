@@ -82,11 +82,13 @@
                                 {{ $emp->branch?->name ?? 'All branches' }}
                             </td>
                             <td class="table-td text-gray-700 text-sm">
-                                @if ($emp->employeeProfile?->base_salary > 0)
-                                    ৳{{ number_format($emp->employeeProfile->grossSalary(), 0) }}
-                                @else
-                                    <span class="text-gray-300 text-xs">Not set</span>
-                                @endif
+                                @php
+                                    $sal = $emp->relationLoaded('activeSalaryStructure')
+                                        ? $emp->activeSalaryStructure
+                                        : null;
+                                @endphp
+
+                                {{ $sal?->policy?->name ?? ($emp->employeeProfile?->designation ?? '—') }}
                             </td>
                             <td class="table-td text-gray-400 text-xs">
                                 {{ $emp->last_login_at?->diffForHumans() ?? 'Never' }}

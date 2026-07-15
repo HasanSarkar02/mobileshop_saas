@@ -2,6 +2,16 @@
 
 namespace App\Enums;
 
+/**
+ * One case per distinct thing that can happen in the ERP a user might want to
+ * know about. Each case carries its own category/priority/default channels/
+ * action-required policy — mirrors how TreasuryTransactionType carries its
+ * own category() and alwaysRequiresApproval().
+ *
+ * Phase 2 adds: SupplierPaymentDue, PayrollReminderDue, LoanRepaymentDue —
+ * all three are scheduled/reminder-driven (see ReminderCheckers), not fired
+ * from an Action via DB::afterCommit.
+ */
 enum NotificationEventType: string
 {
     // Sales
@@ -13,6 +23,7 @@ enum NotificationEventType: string
     case PurchaseReceived = 'purchase_received';
     case PurchaseReturnProcessed = 'purchase_return_processed';
     case SupplierBalanceHigh = 'supplier_balance_high';
+    case SupplierPaymentDue = 'supplier_payment_due';
 
     // Customers
     case CustomerCreditLimitReached = 'customer_credit_limit_reached';
@@ -42,12 +53,14 @@ enum NotificationEventType: string
     case PayrollDraftReady = 'payroll_draft_ready';
     case PayrollPaid = 'payroll_paid';
     case SalaryOverdrawn = 'salary_overdrawn';
+    case PayrollReminderDue = 'payroll_reminder_due';
 
     // Treasury
     case TreasuryPendingApproval = 'treasury_pending_approval';
     case TreasuryApproved = 'treasury_approved';
     case TreasuryRejected = 'treasury_rejected';
     case TreasuryReversed = 'treasury_reversed';
+    case LoanRepaymentDue = 'loan_repayment_due';
 
     // Accounting
     case PeriodLockApproaching = 'period_lock_approaching';
@@ -72,6 +85,7 @@ enum NotificationEventType: string
             self::PurchaseReceived => 'Purchase received',
             self::PurchaseReturnProcessed => 'Purchase return processed',
             self::SupplierBalanceHigh => 'Supplier balance high',
+            self::SupplierPaymentDue => 'Supplier payment due',
             self::CustomerCreditLimitReached => 'Customer credit limit reached',
             self::CustomerDueReminder => 'Customer due reminder',
             self::FpReceivableOverdue => 'Finance partner receivable overdue',
@@ -89,10 +103,12 @@ enum NotificationEventType: string
             self::PayrollDraftReady => 'Payroll draft ready',
             self::PayrollPaid => 'Payroll paid',
             self::SalaryOverdrawn => 'Employee salary overdrawn',
+            self::PayrollReminderDue => 'Payroll reminder',
             self::TreasuryPendingApproval => 'Treasury transaction pending approval',
             self::TreasuryApproved => 'Treasury transaction approved',
             self::TreasuryRejected => 'Treasury transaction rejected',
             self::TreasuryReversed => 'Treasury transaction reversed',
+            self::LoanRepaymentDue => 'Loan repayment reminder',
             self::PeriodLockApproaching => 'Accounting period lock approaching',
             self::EmployeeInvited => 'Employee invited',
             self::EmployeeDeactivated => 'Employee deactivated',
@@ -108,15 +124,15 @@ enum NotificationEventType: string
             self::SaleConfirmed, self::SaleVoided => NotificationCategory::Sales,
             self::ReturnProcessed => NotificationCategory::Returns,
             self::PurchaseReceived, self::PurchaseReturnProcessed => NotificationCategory::Purchases,
-            self::SupplierBalanceHigh => NotificationCategory::Suppliers,
+            self::SupplierBalanceHigh, self::SupplierPaymentDue => NotificationCategory::Suppliers,
             self::CustomerCreditLimitReached, self::CustomerDueReminder => NotificationCategory::Customers,
             self::FpReceivableOverdue, self::FpSettlementRecorded => NotificationCategory::FinancePartners,
             self::StockLow, self::StockTransferInitiated, self::StockTransferReceived => NotificationCategory::Inventory,
             self::WarrantyExpiringSoon => NotificationCategory::Warranty,
             self::ServiceTicketReady, self::ServiceTicketOverdue => NotificationCategory::Service,
             self::ExpensePendingApproval, self::ExpenseApproved, self::ExpenseRejected, self::ExpenseVoided => NotificationCategory::Expenses,
-            self::PayrollDraftReady, self::PayrollPaid, self::SalaryOverdrawn => NotificationCategory::Payroll,
-            self::TreasuryPendingApproval, self::TreasuryApproved, self::TreasuryRejected, self::TreasuryReversed => NotificationCategory::Treasury,
+            self::PayrollDraftReady, self::PayrollPaid, self::SalaryOverdrawn, self::PayrollReminderDue => NotificationCategory::Payroll,
+            self::TreasuryPendingApproval, self::TreasuryApproved, self::TreasuryRejected, self::TreasuryReversed, self::LoanRepaymentDue => NotificationCategory::Treasury,
             self::PeriodLockApproaching => NotificationCategory::Accounting,
             self::EmployeeInvited, self::EmployeeDeactivated => NotificationCategory::Employees,
             self::UsedPhoneAcquired => NotificationCategory::UsedPhones,
@@ -133,14 +149,17 @@ enum NotificationEventType: string
             self::TreasuryPendingApproval,
             self::CustomerCreditLimitReached,
             self::FpReceivableOverdue,
-            self::PeriodLockApproaching => NotificationPriority::High,
+            self::PeriodLockApproaching,
+            self::SupplierPaymentDue,
+            self::LoanRepaymentDue => NotificationPriority::High,
             self::SaleVoided,
             self::TreasuryRejected,
             self::ExpenseRejected,
             self::ExpenseVoided,
             self::StockLow,
             self::ServiceTicketOverdue,
-            self::SupplierBalanceHigh => NotificationPriority::Normal,
+            self::SupplierBalanceHigh,
+            self::PayrollReminderDue => NotificationPriority::Normal,
             default => NotificationPriority::Normal,
         };
     }
@@ -158,6 +177,9 @@ enum NotificationEventType: string
             self::ImpersonationStarted, self::SalaryOverdrawn => [
                 NotificationChannel::InApp, NotificationChannel::Popup, NotificationChannel::Email,
             ],
+            self::SupplierPaymentDue, self::PayrollReminderDue, self::LoanRepaymentDue, self::FpReceivableOverdue => [
+                NotificationChannel::InApp, NotificationChannel::Email,
+            ],
             default => [NotificationChannel::InApp],
         };
     }
@@ -171,6 +193,9 @@ enum NotificationEventType: string
             self::FpReceivableOverdue,
             self::ServiceTicketOverdue,
             self::SalaryOverdrawn,
+            self::SupplierPaymentDue,
+            self::LoanRepaymentDue,
+            self::PayrollReminderDue,
         ], true);
     }
 
@@ -182,6 +207,9 @@ enum NotificationEventType: string
             self::FpReceivableOverdue => 'View receivable',
             self::ServiceTicketOverdue => 'View ticket',
             self::SalaryOverdrawn => 'View employee',
+            self::SupplierPaymentDue => 'View supplier',
+            self::PayrollReminderDue => 'Go to Payroll',
+            self::LoanRepaymentDue => 'View treasury',
             default => null,
         };
     }

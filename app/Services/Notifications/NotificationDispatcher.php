@@ -11,6 +11,7 @@ use App\Models\Notification;
 use App\Models\NotificationDelivery;
 use App\Models\NotificationPreference;
 use App\Models\NotificationRecipient;
+use App\Models\NotificationRule;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -19,50 +20,53 @@ use Illuminate\Support\Facades\DB;
 
 class NotificationDispatcher
 {
-    public function __construct(private readonly DeepLinkResolver $deepLinks) {}
+    public function __construct(
+        private readonly DeepLinkResolver $deepLinks,
+        private readonly NotificationRuleEvaluator $rules,
+        private readonly RecipientResolver $recipientResolver,
+    ) {}
 
     /**
-     * @param  Collection<int, User>  $recipients  Already-resolved audience — see RecipientResolver.
-     *         Callers decide WHO; the dispatcher only knows HOW to fan out.
+     * @param  Collection<int, User>  $recipients  Default audience — may be overridden by a matching NotificationRule.
      * @param  array{
-     *   title: string,
-     *   body: string,
-     *   reference?: Model|null,
-     *   branch_id?: int|null,
-     *   priority?: \App\Enums\NotificationPriority|null,
-     *   action_required?: bool|null,
-     *   action_label?: string|null,
-     *   icon?: string|null,
-     *   group_key?: string|null,
-     *   group_cooldown_minutes?: int|null,
-     *   payload?: array|null,
+     *   title: string, body: string, reference?: Model|null, branch_id?: int|null,
+     *   priority?: \App\Enums\NotificationPriority|null, action_required?: bool|null,
+     *   action_label?: string|null, icon?: string|null, group_key?: string|null,
+     *   group_cooldown_minutes?: int|null, payload?: array|null, placeholders?: array|null,
      *   created_by?: int|null,
      * }  $data
+     * @param  array<string, mixed>  $context  Raw values (e.g. ['amount' => 5000.0]) evaluated against NotificationRule conditions.
      */
     public function dispatch(
         NotificationEventType $eventType,
         Shop $shop,
         Collection $recipients,
-        array $data
+        array $data,
+        array $context = [],
     ): ?Notification {
+        $rule = $this->rules->resolve($shop, $eventType, $context);
+
+        if ($rule) {
+            $recipients = $this->applyRecipientOverride($rule, $shop, $recipients);
+        }
+
         if ($recipients->isEmpty()) {
             return null;
         }
 
-        return DB::transaction(function () use ($eventType, $shop, $recipients, $data) {
+        return DB::transaction(function () use ($eventType, $shop, $recipients, $data, $rule) {
             $groupKey = $data['group_key'] ?? null;
             $cooldownMinutes = $data['group_cooldown_minutes'] ?? 30;
 
             if ($groupKey) {
                 $existing = $this->reopenGroupedNotification($shop, $groupKey, $cooldownMinutes);
-
                 if ($existing) {
                     return $existing;
                 }
             }
 
             $reference = $data['reference'] ?? null;
-            $priority = $data['priority'] ?? $eventType->defaultPriority();
+            $priority = $rule?->priority_override ?? $data['priority'] ?? $eventType->defaultPriority();
 
             $notification = Notification::create([
                 'shop_id' => $shop->id,
@@ -85,19 +89,27 @@ class NotificationDispatcher
                 'created_by' => $data['created_by'] ?? null,
             ]);
 
-            $this->fanOut($notification, $recipients, $eventType);
+            $this->fanOut($notification, $recipients, $eventType, $rule);
 
             return $notification->fresh();
         });
     }
 
-    /**
-     * If the same underlying problem (same group_key) already produced a
-     * notification within the cooldown window, bump its occurrence counter
-     * instead of spamming a new row — and re-surface it for anyone who
-     * already dismissed/read the earlier occurrence, since a recurring
-     * problem should keep bothering people until it's actually resolved.
-     */
+    private function applyRecipientOverride(NotificationRule $rule, Shop $shop, Collection $default): Collection
+    {
+        return match ($rule->recipient_override_type) {
+            'permission' => $rule->recipient_override_permission
+                ? $this->recipientResolver->byPermission($shop, $rule->recipient_override_permission)
+                : $default,
+            'users' => $rule->recipient_override_user_ids
+                ? $this->recipientResolver->byUsers(
+                    User::withoutGlobalScopes()->whereIn('id', $rule->recipient_override_user_ids)->get()
+                )
+                : $default,
+            default => $default,
+        };
+    }
+
     private function reopenGroupedNotification(Shop $shop, string $groupKey, int $cooldownMinutes): ?Notification
     {
         $existing = Notification::withoutGlobalScopes()
@@ -122,7 +134,7 @@ class NotificationDispatcher
         return $existing->fresh();
     }
 
-    private function fanOut(Notification $notification, Collection $recipients, NotificationEventType $eventType): void
+    private function fanOut(Notification $notification, Collection $recipients, NotificationEventType $eventType, ?NotificationRule $rule): void
     {
         $anyQueued = false;
 
@@ -134,7 +146,7 @@ class NotificationDispatcher
                 'delivered_at' => now(),
             ]);
 
-            foreach ($this->effectiveChannels($user, $notification, $eventType) as $channel) {
+            foreach ($this->effectiveChannels($user, $notification, $eventType, $rule) as $channel) {
                 $delivery = NotificationDelivery::create([
                     'notification_recipient_id' => $recipient->id,
                     'channel' => $channel->value,
@@ -165,19 +177,14 @@ class NotificationDispatcher
     }
 
     /**
-     * Effective channel set for one recipient = the event type's defaults,
-     * WIDENED by any channel the user explicitly turned on for this category
-     * and NARROWED by any channel they explicitly turned off. A stored
-     * NotificationPreference row only ever exists for an explicit override —
-     * its absence means "use the event type's default" (see
-     * notification_preferences migration).
-     *
-     * In-App is never opt-outable — it is the floor every ERP in this class
-     * (Dynamics, Odoo) guarantees; the bell/history must always work.
+     * Baseline channel set = the rule's channel_override if one applies,
+     * otherwise the event type's own defaults. Per-user NotificationPreference
+     * rows then still widen/narrow on top of that baseline. In-App is never
+     * opt-outable by either a rule or a preference.
      *
      * @return array<int, NotificationChannel>
      */
-    private function effectiveChannels(User $user, Notification $notification, NotificationEventType $eventType): array
+    private function effectiveChannels(User $user, Notification $notification, NotificationEventType $eventType, ?NotificationRule $rule): array
     {
         $preferences = NotificationPreference::withoutGlobalScopes()
             ->where('user_id', $user->id)
@@ -185,17 +192,20 @@ class NotificationDispatcher
             ->get()
             ->keyBy(fn (NotificationPreference $p) => $p->channel->value);
 
-        $defaults = collect($eventType->defaultChannels())->map(fn (NotificationChannel $c) => $c->value);
+        $baseline = $rule?->channel_override
+            ?? collect($eventType->defaultChannels())->map(fn (NotificationChannel $c) => $c->value)->all();
+
+        $baseline = collect($baseline);
 
         return collect(NotificationChannel::cases())
-            ->filter(function (NotificationChannel $channel) use ($preferences, $defaults) {
+            ->filter(function (NotificationChannel $channel) use ($preferences, $baseline) {
                 if ($channel === NotificationChannel::InApp) {
                     return true;
                 }
 
                 $pref = $preferences->get($channel->value);
 
-                return $pref !== null ? $pref->is_enabled : $defaults->contains($channel->value);
+                return $pref !== null ? $pref->is_enabled : $baseline->contains($channel->value);
             })
             ->values()
             ->all();
@@ -204,7 +214,10 @@ class NotificationDispatcher
     private function buildPayload(array $data, ?Model $reference): array
     {
         return array_merge(
-            ['deep_link' => $this->deepLinks->resolve($reference)],
+            [
+                'deep_link' => $this->deepLinks->resolve($reference),
+                'placeholders' => $data['placeholders'] ?? [],
+            ],
             $data['payload'] ?? []
         );
     }

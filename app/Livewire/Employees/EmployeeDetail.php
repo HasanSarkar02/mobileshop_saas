@@ -42,6 +42,8 @@ class EmployeeDetail extends Component
             'permissions',
             'branch',
             'employeeProfile',
+            'activeSalaryStructure.policy',
+            'activeSalaryStructure.department',
         ]);
 
         $this->selectedRole = $employee->roles->first()?->name ?? '';

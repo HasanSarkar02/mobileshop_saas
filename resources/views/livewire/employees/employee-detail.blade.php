@@ -85,28 +85,67 @@
         <div wire:show="activeTab === 'overview'" class="p-5 space-y-4">
             @if ($employee->employeeProfile)
                 @php $p = $employee->employeeProfile; @endphp
-                <h3 class="font-semibold text-gray-900 text-sm">Salary Breakdown</h3>
-                <div class="grid sm:grid-cols-2 gap-4">
-                    <div class="space-y-2 text-sm">
-                        @foreach ([['label' => 'Base Salary', 'value' => $p->base_salary], ['label' => 'House Allowance', 'value' => $p->house_allowance], ['label' => 'Transport Allow.', 'value' => $p->transport_allowance], ['label' => 'Other Allowance', 'value' => $p->other_allowance]] as $row)
-                            @if ($row['value'] > 0)
-                                <div class="flex justify-between">
-                                    <span class="text-gray-500">{{ $row['label'] }}</span>
-                                    <span>৳{{ number_format($row['value'], 2) }}</span>
+                {{-- Salary Information --}}
+                <div class="card p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="font-semibold text-gray-900 text-sm">Salary Structure</h3>
+                        @can('payroll.manage_structure')
+                            <a href="{{ route('payroll.salary.setup', $employee) }}" wire:navigate
+                                class="text-xs text-indigo-600 hover:underline font-medium">
+                                {{ $employee->activeSalaryStructure ? 'Edit Setup →' : '+ Setup Salary →' }}
+                            </a>
+                        @endcan
+                    </div>
+
+                    @if ($structure = $employee->activeSalaryStructure)
+                        <div class="space-y-2">
+                            @foreach ([['label' => 'Policy', 'value' => $structure->policy?->name], ['label' => 'Department', 'value' => $structure->department?->name ?? '—'], ['label' => 'Designation', 'value' => $structure->designation ?? '—'], ['label' => 'Employment Type', 'value' => $structure->employment_type?->label()], ['label' => 'Payment Via', 'value' => $structure->paymentAccount?->name ?? '—'], ['label' => 'Effective From', 'value' => $structure->effective_from?->format('d M Y')], ['label' => 'Working Days', 'value' => $structure->monthly_working_days . ' days/month']] as $row)
+                                @if ($row['value'])
+                                    <div class="flex gap-3 text-sm">
+                                        <span class="text-gray-400 w-36 shrink-0">{{ $row['label'] }}</span>
+                                        <span class="text-gray-800 font-medium">{{ $row['value'] }}</span>
+                                    </div>
+                                @endif
+                            @endforeach
+
+                            {{-- Component breakdown --}}
+                            @php
+                                $comps = \App\Models\EmployeeSalaryComponent::where(
+                                    'salary_structure_id',
+                                    $structure->id,
+                                )
+                                    ->with('component')
+                                    ->get();
+                            @endphp
+                            @if ($comps->isNotEmpty())
+                                <div class="border-t border-gray-100 pt-3 mt-3">
+                                    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                                        Component Overrides
+                                    </div>
+                                    @foreach ($comps as $comp)
+                                        <div class="flex justify-between text-sm py-0.5">
+                                            <span class="text-gray-500">{{ $comp->component?->name }}</span>
+                                            <span class="font-medium text-gray-800">
+                                                @if ($comp->calculation_type === 'percentage')
+                                                    {{ $comp->value }}% of {{ $comp->percentage_of }}
+                                                @else
+                                                    ৳{{ number_format($comp->value, 0) }}
+                                                @endif
+                                            </span>
+                                        </div>
+                                    @endforeach
                                 </div>
                             @endif
-                        @endforeach
-                        <div class="flex justify-between font-bold border-t border-gray-200 pt-2">
-                            <span>Gross Salary</span>
-                            <span class="text-indigo-700">৳{{ number_format($p->grossSalary(), 2) }}</span>
                         </div>
-                    </div>
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between"><span class="text-gray-500">Joining
-                                Date</span><span>{{ $p->joining_date?->format('d M Y') ?? '—' }}</span></div>
-                        <div class="flex justify-between"><span
-                                class="text-gray-500">NID</span><span>{{ $p->nid_number ?? '—' }}</span></div>
-                    </div>
+                    @else
+                        <div class="text-sm text-amber-600 bg-amber-50 rounded-xl p-3">
+                            ⚠ No salary structure configured.
+                            @can('payroll.manage_structure')
+                                <a href="{{ route('payroll.salary.setup', $employee) }}" wire:navigate
+                                    class="underline ml-1">Set up now →</a>
+                            @endcan
+                        </div>
+                    @endif
                 </div>
             @else
                 <p class="text-sm text-gray-400">No salary profile configured yet.
