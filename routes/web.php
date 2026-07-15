@@ -77,6 +77,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('shops/create', CreateShop::class)->name('shops.create');
         Route::get('shops/{shop}', ShopDetail::class)->name('shops.show');
         Route::post('impersonate/{user}', [ImpersonationController::class, 'start'])->name('impersonate.start');
+        Route::get('billing', \App\Livewire\SuperAdmin\BillingDashboard::class)->name('billing');
     });
 });
 
@@ -187,23 +188,27 @@ Route::middleware(['auth:web'])->group(function () {
 
 
     Route::prefix('reports')->name('reports.')->group(function () {
-    // existing:
-    Route::livewire('profit-loss',     ProfitLossReport::class)->name('pl');
-    Route::livewire('sales',           SalesReport::class)->name('sales');
-    Route::livewire('stock-valuation', StockValuationReport::class)->name('stock');
-    Route::livewire('customer-due',    CustomerDueReport::class)->name('customer-due');
+        Route::livewire('profit-loss',     ProfitLossReport::class)->name('pl');
+        Route::livewire('sales',           SalesReport::class)->name('sales');
+        Route::livewire('stock-valuation', StockValuationReport::class)->name('stock');
+        Route::livewire('customer-due',    CustomerDueReport::class)->name('customer-due');
 
-    // NEW:
-    Route::livewire('expenses',        \App\Livewire\Reports\ExpenseReport::class)->name('expenses');
-    Route::livewire('service',         \App\Livewire\Reports\ServiceReport::class)->name('service');
-    Route::livewire('used-phones',     \App\Livewire\Reports\UsedPhoneReport::class)->name('used-phones');
-    Route::livewire('imei-ledger',     \App\Livewire\Reports\ImeiLedgerReport::class)->name('imei-ledger');
+        Route::livewire('expenses',        \App\Livewire\Reports\ExpenseReport::class)->name('expenses');
+        Route::livewire('service',         \App\Livewire\Reports\ServiceReport::class)->name('service');
+        Route::livewire('used-phones',     \App\Livewire\Reports\UsedPhoneReport::class)->name('used-phones');
+        Route::livewire('imei-ledger',     \App\Livewire\Reports\ImeiLedgerReport::class)->name('imei-ledger');
 
-    // Print/PDF/CSV:
-    Route::get('profit-loss/print',    [DocumentController::class, 'profitLossPrint'])->name('pl.print');
-    Route::get('profit-loss/pdf',      [DocumentController::class, 'profitLossPdf'])->name('pl.pdf');
-    Route::get('profit-loss/csv',      [DocumentController::class, 'profitLossCsv'])->name('pl.csv');
-    Route::get('expenses/print',       [DocumentController::class, 'expenseReportPrint'])->name('expenses.print');
+        // Print/PDF/CSV:
+        Route::get('profit-loss/print',    [DocumentController::class, 'profitLossPrint'])->name('pl.print');
+        Route::get('profit-loss/pdf',      [DocumentController::class, 'profitLossPdf'])->name('pl.pdf');
+        Route::get('profit-loss/csv',      [DocumentController::class, 'profitLossCsv'])->name('pl.csv');
+        Route::get('expenses/print',       [DocumentController::class, 'expenseReportPrint'])->name('expenses.print');
+
+        Route::get('trial-balance',    \App\Livewire\Reports\TrialBalanceReport::class)->name('trial-balance');
+        Route::get('balance-sheet',    \App\Livewire\Reports\BalanceSheetReport::class)->name('balance-sheet');
+        Route::get('general-ledger',   \App\Livewire\Reports\GeneralLedgerReport::class)->name('general-ledger');
+        Route::get('supplier-ledger',  \App\Livewire\Reports\SupplierLedgerReport::class)->name('supplier-ledger');
+    
     });
 
 
@@ -271,6 +276,9 @@ Route::middleware(['auth:web'])->group(function () {
         Route::get('expenses/print',         [DocumentController::class, 'expenseReportPrint'])->name('expenses.print');
         Route::get('service/print',          [DocumentController::class, 'serviceReportPrint'])->name('service.print');
         Route::get('imei-ledger/print',      [DocumentController::class, 'imeiLedgerPrint'])->name('imei-ledger.print');
+        Route::get('trial-balance/print',  [DocumentController::class, 'trialBalancePrint'])->name('trial-balance.print');
+        Route::get('balance-sheet/print',  [DocumentController::class, 'balanceSheetPrint'])->name('balance-sheet.print');
+        Route::get('general-ledger/print', [DocumentController::class, 'generalLedgerPrint'])->name('general-ledger.print');
     });
 
 
