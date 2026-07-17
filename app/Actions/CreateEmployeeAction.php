@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\UserType;
+use App\Events\EmployeeInvited;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\UserInviter;
@@ -39,6 +40,7 @@ class CreateEmployeeAction
             $employee->assignRole($data['role']);
 
             $this->userInviter->invite($employee, "an employee of {$shop->name}");
+            DB::afterCommit(fn () => event(new EmployeeInvited($employee, $shop)));
 
             return $employee;
         });

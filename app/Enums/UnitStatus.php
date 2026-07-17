@@ -42,4 +42,38 @@ enum UnitStatus: string
     {
         return in_array($this, [self::Sold, self::WrittenOff, self::RmaToSupplier], true);
     }
+
+    public function label(): string
+    {
+        return match($this) {
+            self::InStock                   => 'In Stock',
+            self::Sold                      => 'Sold',
+            self::ReturnedPendingInspection => 'Returned – Pending Inspection',
+            self::Damaged                   => 'Damaged',
+            self::Lost                      => 'Lost',
+            self::Reserved                  => 'Reserved',
+            self::RmaToSupplier             => 'RMA to Supplier',
+            self::WrittenOff                => 'Written Off',
+        };
+    }
+
+    public function badgeClass(): string
+    {
+        return match($this) {
+            self::InStock                   => 'badge-green',
+            self::Sold                      => 'badge-gray',
+            self::ReturnedPendingInspection => 'badge-yellow',
+            self::Damaged                   => 'badge-red',
+            self::Lost                      => 'badge-red',
+            self::Reserved                  => 'badge-blue',
+            self::RmaToSupplier             => 'badge-indigo',
+            self::WrittenOff                => 'badge-gray',
+        };
+    }
+
+    /** Statuses that count as "available for sale" */
+    public function isAvailable(): bool
+    {
+        return $this === self::InStock;
+    }
 }

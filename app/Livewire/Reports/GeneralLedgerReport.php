@@ -17,12 +17,18 @@ use Livewire\Component;
 class GeneralLedgerReport extends Component
 {
     use HasReportFilter;
+    use \App\Traits\HasAuthorization;
 
     #[Url(as: 'account')]
     public int    $accountId = 0;
 
     #[Url(as: 'type')]
     public string $typeFilter = '';
+
+    public function mount(): void
+{
+    $this->requirePermission('reports.financial');
+}
 
     #[Computed]
     public function accounts(): \Illuminate\Database\Eloquent\Collection

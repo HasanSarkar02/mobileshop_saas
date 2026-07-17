@@ -13,6 +13,7 @@ use Livewire\WithPagination;
 #[Title('Suppliers')]
 class SupplierList extends Component
 {
+    use \App\Traits\HasAuthorization;
     use WithPagination;
 
     #[Url(as: 'q')]
@@ -20,6 +21,11 @@ class SupplierList extends Component
 
     public function updatingSearch(): void { $this->resetPage(); }
 
+    public function mount(): void
+    {
+        $this->requirePermission('suppliers.manage');
+    }
+    
     public function delete(int $id): void
     {
         $supplier = Supplier::findOrFail($id);

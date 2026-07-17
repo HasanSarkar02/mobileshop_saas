@@ -9,10 +9,14 @@ enum PermissionEnum: string
 
     // Products & Inventory
     case ProductsView = 'products.view';
-    case ProductsManage = 'products.manage'; // create / edit / delete / import
+    case ProductsManage = 'products.manage';
     case StockAdjust = 'stock.adjust';
     case StockTransfer = 'stock.transfer';
-    case StockConfirmTransfer = 'stock.confirm_transfer'; // confirm receipt at destination branch
+    case StockConfirmTransfer = 'stock.confirm_transfer'; 
+    case InventoryView      = 'inventory.view';
+    case InventoryCreate    = 'inventory.create';
+    case InventoryEdit      = 'inventory.edit';
+    case InventoryDelete    = 'inventory.delete';
 
     // IMEI / Serialized Units
     case ImeiView = 'imei.view';
@@ -29,23 +33,23 @@ enum PermissionEnum: string
     case SalesVoid = 'sales.void';
     case SalesRefund = 'sales.refund';
     case SalesApplyDiscount = 'sales.apply_discount';
+    case SalesExport        = 'sales.export';
 
     // Customers
     case CustomersView = 'customers.view';
     case CustomersManage = 'customers.manage';
-    case CustomersRecordDuePayment = 'customers.record_due_payment'; // collect baki payment
-    case CustomersWriteOffDue = 'customers.write_off_due'; // forgive bad debt — sensitive
+    case CustomersRecordDuePayment = 'customers.record_due_payment';
+    case CustomersWriteOffDue = 'customers.write_off_due';
 
     // Suppliers & Purchases
     case SuppliersManage = 'suppliers.manage';
+    case SuppliersPayment   = 'suppliers.payment';
     case PurchasesView = 'purchases.view';
     case PurchasesCreate = 'purchases.create';
     case PurchasesApprove = 'purchases.approve';
+    case PurchasesManage    = 'purchases.manage';
+    case PurchasesReturn    = 'purchases.return';
 
-    // Finance Partners / EMI (TopPay, PalmPay etc.)
-    case FinancePartnersManage = 'finance_partners.manage';
-    case FinancePartnersRecordPayment = 'finance_partners.record_payment';
-    case FinancePartnersViewDue = 'finance_partners.view_due';
     case FinancePartnersWriteOff = 'finance_partners.write_off'; // shortfall / bad debt — sensitive
 
     // Warranty
@@ -56,11 +60,22 @@ enum PermissionEnum: string
     // Service / Repair
     case ServiceView = 'service.view';
     case ServiceManage = 'service.manage';
+    case ServicePayment     = 'service.payment';
 
     // Expenses
     case ExpensesView = 'expenses.view';
     case ExpensesCreate = 'expenses.create';
     case ExpensesApprove = 'expenses.approve';
+    case ExpensesVoid       = 'expenses.void';
+    case ExpensesExport     = 'expenses.export';
+
+    // Used Phones
+    case UsedPhonesView     = 'used_phones.view';
+    case UsedPhonesManage   = 'used_phones.manage';
+
+    // Finance Partners
+    case EmiView            = 'emi.view';
+    case EmiSettle          = 'emi.settle';
 
     // Payroll
     case PayrollManage = 'payroll.manage';
@@ -75,10 +90,10 @@ enum PermissionEnum: string
 
     // Employees & Roles
     case EmployeesView = 'employees.view';
-    case EmployeesManage = 'employees.manage'; // create / edit / activate / deactivate
-    case EmployeesManagePermissions = 'employees.manage_permissions'; // assign roles/permissions — rarely delegated
-    case RolesManage = 'roles.manage'; // create / edit / delete custom roles
-
+    case EmployeesManage = 'employees.manage';
+    case EmployeesManagePermissions = 'employees.manage_permissions';
+    case RolesManage = 'roles.manage'; 
+    case EmployeesPermissions = 'employees.permissions';
 
     // ── Treasury ──────────────────────────────────────────────────────────────
     case TreasuryView       = 'treasury.view';
@@ -109,6 +124,10 @@ enum PermissionEnum: string
     case PayrollViewSalary       = 'payroll.view_salary';
     case PayrollManageDepartments= 'payroll.manage_departments';
 
+
+    case NotificationsManageTemplates = 'notifications.manage_templates';
+    case NotificationsManageRules = 'notifications.manage_rules';
+
     // NOTE: "Owner's Drawing" is intentionally NOT a permission here.
     // It's gated purely by $user->isOwner() in code — too sensitive to
     // ever risk assigning to an employee by mistake.
@@ -119,6 +138,10 @@ enum PermissionEnum: string
             self::DashboardView => 'View dashboard',
             self::ProductsView => 'View products',
             self::ProductsManage => 'Add / edit / delete products',
+            self::InventoryView => 'View Inventory',
+            self::InventoryCreate => 'Create Inventory',
+            self::InventoryEdit => 'Edit Inventory Item',
+            self::InventoryDelete => 'Delete Inventory Item',
             self::StockAdjust => 'Adjust stock quantity',
             self::StockTransfer => 'Transfer stock between branches',
             self::StockConfirmTransfer => 'Confirm receipt of a stock transfer',
@@ -131,27 +154,31 @@ enum PermissionEnum: string
             self::SalesView => 'View sales history',
             self::SalesVoid => 'Void / cancel a sale',
             self::SalesRefund => 'Process refunds & returns',
+            self::SalesExport => 'Export Sales',
             self::SalesApplyDiscount => 'Apply special discount on sale',
             self::CustomersView => 'View customers',
             self::CustomersManage => 'Add / edit customers',
             self::CustomersRecordDuePayment => 'Record a customer due payment',
             self::CustomersWriteOffDue => "Write off a customer's bad debt",
             self::SuppliersManage => 'Manage suppliers',
+            self::SuppliersPayment => 'Record Payment',
             self::PurchasesView => 'View purchases',
+            self::PurchasesManage => 'Manage Purchase module',
+            self::PurchasesReturn => 'Return purchased items',
             self::PurchasesCreate => 'Create purchase entries',
             self::PurchasesApprove => 'Approve purchase orders',
-            self::FinancePartnersManage => 'Manage finance partners (TopPay, PalmPay, etc.)',
-            self::FinancePartnersRecordPayment => 'Record finance partner settlements',
-            self::FinancePartnersViewDue => 'View finance partner due reports',
             self::FinancePartnersWriteOff => 'Write off a finance partner shortfall',
             self::WarrantyView => 'Check warranty eligibility / status',
             self::WarrantyApproveClaim => 'Approve a warranty repair claim',
             self::WarrantyClaimSupplier => 'Initiate a supplier RMA claim',
             self::ServiceView => 'View service / repair jobs',
             self::ServiceManage => 'Manage service / repair jobs',
+            self::ServicePayment => 'Record payments',
             self::ExpensesView => 'View expenses',
             self::ExpensesCreate => 'Create expense entries',
             self::ExpensesApprove => 'Approve expenses',
+            self::ExpensesVoid => 'Void an expense',
+            self::ExpensesExport=> 'Export Expense Report',
             self::PayrollManage => 'Manage employee salary / payroll',
             self::AccountingViewBasicReports => 'View basic reports (daily sales, stock)',
             self::AccountingViewFullReports => 'View full financial reports (P&L, balance sheet)',
@@ -184,6 +211,14 @@ enum PermissionEnum: string
             self::PayrollExport           => 'Export payroll reports and CSV',
             self::PayrollViewSalary       => 'View sensitive salary amounts',
             self::PayrollManageDepartments=> 'Create and manage departments',
+            self::UsedPhonesView => 'View Used Phones',
+            self::UsedPhonesManage => 'Manage Used phone entry/edit',
+            self::EmiView => 'Manage finance partners (TopPay, PalmPay, etc.)',
+            self::EmiSettle => 'Record finance partner settlements',
+            self::EmployeesPermissions => 'Manage Employee Permissions',
+            self::NotificationsManageTemplates => 'Manage notification templates',
+            self::NotificationsManageRules => 'Manage notification rules',
+
         };
     }
 
@@ -198,16 +233,16 @@ enum PermissionEnum: string
             in_array($this, [self::SalesCreate, self::SalesView, self::SalesVoid, self::SalesRefund, self::SalesApplyDiscount]) => 'POS & Sales',
             in_array($this, [self::CustomersView, self::CustomersManage, self::CustomersRecordDuePayment, self::CustomersWriteOffDue]) => 'Customers',
             in_array($this, [self::SuppliersManage, self::PurchasesView, self::PurchasesCreate, self::PurchasesApprove]) => 'Suppliers & Purchases',
-            in_array($this, [self::FinancePartnersManage, self::FinancePartnersRecordPayment, self::FinancePartnersViewDue, self::FinancePartnersWriteOff]) => 'EMI / Finance Partners',
+            in_array($this, [self::FinancePartnersWriteOff, self::EmiView, self::EmiSettle]) => 'EMI / Finance Partners',
             in_array($this, [self::WarrantyView, self::WarrantyApproveClaim, self::WarrantyClaimSupplier]) => 'Warranty',
             in_array($this, [self::ServiceView, self::ServiceManage]) => 'Service & Repair',
             in_array($this, [self::ExpensesView, self::ExpensesCreate, self::ExpensesApprove]) => 'Expenses',
-            in_array($this, [self::PayrollView, self::PayrollManage]) => 'Payroll',
+            in_array($this, [self::PayrollView, self::PayrollManage, self::PayrollManageDepartments]) => 'Payroll',
             in_array($this, [self::AccountingViewBasicReports, self::AccountingViewFullReports, self::AccountingManageEntries, self::AccountingReverseEntry, self::AccountingManagePeriodLocks, self::ReportsExport]) => 'Accounting & Reports',
             in_array($this, [self::EmployeesView, self::EmployeesManage, self::EmployeesManagePermissions, self::RolesManage]) => 'Employees & Roles',
             in_array($this, [self::TreasuryView, self::TreasuryTransfer, self::TreasuryEquity, self::TreasuryAdjust, self::TreasuryBankFinance, self::TreasuryApprove, self::TreasuryReverse]) => 'Treasury',
             $this === self::SettingsManage => 'Settings',
-            $this === self::NotificationsManageSettings => 'Notifications',
+            in_array($this, [self::NotificationsManageSettings, self::NotificationsManageTemplates, self::NotificationsManageRules]) => 'Notifications',
             default => 'Other',
         };
     }

@@ -20,7 +20,7 @@ class SendTestEmailAction
             Mail::mailer($mailerName)
                 ->to($toEmail)
                 ->send((new NotificationMail(
-                    subject: 'Test email from ' . $shop->name,
+                    mailSubject: 'Test email from ' . $shop->name,
                     bodyText: "This is a test email confirming your SMTP settings for {$shop->name} are working correctly.",
                     shopName: $shop->name,
                 ))->from(

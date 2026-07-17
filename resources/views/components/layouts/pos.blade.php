@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="antialiased">
 
 <head>
     <meta charset="UTF-8">
@@ -12,7 +12,7 @@
     @livewireStyles
 </head>
 
-<body class="h-full font-sans overflow-hidden bg-gray-100" x-data="{
+<body class="min-h-screen font-sans bg-gray-100" x-data="{
     isFullscreen: false,
     toggleFullscreen() {
         if (!document.fullscreenElement) {

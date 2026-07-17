@@ -12,7 +12,7 @@
 <body class="h-full bg-gradient-to-br from-indigo-50 to-white flex items-center justify-center px-4 font-sans">
     <div class="w-full max-w-sm">
         <div class="text-center mb-8">
-            <h1 class="text-2xl font-bold text-indigo-700">ShopSaaS</h1>
+            <h1 class="text-2xl font-bold text-indigo-700">SmartShop ERP</h1>
             <p class="text-gray-500 text-sm mt-1">Sign in to your shop account</p>
         </div>
         <div class="card p-6">
@@ -53,6 +53,10 @@
                 <button type="submit" class="btn-primary w-full">Sign In</button>
             </form>
         </div>
+    </div>
+    <div class="absolute bottom-6 left-0 right-0 text-center text-sm text-gray-500">
+        &copy; {{ date('Y') }} SmartShop ERP. Developed by <span class="font-medium text-gray-700">Hasan
+            Sarkar</span>.
     </div>
 </body>
 

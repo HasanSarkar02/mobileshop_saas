@@ -10,7 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['shop_id', 'product_id', 'sku', 'attributes_label', 'attributes', 'selling_price', 'is_active'])]
+#[Fillable(['shop_id', 'product_id', 'sku', 'attributes_label', 'attributes', 'selling_price', 'is_active','barcode',
+        'min_stock_level'])]
 class ProductVariant extends Model
 {
     use HasFactory, SoftDeletes, BelongsToShop;
@@ -37,5 +38,15 @@ class ProductVariant extends Model
     public function branchStocks(): HasMany
     {
         return $this->hasMany(BranchStock::class);
+    }
+
+    public function effectiveLowStockThreshold(?int $globalThreshold = 3): int
+    {
+        return $this->min_stock_level ?? $globalThreshold;
+    }
+
+    public function scopeByBarcode($query, string $barcode)
+    {
+        return $query->where('barcode', $barcode);
     }
 }

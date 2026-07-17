@@ -20,6 +20,9 @@ class DatabaseSeeder extends Seeder
             SuperAdminSeeder::class,
             DefaultCatalogSeeder::class,
             ExpenseCategorySeeder::class,
+            NotificationTemplateSeeder::class,
+            PayrollComponentSeeder::class,
+            SubscriptionPlanSeeder::class,
         ]);
     }
 }

@@ -134,40 +134,52 @@
                             ৳{{ number_format(((float) ($line['unit_cost'] ?? 0)) * ((int) ($line['quantity'] ?? 1)), 2) }}
                         </div>
 
-                        {{-- IMEI Entry Section (serialized products only) --}}
+                        {{-- IMEI Entry Section with Scanner (serialized products only) --}}
                         @if ($line['tracking_type'] === 'serialized')
                             <div class="border-t border-dashed border-indigo-200 pt-4 space-y-3">
-                                <div class="flex items-center gap-2">
-                                    <span class="badge badge-blue">IMEI / Serial Numbers Required</span>
-                                    <span class="text-xs text-gray-400">Enter {{ $line['quantity'] }} IMEI(s)</span>
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <span class="badge badge-blue">IMEI / Serial Numbers Required</span>
+                                        <span class="text-xs text-gray-400 ml-2">Enter {{ $line['quantity'] }}
+                                            IMEI(s)</span>
+                                    </div>
                                 </div>
                                 @error('lines.' . $idx . '.serial_numbers')
                                     <p class="error">{{ $message }}</p>
                                 @enderror
 
                                 @foreach ($line['serial_numbers'] as $si => $serial)
-                                    <div class="grid sm:grid-cols-2 gap-2 items-start"
-                                        wire:key="serial-{{ $idx }}-{{ $si }}">
-                                        <div>
-                                            <label class="text-xs text-gray-500 mb-0.5 block">IMEI 1
+                                    <div class="flex items-center gap-2"
+                                        wire:key="imei-{{ $idx }}-{{ $si }}" data-imei-row>
+
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500 mb-0.5 block">IMEI
                                                 #{{ $si + 1 }} *</label>
                                             <input
                                                 wire:model="lines.{{ $idx }}.serial_numbers.{{ $si }}.serial_number"
                                                 wire:change="validateImei({{ $idx }}, {{ $si }})"
                                                 type="text" inputmode="numeric" maxlength="15"
-                                                placeholder="14–15 digit IMEI"
-                                                class="input text-mono @error('lines.' . $idx . '.serial_numbers.' . $si . '.serial_number') input-error @enderror">
+                                                placeholder="Scan or type IMEI" class="input font-mono text-sm"
+                                                id="imei-{{ $idx }}-{{ $si }}">
                                             @error('lines.' . $idx . '.serial_numbers.' . $si . '.serial_number')
                                                 <p class="error">{{ $message }}</p>
                                             @enderror
                                         </div>
-                                        <div>
-                                            <label class="text-xs text-gray-500 mb-0.5 block">IMEI 2 (Dual SIM —
-                                                optional)</label>
+
+                                        {{-- Scanner Button --}}
+                                        <button type="button" x-data
+                                            @click="$dispatch('scan-imei-{{ $idx }}-{{ $si }}')"
+                                            class="btn-secondary btn-sm mt-5 shrink-0" title="Scan with Camera">
+                                            📷
+                                        </button>
+
+                                        {{-- Secondary IMEI (optional) --}}
+                                        <div class="flex-1">
+                                            <label class="text-xs text-gray-500 mb-0.5 block">IMEI 2 (Optional)</label>
                                             <input
                                                 wire:model="lines.{{ $idx }}.serial_numbers.{{ $si }}.secondary_serial_number"
                                                 type="text" inputmode="numeric" maxlength="15"
-                                                placeholder="Second IMEI (if any)" class="input text-mono">
+                                                placeholder="Second IMEI (if any)" class="input font-mono text-sm">
                                         </div>
                                     </div>
                                 @endforeach
@@ -175,6 +187,60 @@
                         @endif
                     </div>
                 @endforeach
+                {{-- Camera scanner for IMEI (continuous mode) --}}
+                <div x-data="{
+                    activeField: null,
+                    scanning: false,
+                    videoStream: null,
+                    detector: null,
+                
+                    async startForField(fieldId) {
+                        this.activeField = document.getElementById(fieldId);
+                        if (!('BarcodeDetector' in window)) {
+                            this.activeField?.focus();
+                            return;
+                        }
+                        this.detector = new BarcodeDetector({ formats: ['code_128', 'ean_13', 'qr_code', 'data_matrix'] });
+                        try {
+                            this.videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                            this.$refs.imeiVideo.srcObject = this.videoStream;
+                            await this.$refs.imeiVideo.play();
+                            this.scanning = true;
+                            this.detect();
+                        } catch (e) {}
+                    },
+                
+                    async detect() {
+                        if (!this.scanning) return;
+                        try {
+                            const found = await this.detector.detect(this.$refs.imeiVideo);
+                            if (found.length > 0 && this.activeField) {
+                                const val = found[0].rawValue;
+                                this.activeField.value = val;
+                                this.activeField.dispatchEvent(new Event('input'));
+                                // Move to next IMEI field automatically
+                                const next = this.activeField.closest('[data-imei-row]')?.nextElementSibling?.querySelector('input');
+                                this.activeField = next || null;
+                                await new Promise(r => setTimeout(r, 1200));
+                            }
+                        } catch (e) {}
+                        if (this.scanning) requestAnimationFrame(() => this.detect());
+                    },
+                
+                    stop() {
+                        this.scanning = false;
+                        this.videoStream?.getTracks().forEach(t => t.stop());
+                    }
+                }">
+                    <div x-show="scanning" class="mt-2 rounded-xl overflow-hidden bg-black" style="display:none">
+                        <video x-ref="imeiVideo" class="w-full max-h-40 object-cover" playsinline muted></video>
+                        <div
+                            class="bg-black/70 text-white text-xs text-center py-1.5 flex items-center justify-between px-3">
+                            <span>Continuous IMEI scan</span>
+                            <button @click="stop()" class="text-red-300 hover:text-white">✕ Stop</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {{-- Grand Total + Submit --}}

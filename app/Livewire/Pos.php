@@ -229,12 +229,35 @@ class Pos extends Component
             return;
         }
 
-        // Try SKU
-        $variant = ProductVariant::where('sku', $code)->where('is_active', true)->with('product.brand')->first();
-        if ($variant && $variant->product->tracking_type === ProductTrackingType::NonSerialized) {
-            $this->addVariantToCart($variant->id);
+        // 2. Non-Serialized Product by Barcode (NEW)
+        $variantByBarcode = ProductVariant::where('shop_id', $shopId)
+            ->where('barcode', $code)
+            ->where('is_active', true)
+            ->with('product.brand')
+            ->first();
+        
+        if ($variantByBarcode && $variantByBarcode->product->tracking_type === ProductTrackingType::NonSerialized) {
+            $this->addVariantToCart($variantByBarcode->id);
+            $this->dispatch('notify', type: 'success', message: "Added: {$variantByBarcode->product->name}");
+            return;
+         }
+
+         // 3. Fallback: Non-Serialized by SKU (existing behavior)
+        $variantBySku = ProductVariant::where('sku', $code)
+            ->where('is_active', true)
+            ->with('product.brand')
+            ->first();
+        if ($variantBySku && $variantBySku->product->tracking_type === ProductTrackingType::NonSerialized) {
+            $this->addVariantToCart($variantBySku->id);
             return;
         }
+
+        // // Try SKU
+        // $variant = ProductVariant::where('sku', $code)->where('is_active', true)->with('product.brand')->first();
+        // if ($variant && $variant->product->tracking_type === ProductTrackingType::NonSerialized) {
+        //     $this->addVariantToCart($variant->id);
+        //     return;
+        // }
 
         $this->dispatch('notify', type: 'error', message: "Not found: {$code}");
     }

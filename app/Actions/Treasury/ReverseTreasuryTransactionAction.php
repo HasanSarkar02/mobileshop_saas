@@ -3,6 +3,7 @@
 namespace App\Actions\Treasury;
 
 use App\Enums\TreasuryTransactionStatus;
+use App\Events\TreasuryReversed;
 use App\Models\Shop;
 use App\Models\TreasuryTransaction;
 use App\Models\User;
@@ -98,7 +99,7 @@ class ReverseTreasuryTransactionAction
             //         'reversal_journal_id' => $reversalEntry->id,
             //     ])
             //     ->log('treasury_transaction.reversed');
-
+            DB::afterCommit(fn () => event(new TreasuryReversed($txn, $reversalTxn, $shop, $actor)));
             return $reversalTxn->fresh();
         });
     }

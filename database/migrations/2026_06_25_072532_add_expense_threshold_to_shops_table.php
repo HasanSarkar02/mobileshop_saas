@@ -11,8 +11,7 @@ return new class extends Migration
         Schema::table('shops', function (Blueprint $table) {
             // 0 = no threshold (everything auto-approves)
             $table->decimal('expense_approval_threshold', 12, 2)
-                ->default(0)
-                ->after('books_locked_through');
+                ->default(0);
         });
     }
 

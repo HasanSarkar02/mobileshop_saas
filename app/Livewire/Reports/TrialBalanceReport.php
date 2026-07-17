@@ -16,7 +16,12 @@ use Livewire\Component;
 class TrialBalanceReport extends Component
 {
     use HasReportFilter;
+    use \App\Traits\HasAuthorization;
 
+    public function mount(): void
+{
+    $this->requirePermission('reports.financial');
+}
     #[Computed]
     public function trialBalance(): array
     {
@@ -59,14 +64,20 @@ class TrialBalanceReport extends Component
 
             if ($balance == 0 && $dr == 0 && $cr == 0) continue;
 
-            $debitBalance  = max(0, $balance);
-            $creditBalance = $balance < 0 ? abs($balance) : 0;
+            $isDebitNormal = in_array($row->type, ['asset', 'expense']);
 
-            if ($balance >= 0) {
-                $totalDr += $debitBalance;
+            if ($isDebitNormal) {
+                // Asset & Expense
+                $debitBalance  = max(0, $balance);
+                $creditBalance = max(0, -$balance);
             } else {
-                $totalCr += $creditBalance;
+                // Liability, Equity & Revenue
+                $creditBalance = max(0, $balance);
+                $debitBalance  = max(0, -$balance);
             }
+
+            $totalDr += $debitBalance;
+            $totalCr += $creditBalance;
 
             $result[] = [
                 'code'           => $row->code,
@@ -75,6 +86,7 @@ class TrialBalanceReport extends Component
                 'debit_balance'  => $debitBalance,
                 'credit_balance' => $creditBalance,
             ];
+
         }
 
         return [

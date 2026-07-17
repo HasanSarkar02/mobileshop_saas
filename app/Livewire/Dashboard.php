@@ -104,6 +104,10 @@ class Dashboard extends Component
 
     private function pendingExpenses(\App\Models\User $user): int
     {
+        $user = Auth::user();
+        if (! $user->isOwner() && ! $user->can('expenses.approve')) {
+            return 0;
+        }
         // Show only expenses created by this employee that are pending
         return \App\Models\Expense::where('created_by', $user->id)
             ->where('status', 'pending')

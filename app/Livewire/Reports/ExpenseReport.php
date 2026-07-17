@@ -17,6 +17,12 @@ use Livewire\WithPagination;
 class ExpenseReport extends Component
 {
     use HasReportFilter, WithPagination;
+    use \App\Traits\HasAuthorization;
+
+    public function mount(): void
+{
+    $this->requirePermission('reports.view');
+}
 
     #[Url(as: 'view')]
     public string $activeView = 'summary';

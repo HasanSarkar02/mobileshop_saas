@@ -13,6 +13,7 @@ use Livewire\WithPagination;
 #[Title('Purchases')]
 class PurchaseList extends Component
 {
+    use \App\Traits\HasAuthorization;
     use WithPagination;
 
     #[Url(as: 'q')]
@@ -24,6 +25,11 @@ class PurchaseList extends Component
     #[Url]
     public string $dateTo = '';
 
+    public function mount(): void
+    {
+        $this->requirePermission('purchases.view');
+    }
+    
     public function updatingSearch(): void { $this->resetPage(); }
 
     public function render()

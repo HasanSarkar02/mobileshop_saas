@@ -15,8 +15,15 @@ use Livewire\Component;
 #[Title('Customer Due Report')]
 class CustomerDueReport extends Component
 {
+    use \App\Traits\HasAuthorization;
+    
     #[Url(as: 'view')]
     public string $activeView = 'customers'; // customers | finance_partners
+
+    public function mount(): void
+{
+    $this->requirePermission('reports.view');
+}
 
     #[Computed]
     public function customerDues(): Collection

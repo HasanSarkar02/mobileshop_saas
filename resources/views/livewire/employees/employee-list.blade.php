@@ -30,10 +30,37 @@
         </select>
 
         @can('employees.manage')
+            <button wire:click="$toggle('showLocalEmpForm')" class="btn-secondary btn-sm">
+                + Add Local Employee (No Account)
+            </button>
             <a href="{{ route('employees.create') }}" wire:navigate class="btn-primary sm:ml-auto whitespace-nowrap">
                 + Add Employee
             </a>
         @endcan
+    </div>
+    <div wire:show="showLocalEmpForm" class="card p-5 border-amber-200 bg-amber-50">
+        <h4 class="font-semibold text-amber-900 mb-3">Add Local Employee</h4>
+        <p class="text-xs text-amber-700 mb-3">
+            This employee will appear in payroll but cannot log into the system.
+            Use for cashiers, helpers, or staff without a computer.
+        </p>
+        <div class="flex gap-3">
+            <div class="flex-1">
+                <label class="label text-xs">Name *</label>
+                <input wire:model="localEmpName" type="text" class="input text-sm" placeholder="Employee name">
+                @error('localEmpName')
+                    <p class="error">{{ $message }}</p>
+                @enderror
+            </div>
+            <div class="w-44">
+                <label class="label text-xs">Phone</label>
+                <input wire:model="localEmpPhone" type="tel" class="input text-sm">
+            </div>
+            <div class="flex items-end gap-2">
+                <button wire:click="createLocalEmployee" class="btn-success btn-sm">Add</button>
+                <button wire:click="$set('showLocalEmpForm', false)" class="btn-secondary btn-sm">Cancel</button>
+            </div>
+        </div>
     </div>
 
     {{-- Table --}}

@@ -7,6 +7,9 @@
         </div>
         <div class="flex flex-wrap gap-2">
             @include('partials.shop-status-badge', ['status' => $shop->status])
+            <a href="{{ route('admin.shop-features', $shop) }}" wire:navigate class="btn-secondary btn-sm">
+                🔒 Manage Features
+            </a>
             @if ($shop->is_active)
                 <button wire:click="suspend" wire:confirm="Suspend this shop? All users will be locked out."
                     class="btn btn-sm btn-danger">Suspend</button>

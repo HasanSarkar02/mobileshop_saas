@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Events\PurchaseReturnProcessed;
 use App\Models\Account;
 use App\Models\BranchStock;
 use App\Models\ProductUnit;
@@ -152,6 +153,7 @@ class ProcessPurchaseReturnAction
 
             $this->recalculatePurchaseStatus($purchase);
 
+            DB::afterCommit(fn () => event(new PurchaseReturnProcessed($return, $shop)));
             return $return->fresh(['items.variant', 'supplier', 'purchase']);
         });
     }

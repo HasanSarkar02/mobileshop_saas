@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\UnitStatus;
+use App\Events\StockTransferInitiated;
 use App\Models\BranchStock;
 use App\Models\ProductUnit;
 use App\Models\Shop;
@@ -66,6 +67,7 @@ class InitiateStockTransferAction
                     ]);
                 }
             }
+            DB::afterCommit(fn () => event(new StockTransferInitiated($transfer, $shop)));
 
             return $transfer->fresh('items');
         });

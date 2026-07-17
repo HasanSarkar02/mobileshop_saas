@@ -8,6 +8,7 @@ use App\Models\Branch;
 use App\Models\ProductUnit;
 use App\Models\ProductVariant;
 use App\Models\Supplier;
+use App\Traits\HasAuthorization;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -17,6 +18,7 @@ use Livewire\Component;
 #[Title('New Purchase')]
 class CreatePurchase extends Component
 {
+    use HasAuthorization;
     public int $supplierId = 0;
     public int $branchId = 0;
     public string $purchaseDate = '';
@@ -34,6 +36,7 @@ class CreatePurchase extends Component
 
     public function mount(): void
     {
+        $this->requirePermission('purchases.manage');
         $this->purchaseDate = now()->format('Y-m-d');
         $this->branchId = (int) (
             Auth::user()->branch_id

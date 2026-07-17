@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Enums\PhoneCondition;
 use App\Enums\UnitStatus;
+use App\Events\UsedPhoneAcquired;
 use App\Models\Account;
 use App\Models\Branch;
 use App\Models\PaymentAccount;
@@ -136,6 +137,8 @@ class RecordUsedPhoneAcquisitionAction
                 branchId: $data['branch_id'],
                 actor: $actor,
             );
+
+            DB::afterCommit(fn () => event(new UsedPhoneAcquired($acquisition, $shop)));
 
             return $acquisition->fresh(['variant', 'productUnit', 'paymentAccount']);
         });

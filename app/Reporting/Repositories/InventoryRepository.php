@@ -70,6 +70,44 @@ class InventoryRepository extends BaseReportRepository
             ->get();
     }
 
+        /**
+     * Low Stock Alerts — Improved version with per-product threshold
+     */
+    public function lowStockAlerts(int $shopId, ?int $branchId = null): \Illuminate\Support\Collection
+    {
+        return DB::table('branch_stocks as bs')
+            ->join('product_variants as pv', 'pv.id', '=', 'bs.product_variant_id')
+            ->join('products as p', 'p.id', '=', 'pv.product_id')
+            ->leftJoin('brands as b', 'b.id', '=', 'p.brand_id')
+            ->leftJoin('branches as br', 'br.id', '=', 'bs.branch_id')
+            ->where('bs.shop_id', $shopId)
+            ->where('p.is_active', true)
+            ->where('pv.is_active', true)
+            ->where('p.tracking_type', 'non_serialized')
+            ->when($branchId, fn ($q) => $q->where('bs.branch_id', $branchId))
+            ->whereRaw('
+                (bs.quantity - COALESCE(bs.reserved_quantity, 0))
+                <= 
+                COALESCE(pv.min_stock_level, 3)
+            ')
+            ->selectRaw('
+                p.name AS product_name,
+                pv.sku,
+                pv.attributes_label,
+                COALESCE(b.name, "") AS brand,
+                br.name AS branch_name,
+                bs.quantity,
+                COALESCE(bs.reserved_quantity, 0) AS reserved_quantity,
+                COALESCE(bs.damaged_quantity, 0) AS damaged_quantity,
+                (bs.quantity - COALESCE(bs.reserved_quantity, 0)) AS available_quantity,
+                COALESCE(pv.min_stock_level, 3) AS threshold,
+                pv.id AS variant_id
+            ')
+            ->orderByRaw('available_quantity ASC')
+            ->limit(20)
+            ->get();
+    }
+
     /** IMEI-level stock counts by status */
     public function imeiStatusCounts(int $shopId, ?int $branchId = null): Collection
     {

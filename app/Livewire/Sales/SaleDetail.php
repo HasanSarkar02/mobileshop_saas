@@ -11,10 +11,12 @@ use Livewire\Component;
 #[Title('Sale Detail')]
 class SaleDetail extends Component
 {
+    use \App\Traits\HasAuthorization;
     public Sale $sale;
 
     public function mount(Sale $sale): void
     {
+        $this->requirePermission('sales.view');
         $this->sale = $sale->load([
             'items.variant.product.brand',
             'items.productUnit',

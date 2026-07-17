@@ -17,6 +17,7 @@ use Livewire\Component;
 #[Title('Buy Used Phone')]
 class RecordUsedPhone extends Component
 {
+    use \App\Traits\HasAuthorization;
     // Seller
     public string $sellerName    = '';
     public string $sellerPhone   = '';
@@ -47,6 +48,7 @@ class RecordUsedPhone extends Component
 
     public function mount(): void
     {
+        $this->requirePermission('used_phones.manage');
         $this->branchId = (int) (
             Auth::user()->branch_id
             ?? Branch::where('shop_id', Auth::user()->shop_id)->where('is_main', true)->value('id')

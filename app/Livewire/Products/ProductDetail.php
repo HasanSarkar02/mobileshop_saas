@@ -18,6 +18,7 @@ use Livewire\WithPagination;
 #[Title('Product Detail')]
 class ProductDetail extends Component
 {
+    use \App\Traits\HasAuthorization;
     use WithPagination;
 
     public Product $product;
@@ -33,6 +34,7 @@ class ProductDetail extends Component
 
     public function mount(Product $product): void
     {
+        $this->requirePermission('inventory.view');
         $this->product = $product->load([
             'brand',
             'category',
@@ -42,7 +44,10 @@ class ProductDetail extends Component
                 'units as sold_count' => fn($q) =>
                     $q->where('status', UnitStatus::Sold),
                 'units as total_count',
-            ]),
+            ])
+            ->with(['Units' => function ($q) { 
+            $q->where('status', UnitStatus::InStock);
+        }]),
         ]);
 
         $this->selectedVariantId = $this->product->variants->first()?->id ?? 0;

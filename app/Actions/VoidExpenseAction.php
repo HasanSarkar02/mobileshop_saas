@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\ExpenseStatus;
+use App\Events\ExpenseVoided;
 use App\Models\Account;
 use App\Models\Expense;
 use App\Models\JournalEntry;
@@ -55,6 +56,7 @@ class VoidExpenseAction
                 'void_reason' => $reason,
                 'voided_at'   => now(),
             ]);
+            DB::afterCommit(fn () => event(new ExpenseVoided($expense, $shop, $actor, $reason)));
 
             return $expense->fresh();
         });

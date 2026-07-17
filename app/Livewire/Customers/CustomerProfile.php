@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\CustomerTransaction;
 use App\Models\PaymentAccount;
 use App\Services\CustomerLedgerService;
+use App\Traits\HasAuthorization;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -17,6 +18,7 @@ use Livewire\WithPagination;
 #[Title('Customer Profile')]
 class CustomerProfile extends Component
 {
+    use HasAuthorization;
     use WithPagination;
 
     public Customer $customer;
@@ -35,6 +37,7 @@ class CustomerProfile extends Component
 
     public function mount(Customer $customer): void
     {
+        $this->requirePermission('customers.view');
         $this->customer = $customer->load(['guarantor', 'createdBy']);
     }
 
@@ -55,6 +58,7 @@ class CustomerProfile extends Component
 
     public function recordPayment(CustomerLedgerService $ledger): void
     {
+        $this->requirePermission('customers.edit');
         $this->validate([
             'paymentAmount'    => 'required|numeric|min:1|max:' . $this->customer->current_balance,
             'paymentAccountId' => 'required|integer|min:1',
@@ -86,6 +90,7 @@ class CustomerProfile extends Component
 
     public function confirmWriteOff(CustomerLedgerService $ledger): void
     {
+        $this->requirePermission('customers.edit');
         $this->validate([
             'writeOffAmount' => 'required|numeric|min:1',
             'writeOffNotes'  => 'required|string|min:5',

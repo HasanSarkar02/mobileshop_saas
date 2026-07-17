@@ -9,6 +9,7 @@ use App\Enums\GuarantorRelation;
 use App\Models\Customer;
 use App\Models\CustomerGuarantor;
 use App\Services\CustomerLedgerService;
+use App\Traits\HasAuthorization;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -22,6 +23,7 @@ use Livewire\WithFileUploads;
 class CustomerForm extends Component
 {
     use WithFileUploads;
+    use HasAuthorization;
 
     public ?Customer $customer = null;
 
@@ -58,12 +60,18 @@ class CustomerForm extends Component
     public string $guarantorAddress  = '';
     public string $guarantorRelation = 'other';
     public string $guarantorNid      = '';
-    public $guarantorPhoto;    // Livewire temp upload
-    public $guarantorNidFront; // Livewire temp upload
-    public $guarantorNidBack;  // Livewire temp upload
+    public $guarantorPhoto;
+    public $guarantorNidFront; 
+    public $guarantorNidBack;
 
     public function mount(?Customer $customer = null): void
     {
+        if ($customer?->exists) {
+            $this->requirePermission('customers.edit');
+        } else {
+            $this->requirePermission('customers.manage');
+        }
+        
         if ($customer && $customer->exists) {
             $this->customer     = $customer->load('guarantor');
             $this->customerType = $customer->customer_type->value;

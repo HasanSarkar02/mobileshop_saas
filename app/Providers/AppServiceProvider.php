@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Listeners\NotificationEventSubscriber;
 use App\Models\User;
+use App\Services\ShopFeatureService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -12,7 +13,10 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->bind(
+            \App\Services\Notifications\Contracts\PushProviderInterface::class,
+            \App\Services\Notifications\Providers\NullPushProvider::class,
+        );
     }
 
     public function boot(): void
@@ -26,5 +30,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Event::subscribe(NotificationEventSubscriber::class);
+
+        \Illuminate\Support\Facades\Blade::if('feature', function (string $feature) {
+        return app(ShopFeatureService::class)->enabled($feature);
+        });
     }
 }

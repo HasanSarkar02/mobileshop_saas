@@ -39,6 +39,7 @@ class SupplierProfile extends Component
 
     public function mount(Supplier $supplier): void
     {
+         $this->requirePermission('suppliers.view');
         if ($supplier->shop_id !== Auth::user()->shop_id) {
             abort(403);
         }
@@ -164,6 +165,7 @@ class SupplierProfile extends Component
 
     public function recordPayment(RecordSupplierPaymentAction $action): void
     {
+        $this->requirePermission('suppliers.payment');
         $this->validate([
             'payAmount'    => 'required|numeric|min:0.01',
             'payAccountId' => 'required|integer|min:1',

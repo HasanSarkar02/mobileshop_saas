@@ -12,11 +12,13 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use App\Traits\HasAuthorization;
 
 #[Layout('components.layouts.app')]
 #[Title('Record Settlement')]
 class RecordSettlement extends Component
 {
+    use HasAuthorization;
     public FinancePartner $partner;
 
     public int    $paymentAccountId  = 0;
@@ -132,6 +134,7 @@ class RecordSettlement extends Component
 
     public function save(RecordFinancePartnerSettlementAction $action): void
     {
+        $this->requirePermission('emi.settle');
         $this->validate([
             'paymentAccountId' => 'required|integer|min:1',
             'grossAmount'      => 'required|numeric|min:0.01',

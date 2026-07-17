@@ -50,7 +50,6 @@
 
     @if ($variant)
         {{-- ── Status Summary Cards ── --}}
-        {{-- ── Status Summary Cards ── --}}
         @if ($product->tracking_type->value === 'serialized')
             {{-- Serialized: unit-level counts from product_units table --}}
             <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -85,6 +84,80 @@
                 @endforeach
             </div>
         @endif
+        {{-- Include the modal component --}}
+        @livewire('inventory.stock-adjustment-modal')
+
+        {{-- For non-serialized variants --}}
+        @foreach ($product->variants as $variant)
+            @php
+                $stock = $variant->branchStocks->where('branch_id', auth()->user()->branch_id)->first();
+            @endphp
+            <div class="flex items-center gap-2 mt-2">
+                @can('inventory.edit')
+                    <button
+                        wire:click="$dispatch('open-stock-adjustment', {
+                    variant_id: {{ $variant->id }},
+                    branch_id: {{ auth()->user()->branch_id }},
+                    type: 'damaged',
+                    product_name: '{{ addslashes($product->name . ' — ' . $variant->attributes_label) }}',
+                    tracking_type: '{{ $product->tracking_type }}'
+                })"
+                        class="text-xs text-amber-500 hover:underline font-medium">
+                        ⚠ Mark Damaged
+                    </button>
+                    <button
+                        wire:click="$dispatch('open-stock-adjustment', {
+                    variant_id: {{ $variant->id }},
+                    branch_id: {{ auth()->user()->branch_id }},
+                    type: 'written_off',
+                    product_name: '{{ addslashes($product->name . ' — ' . $variant->attributes_label) }}',
+                    tracking_type: '{{ $product->tracking_type }}'
+                })"
+                        class="text-xs text-red-400 hover:underline font-medium">
+                        ✗ Write Off
+                    </button>
+                    <button
+                        wire:click="$dispatch('open-stock-adjustment', {
+                    variant_id: {{ $variant->id }},
+                    branch_id: {{ auth()->user()->branch_id }},
+                    type: 'reserved',
+                    product_name: '{{ addslashes($product->name . ' — ' . $variant->attributes_label) }}',
+                    tracking_type: '{{ $product->tracking_type }}'
+                })"
+                        class="text-xs text-blue-400 hover:underline font-medium">
+                        🔒 Reserve
+                    </button>
+                @endcan
+            </div>
+        @endforeach
+
+        {{-- For serialized units --}}
+        @foreach ($product->variants as $variant)
+            @foreach ($variant->Units->where('status', 'in_stock') as $unit)
+                @can('inventory.edit')
+                    <div class="flex gap-2 mt-1">
+                        <button
+                            wire:click="$dispatch('open-stock-adjustment', {
+                        unit_id: {{ $unit->id }},
+                        variant_id: {{ $variant->id }},
+                        type: 'damaged',
+                        product_name: '{{ addslashes($variant->product->name) }} – {{ $unit->serial_number }}',
+                        tracking_type: 'serialized'
+                    })"
+                            class="text-xs text-amber-500 hover:underline">⚠ Damage</button>
+                        <button
+                            wire:click="$dispatch('open-stock-adjustment', {
+                        unit_id: {{ $unit->id }},
+                        variant_id: {{ $variant->id }},
+                        type: 'written_off',
+                        product_name: '{{ addslashes($variant->product->name) }} – {{ $unit->serial_number }}',
+                        tracking_type: 'serialized'
+                    })"
+                            class="text-xs text-red-400 hover:underline">✗ Write Off</button>
+                    </div>
+                @endcan
+            @endforeach
+        @endforeach
 
         {{-- ── Pricing ── --}}
         <div class="card p-4 flex flex-wrap items-center gap-6">

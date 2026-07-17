@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Enums\FPReceivableStatus;
+use App\Events\FpSettlementRecorded;
 use App\Models\Account;
 use App\Models\FinancePartnerReceivable;
 use App\Models\FinancePartnerSettlement;
@@ -163,6 +164,7 @@ class RecordFinancePartnerSettlementAction
                 reference: $settlement,
                 actor: $actor,
             );
+            DB::afterCommit(fn () => event(new FpSettlementRecorded($settlement, $shop)));
 
             return $settlement->fresh(['partner', 'paymentAccount', 'allocations.receivable.sale.customer']);
         });

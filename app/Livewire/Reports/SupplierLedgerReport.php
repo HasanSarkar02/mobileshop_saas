@@ -17,7 +17,12 @@ use Livewire\Component;
 class SupplierLedgerReport extends Component
 {
     use HasReportFilter;
+    use \App\Traits\HasAuthorization;
 
+    public function mount(): void
+{
+    $this->requirePermission('reports.financial');
+}
     #[Url(as: 'supplier')]
     public int $supplierId = 0;
 

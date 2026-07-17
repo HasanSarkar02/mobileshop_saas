@@ -4,6 +4,7 @@ namespace App\Livewire\Customers;
 
 use App\Enums\CustomerType;
 use App\Models\Customer;
+use App\Traits\HasAuthorization;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 #[Title('Customers')]
 class CustomerList extends Component
 {
+    use HasAuthorization;
     use WithPagination;
 
     #[Url(as: 'q')]
@@ -30,6 +32,11 @@ class CustomerList extends Component
     public function updatingType(): void { $this->resetPage(); }
     public function updatingBalance(): void { $this->resetPage(); }
 
+    public function mount(): void
+    {
+        $this->requirePermission('customers.view');
+    }
+    
     #[Computed]
     public function stats(): array
     {

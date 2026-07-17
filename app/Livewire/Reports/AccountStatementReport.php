@@ -18,6 +18,12 @@ use Livewire\Component;
 class AccountStatementReport extends Component
 {
     use HasReportFilter;
+    use \App\Traits\HasAuthorization;
+
+    public function mount(): void
+{
+    $this->requirePermission('reports.view');
+}
 
     #[Url(as: 'account')]
     public int $accountId = 0;

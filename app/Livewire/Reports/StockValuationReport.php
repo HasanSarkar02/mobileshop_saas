@@ -15,7 +15,12 @@ use Livewire\Component;
 class StockValuationReport extends Component
 {
     use HasReportFilter;
+    use \App\Traits\HasAuthorization;
 
+    public function mount(): void
+{
+    $this->requirePermission('reports.view');
+}
     #[Computed]
     public function valuationData(): Collection
     {

@@ -2,7 +2,9 @@
 
 namespace App\Actions;
 
+use App\Events\StockTransferReceived;
 use App\Models\BranchStock;
+use App\Models\Shop;
 use App\Models\StockTransfer;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +33,8 @@ class ConfirmStockTransferAction
             }
 
             $transfer->update(['status' => 'received', 'confirmed_by' => $actor->id, 'confirmed_at' => now()]);
-
+            $shop = Shop::withoutGlobalScopes()->findOrFail($transfer->shop_id);
+            DB::afterCommit(fn () => event(new StockTransferReceived($transfer, $shop)));
             return $transfer->fresh('items');
         });
     }

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\ShopSubscription;
 
 #[Fillable([
     'name', 'slug', 'email', 'phone', 'address', 'logo',
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'vat_enabled', 'vat_registration_number', 'default_vat_rate',
     'trial_ends_at', 'subscription_ends_at', 'is_active', 'settings',
     'subscription_plan_id', 'books_locked_through', 'onboarding_completed_at','expense_approval_threshold','logo_path', 'trade_license_number', 'website', 'document_footer_note', 'show_document_confidential',
+    'smtp_enabled','smtp_host', 'smtp_port', 'smtp_username', 'smtp_from_address', 'smtp_from_name', 'smtp_encryption'
 ])]
 class Shop extends Model
 {
@@ -38,6 +40,8 @@ class Shop extends Model
             'settings'                => 'array',
             'expense_approval_threshold' => 'decimal:2',
             'show_document_confidential' => 'boolean',
+            'enabled_features' => 'array',
+            'smtp_password' => 'encrypted',
         ];
     }
 
@@ -73,5 +77,17 @@ class Shop extends Model
     public function isOnTrial(): bool
     {
         return $this->status === ShopStatus::Trial && $this->trial_ends_at?->isFuture();
+    }
+
+    public function subscription(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ShopSubscription::class)->latest();
+    }
+
+    public function activeSubscription(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ShopSubscription::class)
+            ->whereIn('status', ['active', 'trial'])
+            ->latest();
     }
 }

@@ -24,4 +24,21 @@ class BranchStock extends Model
     {
         return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
+
+    /**
+     * Quantity actually available for sale.
+     * quantity - reserved_quantity (damaged already subtracted when marked)
+     */
+    public function getAvailableQuantityAttribute(): float
+    {
+        return max(0, (float)$this->quantity - (float)$this->reserved_quantity);
+    }
+
+    /**
+     * Check if available stock meets the order quantity.
+     */
+    public function canFulfil(float $qty): bool
+    {
+        return $this->available_quantity >= $qty;
+    }
 }

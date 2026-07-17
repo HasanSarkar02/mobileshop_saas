@@ -15,6 +15,12 @@ use Livewire\Component;
 class CashFlowReport extends Component
 {
     use HasReportFilter;
+    use \App\Traits\HasAuthorization;
+
+    public function mount(): void
+{
+    $this->requirePermission('reports.view');
+}
 
     #[Computed]
     public function cashFlow(): array

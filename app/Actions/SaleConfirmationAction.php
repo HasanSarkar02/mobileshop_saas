@@ -223,18 +223,34 @@ class SaleConfirmationAction
                 if (! empty($item['product_unit_id'])) {
                     // Serialized: transition the locked unit to Sold
                     $this->transitioner->transition($units[$item['product_unit_id']], UnitStatus::Sold, $sale);
-                } else {
-                    // Non-serialized: atomic decrement (unsignedInteger means MySQL prevents negative)
+                                } else {
+                    // Non-serialized: Check Available Quantity (quantity - reserved_quantity)
+                    $stock = BranchStock::withoutGlobalScopes()
+                        ->where('shop_id', $shop->id)
+                        ->where('branch_id', $data['branch_id'])
+                        ->where('product_variant_id', $item['product_variant_id'])
+                        ->lockForUpdate()
+                        ->first();
+
+                    $available = ($stock?->quantity ?? 0) - ($stock?->reserved_quantity ?? 0);
+
+                    if ($available < $item['quantity']) {
+                        throw new \RuntimeException(
+                            "Insufficient available stock for '{$item['product_name']}'. " .
+                            "Available: {$available}, Required: {$item['quantity']}"
+                        );
+                    }
+
+                    // Now safely decrement
                     $affected = BranchStock::withoutGlobalScopes()
                         ->where('shop_id', $shop->id)
                         ->where('branch_id', $data['branch_id'])
                         ->where('product_variant_id', $item['product_variant_id'])
-                        ->where('quantity', '>=', $item['quantity'])
                         ->decrement('quantity', $item['quantity']);
 
                     if ($affected === 0) {
                         throw new RuntimeException(
-                            "Insufficient stock for \"{$item['product_name']}\". The quantity was changed by another cashier."
+                            "Stock quantity was changed by another cashier for \"{$item['product_name']}\"."
                         );
                     }
                 }

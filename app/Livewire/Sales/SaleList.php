@@ -17,6 +17,7 @@ use Livewire\WithPagination;
 #[Title('Sales History')]
 class SaleList extends Component
 {
+    use \App\Traits\HasAuthorization;
     use WithPagination;
 
     #[Url(as: 'q')]
@@ -36,6 +37,11 @@ class SaleList extends Component
     public string $voidReason    = '';
 
     public function updatingSearch(): void { $this->resetPage(); }
+
+    public function mount(): void
+    {
+        $this->requirePermission('sales.view');
+    }
 
     #[Computed]
     public function todaySummary(): array
@@ -70,7 +76,7 @@ class SaleList extends Component
 
     public function voidSale(int $saleId, VoidSaleAction $action): void
     {
-        // Permission check — Owner bypasses via Gate::before
+        $this->requirePermission('sales.void');
         if (! Auth::user()->isOwner() && ! Auth::user()->can('sales.void')) {
             $this->dispatch('notify', ['type' => 'error',
                 'message' => 'You do not have permission to void sales.']);

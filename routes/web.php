@@ -61,6 +61,7 @@ use App\Livewire\Payroll\PayrollLoanList;
 use App\Livewire\Notifications\NotificationCenter;
 use App\Livewire\Notifications\NotificationPreferences;
 use App\Livewire\Payroll\PayrollReports;
+use App\Livewire\Settings\{SmtpSettings, NotificationTemplateList, NotificationTemplateForm, NotificationRuleList, NotificationRuleForm};
 
 // ─── Super Admin ──────────────────────────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->group(function () {
@@ -73,15 +74,20 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware('super_admin')->group(function () {
         Route::post('logout', [AdminLoginController::class, 'destroy'])->name('logout');
         Route::get('dashboard', Dashboard::class)->name('dashboard');
-        Route::get('shops', ShopList::class)->name('shops.index');
         Route::get('shops/create', CreateShop::class)->name('shops.create');
         Route::get('shops/{shop}', ShopDetail::class)->name('shops.show');
         Route::post('impersonate/{user}', [ImpersonationController::class, 'start'])->name('impersonate.start');
         Route::get('billing', \App\Livewire\SuperAdmin\BillingDashboard::class)->name('billing');
+        Route::get('/',        \App\Livewire\Admin\ShopList::class)->name('dashboard');
+        Route::get('/shops',   \App\Livewire\Admin\ShopList::class)->name('shops');
+        Route::get('/shops/{shop}', \App\Livewire\Admin\ShopDetail::class)->name('shops.show');
+        Route::get('/billing', \App\Livewire\SuperAdmin\BillingDashboard::class)->name('billing');
+        Route::get('/plans',   \App\Livewire\SuperAdmin\PlanManager::class)->name('plans');
+        Route::get('/invoices',\App\Livewire\SuperAdmin\InvoiceList::class)->name('invoices');
+        Route::get('/shops/{shop}/features',\App\Livewire\SuperAdmin\ShopFeatureManager::class)->name('shop-features');
     });
 });
 
-// ─── Shop App (Owner + Employee) ──────────────────────────────────────────────
 // ─── Shop App (Owner + Employee) ──────────────────────────────────────────────
 Route::middleware(['auth:web'])->group(function () {
 
@@ -92,67 +98,83 @@ Route::middleware(['auth:web'])->group(function () {
     Route::post('impersonation/stop', [ImpersonationController::class, 'stop'])->name('impersonation.stop');
 
     // Products
-    Route::livewire('products', ProductList::class)->name('products.index');
-    Route::livewire('products/create', ProductForm::class)->name('products.create');
-    Route::livewire('products/{product}/edit', ProductForm::class)->name('products.edit');
-    Route::livewire('products/{product}', ProductDetail::class)->name('products.show');
-
+    Route::prefix('products')->name('products.')->middleware('feature:inventory')->group(function () {
+        Route::livewire('/', ProductList::class)->name('index');
+        Route::livewire('/create', ProductForm::class)->name('create');
+        Route::livewire('/{product}/edit', ProductForm::class)->name('edit');
+        Route::livewire('/{product}', ProductDetail::class)->name('show');
+    });
     // Suppliers
-    Route::livewire('suppliers', SupplierList::class)->name('suppliers.index');
-    Route::livewire('suppliers/create', SupplierForm::class)->name('suppliers.create');
-    Route::livewire('suppliers/{supplier}/edit', SupplierForm::class)->name('suppliers.edit');
-    Route::livewire('suppliers/{supplier}', \App\Livewire\Suppliers\SupplierProfile::class)->name('suppliers.show');
-
+    Route::prefix('suppliers')->name('suppliers.')->middleware('feature:suppliers')->group(function () {
+        Route::livewire('/', SupplierList::class)->name('index');
+        Route::livewire('/create', SupplierForm::class)->name('create');
+        Route::livewire('/{supplier}/edit', SupplierForm::class)->name('edit');
+        Route::livewire('/{supplier}', \App\Livewire\Suppliers\SupplierProfile::class)->name('show');
+    });
     // Purchases
-    Route::livewire('purchases', PurchaseList::class)->name('purchases.index');
-    Route::livewire('purchases/create', CreatePurchase::class)->name('purchases.create');
-    Route::livewire('purchases/{purchase}', PurchaseDetail::class)->name('purchases.show');
-    Route::livewire('purchases/{purchase}/return',\App\Livewire\Purchases\ProcessPurchaseReturn::class)->name('purchases.return');
+    Route::prefix('purchases')->name('purchases.')->middleware('feature:purchases')->group(function () {
+        Route::livewire('/', PurchaseList::class)->name('index');
+        Route::livewire('/create', CreatePurchase::class)->name('create');
+        Route::livewire('/{purchase}', PurchaseDetail::class)->name('show');
+        Route::livewire('/{purchase}/return',\App\Livewire\Purchases\ProcessPurchaseReturn::class)->name('return');
+    });
 
     // Settings
-    Route::livewire('settings', ShopSettings::class)->name('settings');
-    Route::livewire('settings/activity-log', \App\Livewire\Settings\ActivityLogViewer::class)->name('settings.activity-log');
+    Route::livewire('settings', ShopSettings::class)->name('settings')->middleware('feature:settings');
+    Route::livewire('settings/activity-log', \App\Livewire\Settings\ActivityLogViewer::class)->name('settings.activity-log')->middleware('feature:settings');
+    Route::get('settings/subscription',\App\Livewire\Settings\MySubscription::class)->name('settings.subscription');
+
+    Route::livewire('settings/notifications/smtp', SmtpSettings::class)->name('settings.smtp');
+    Route::livewire('settings/notifications/templates', NotificationTemplateList::class)->name('settings.notification-templates');
+    Route::livewire('settings/notifications/templates/{eventType}/{channel}/edit', NotificationTemplateForm::class)->name('settings.notification-templates.edit');
+    Route::livewire('settings/notifications/rules', NotificationRuleList::class)->name('settings.notification-rules');
+    Route::livewire('settings/notifications/rules/create', NotificationRuleForm::class)->name('settings.notification-rules.create');
+    Route::livewire('settings/notifications/rules/{rule}/edit', NotificationRuleForm::class)->name('settings.notification-rules.edit');
 
 
     // Customers
-    Route::livewire('customers', CustomerList::class)->name('customers.index');
-    Route::livewire('customers/create', CustomerForm::class)->name('customers.create');
-    Route::livewire('customers/{customer}/edit', CustomerForm::class)->name('customers.edit');
-    Route::livewire('customers/{customer}', CustomerProfile::class)->name('customers.show');
-
+    Route::prefix('customers')->name('customers.')->middleware('feature:customers')->group(function () {
+        Route::livewire('/', CustomerList::class)->name('index');
+        Route::livewire('/create', CustomerForm::class)->name('create');
+        Route::livewire('/{customer}/edit', CustomerForm::class)->name('edit');
+        Route::livewire('/{customer}', CustomerProfile::class)->name('show');
+    });
+    
     // POS
-    Route::livewire('pos', \App\Livewire\Pos::class)->name('pos');
+    Route::livewire('pos', \App\Livewire\Pos::class)->name('pos')->middleware('feature:pos');
 
     // Sales
-    Route::livewire('sales', SaleList::class)->name('sales.index');
-    Route::get('sales/{sale}/receipt', [SaleReceiptController::class, 'show'])->name('sales.receipt');
-
+    Route::prefix('sales')->name('sales.')->middleware('feature:sales')->group(function () {
+        Route::livewire('/', SaleList::class)->name('index');
+        Route::get('/{sale}/receipt', [SaleReceiptController::class, 'show'])->name('receipt');
+        Route::livewire('/{sale}', SaleDetail::class)->name('show');
+        Route::livewire('/{sale}/return', ProcessReturn::class)->name('return');
+    });
 
     // Finance Partners 
-    Route::livewire('finance-partners', FinancePartnerDashboard::class)->name('finance-partners.index');
-    Route::livewire('finance-partners/{partner}/settlement', RecordSettlement::class)->name('finance-partners.record-settlement');
-
-
-    //Sale Details and Returns
-    Route::livewire('sales/{sale}', SaleDetail::class)->name('sales.show');
-    Route::livewire('sales/{sale}/return', ProcessReturn::class)->name('sales.return');
+    Route::prefix('finance-partners')->name('finance-partners.')->middleware('feature:emi_partners')->group(function () {
+        Route::livewire('/', FinancePartnerDashboard::class)->name('index');
+        Route::livewire('/{partner}/settlement', RecordSettlement::class)->name('record-settlement');
+    });
 
 
     // Used Phones
-    Route::livewire('used-phones', UsedPhoneList::class)->name('used-phones.index');
-    Route::livewire('used-phones/buy', RecordUsedPhone::class)->name('used-phones.create');
-    Route::livewire('used-phones/{acquisition}', UsedPhoneDetail::class)->name('used-phones.show');
-
+    Route::prefix('used-phones')->name('used-phones.')->middleware('feature:used_phones')->group(function () {
+        Route::livewire('/', UsedPhoneList::class)->name('index');
+        Route::livewire('/buy', RecordUsedPhone::class)->name('create');
+        Route::livewire('/{acquisition}', UsedPhoneDetail::class)->name('show');
+    });
 
 
     // Expenses
-    Route::livewire('expenses', ExpenseList::class)->name('expenses.index');
-    Route::livewire('expenses/create', ExpenseForm::class)->name('expenses.create');
-
+    Route::prefix('expenses')->name('expenses.')->middleware('feature:expenses')->group(function () {
+        Route::livewire('/', ExpenseList::class)->name('index');
+        Route::livewire('/create', ExpenseForm::class)->name('create');
+    });
     // Payroll
     // Route::livewire('payroll', PayrollDashboard::class)->name('payroll.index');
 
-    Route::prefix('payroll')->name('payroll.')->group(function () {
+    Route::prefix('payroll')->name('payroll.')->middleware('feature:payroll')->group(function () {
         Route::get('/',                       PayrollDashboard::class)->name('index');
         Route::get('/runs',                   PayrollRunList::class)->name('runs');
         Route::get('/runs/generate',          GeneratePayrollRun::class)->name('generate');
@@ -167,24 +189,26 @@ Route::middleware(['auth:web'])->group(function () {
         Route::get('/loans',                  PayrollLoanList::class)->name('loans');
     });
 
-        Route::livewire('payroll/employees', EmployeeProfileList::class)->name('payroll.employees');
-        Route::livewire('payroll/{run}', ManagePayroll::class)->name('payroll.manage');
+        // Route::livewire('payroll/employees', EmployeeProfileList::class)->name('payroll.employees');
+        // Route::livewire('payroll/{run}', ManagePayroll::class)->name('payroll.manage');
 
 
     // Employees
-    Route::livewire('employees', EmployeeList::class)->name('employees.index');
-    Route::livewire('employees/create', EmployeeForm::class)->name('employees.create');
-    Route::livewire('employees/{employee}/edit', EmployeeForm::class)->name('employees.edit');
-    Route::livewire('employees/{employee}', EmployeeDetail::class)->name('employees.show');
-
+    Route::prefix('employees')->name('employees.')->middleware('feature:employees')->group(function () {
+        Route::livewire('/', EmployeeList::class)->name('index');
+        Route::livewire('/create', EmployeeForm::class)->name('create');
+        Route::livewire('/{employee}/edit', EmployeeForm::class)->name('edit');
+        Route::livewire('/{employee}', EmployeeDetail::class)->name('show');
+    });
 
 
     // Service Module
-    Route::livewire('service', ServiceList::class)->name('service.index');
-    Route::livewire('service/create', ServiceTicketForm::class)->name('service.create');
-    Route::livewire('service/{ticket}/edit', ServiceTicketForm::class)->name('service.edit');
-    Route::livewire('service/{ticket}', ServiceTicketDetail::class)->name('service.show');
-
+    Route::prefix('service')->name('service.')->middleware('feature:service')->group(function () {
+        Route::livewire('/', ServiceList::class)->name('index');
+        Route::livewire('/create', ServiceTicketForm::class)->name('create');
+        Route::livewire('/{ticket}/edit', ServiceTicketForm::class)->name('edit');
+        Route::livewire('/{ticket}', ServiceTicketDetail::class)->name('show');
+    });
 
 
     Route::prefix('reports')->name('reports.')->group(function () {
@@ -257,7 +281,7 @@ Route::middleware(['auth:web'])->group(function () {
     });
 
     // ── Report Print/Export ────────────────────────────────────────────────────
-    Route::prefix('reports')->name('reports.')->group(function () {
+    Route::prefix('reports')->name('reports.')->middleware('feature:reports')->group(function () {
         // P&L
         Route::get('profit-loss/print', [DocumentController::class, 'profitLossPrint'])->name('pl.print');
         Route::get('profit-loss/pdf',   [DocumentController::class, 'profitLossPdf'])->name('pl.pdf');
@@ -282,7 +306,7 @@ Route::middleware(['auth:web'])->group(function () {
     });
 
 
-    Route::prefix('treasury')->name('treasury.')->group(function () {
+    Route::prefix('treasury')->name('treasury.')->middleware('feature:treasury')->group(function () {
         Route::livewire('',                TreasuryDashboard::class)->name('index');
         Route::livewire('create',          TreasuryTransactionForm::class)->name('create');
         Route::livewire('{transaction}',   TreasuryTransactionDetail::class)->name('show');
@@ -293,6 +317,7 @@ Route::middleware(['auth:web'])->group(function () {
     //Notifications
     Route::livewire('notifications', NotificationCenter::class)->name('notifications.index');
     Route::livewire('notifications/preferences', NotificationPreferences::class)->name('notifications.preferences');
+    Route::get('inventory/adjustments',\App\Livewire\Inventory\StockAdjustmentLog::class)->name('inventory.adjustments')->middleware('feature:inventory');
 
     
 });

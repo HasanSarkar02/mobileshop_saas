@@ -6,6 +6,7 @@ use App\Enums\FPReceivableStatus;
 use App\Models\FinancePartner;
 use App\Models\FinancePartnerReceivable;
 use App\Models\FinancePartnerSettlement;
+use App\Traits\HasAuthorization;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
@@ -19,6 +20,7 @@ use Livewire\WithPagination;
 #[Title('Finance Partners')]
 class FinancePartnerDashboard extends Component
 {
+    use HasAuthorization;
     use WithPagination;
 
     #[Url]
@@ -27,6 +29,11 @@ class FinancePartnerDashboard extends Component
     #[Url]
     public string $activeTab = 'receivables';
 
+    public function mount(): void
+    {
+        $this->requirePermission('emi.view');
+    }
+    
     #[Computed]
     public function partners(): \Illuminate\Database\Eloquent\Collection
     {

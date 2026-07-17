@@ -6,6 +6,7 @@
             @php
                 $tabs = [
                     ['key' => 'profile', 'label' => 'Shop Profile'],
+                    ['key' => 'subscription', 'label' => '📋 My Subscription'],
                     ['key' => 'payments', 'label' => 'Payment Accounts'],
                     ['key' => 'finance_partners', 'label' => 'Finance Partners (EMI)'],
                     ['key' => 'branches', 'label' => 'Branches'],
@@ -114,6 +115,18 @@
             </div>
         </div>
 
+        <div wire:show="activeTab === 'subscription'" class="p-6 space-y-5">
+            <a href="{{ route('settings.subscription') }}" wire:navigate
+                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.75"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <span>Subscription</span>
+            </a>
+        </div>
+
         {{-- ── PAYMENT ACCOUNTS TAB ── --}}
         <div wire:show="activeTab === 'payments'" class="p-6 space-y-4">
             <div class="flex items-center justify-between">
@@ -136,7 +149,8 @@
                 <div class="grid sm:grid-cols-2 gap-4">
                     <div class="sm:col-span-2">
                         <label class="label">Account Label *</label>
-                        <input wire:model="paymentName" type="text" placeholder="e.g. bKash Business — 01711000000"
+                        <input wire:model="paymentName" type="text"
+                            placeholder="e.g. bKash Business — 01711000000"
                             class="input @error('paymentName') input-error @enderror">
                         @error('paymentName')
                             <p class="error">{{ $message }}</p>

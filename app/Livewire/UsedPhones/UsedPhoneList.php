@@ -16,13 +16,19 @@ use Livewire\WithPagination;
 #[Title('Used Phones')]
 class UsedPhoneList extends Component
 {
+    use \App\Traits\HasAuthorization;
     use WithPagination;
 
     #[Url(as: 'q')]
     public string $search = '';
 
     #[Url]
-    public string $soldFilter = ''; // '' | 'sold' | 'in_stock'
+    public string $soldFilter = '';
+    
+    public function mount(): void
+    {
+        $this->requirePermission('used_phones.view');
+    }
 
     #[Computed]
     public function metrics(): array

@@ -17,6 +17,7 @@ use Livewire\WithPagination;
 class ImeiLedgerReport extends Component
 {
     use HasReportFilter, WithPagination;
+    use \App\Traits\HasAuthorization;
 
     #[Url(as: 'q')]
     public string $search = '';
@@ -30,6 +31,10 @@ class ImeiLedgerReport extends Component
     #[Url(as: 'brand')]
     public int $brandId = 0;
 
+    public function mount(): void
+{
+    $this->requirePermission('reports.view');
+}
     public function updatingSearch(): void   { $this->resetPage(); }
     public function updatingUnitStatus(): void { $this->resetPage(); }
 

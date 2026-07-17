@@ -18,10 +18,15 @@ use Livewire\Component;
 class ServiceReport extends Component
 {
     use HasReportFilter;
+    use \App\Traits\HasAuthorization;
 
     #[Url(as: 'view')]
     public string $activeView = 'overview';
 
+    public function mount(): void
+    {
+        $this->requirePermission('reports.view');
+    }
     #[Computed]
     public function stats(): object
     {

@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Events\ImpersonationStarted;
 use App\Models\ImpersonationLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 class ImpersonationService
@@ -32,6 +34,10 @@ class ImpersonationService
         $request->session()->put('impersonator_id', $superAdmin->id);
 
         Auth::guard('web')->login($target);
+        $targetShop = \App\Models\Shop::withoutGlobalScopes()->find($target->shop_id);
+        if ($targetShop) {
+            DB::afterCommit(fn () => event(new ImpersonationStarted($target, $superAdmin, $targetShop)));
+        }
     }
 
     public function stop(Request $request): void

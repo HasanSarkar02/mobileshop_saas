@@ -16,7 +16,12 @@ use Livewire\Component;
 class SalesReport extends Component
 {
     use HasReportFilter;
+    use \App\Traits\HasAuthorization;
 
+    public function mount(): void
+    {
+        $this->requirePermission('reports.view');
+    }
     #[Url(as: 'view')]
     public string $activeView = 'overview'; // overview | products | customers | employees | payment
 

@@ -52,6 +52,11 @@ class ExpenseList extends Component
     public function updatingStatus(): void { $this->resetPage(); }
     public function updatingCategory(): void { $this->resetPage(); }
 
+    public function mount(): void
+    {
+        $this->requirePermission('expenses.view');
+    }
+    
     #[Computed]
     public function pendingCount(): int
     {
@@ -79,11 +84,6 @@ class ExpenseList extends Component
             'total'       => (float) $expenses->sum('amount'),
             'by_category' => $byCategory,
         ];
-    }
-
-    public function mount(): void
-    {
-        $this->requirePermission('expenses.view');
     }
 
     // ── Approve ───────────────────────────────────────────────────────────────

@@ -128,6 +128,7 @@ class ServiceTicketDetail extends Component
 
     public function recordPayment(RecordServicePaymentAction $action): void
     {
+        $this->requirePermission('service.payment');
         $this->validate([
             'payAmount'    => 'required|numeric|min:0.01',
             'payAccountId' => 'required|integer|min:1',

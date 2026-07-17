@@ -13,7 +13,7 @@ return new class extends Migration
 public function up(): void
 {
     Schema::table('shops', function (Blueprint $table) {
-        $table->timestamp('onboarding_completed_at')->nullable()->after('books_locked_through');
+        $table->timestamp('onboarding_completed_at')->nullable();
     });
 }
 

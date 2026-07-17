@@ -18,6 +18,7 @@ use Livewire\Component;
 #[Title('Product')]
 class ProductForm extends Component
 {
+    use \App\Traits\HasAuthorization;
     public ?Product $product = null;
 
     // Product fields
@@ -37,6 +38,11 @@ class ProductForm extends Component
 
     public function mount(?Product $product = null): void
     {
+        if ($product?->exists) {
+            $this->requirePermission('inventory.edit');
+        } else {
+            $this->requirePermission('inventory.create');
+        }
         if ($product && $product->exists) {
             $this->product      = $product->load('variants');
             $this->name         = $product->name;

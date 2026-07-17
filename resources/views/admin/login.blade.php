@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Admin Login — ShopSaaS</title>
+    <title>Super Admin Login — SmartShop ERP</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -21,7 +21,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
             </div>
-            <h1 class="text-2xl font-bold text-white">ShopSaaS</h1>
+            <h1 class="text-2xl font-bold text-white">SmartShop ERP</h1>
             <p class="text-slate-400 text-sm mt-1">Super Admin Panel</p>
         </div>
 
@@ -88,7 +88,10 @@
             This area is restricted to authorized platform administrators only.
         </p>
     </div>
-
+    <div class="absolute bottom-6 left-0 right-0 text-center text-sm text-gray-500">
+        &copy; {{ date('Y') }} SmartShop ERP. Developed by <span class="font-medium text-gray-700">Hasan
+            Sarkar</span>.
+    </div>
 </body>
 
 </html>

@@ -13,7 +13,7 @@
     <div class="card">
         <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
             <h3 class="font-semibold text-gray-900">Recent Shops</h3>
-            <a href="{{ route('admin.shops.index') }}" wire:navigate
+            <a href="{{ route('admin.shops') }}" wire:navigate
                 class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">View all →</a>
         </div>
         <div class="overflow-x-auto">

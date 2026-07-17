@@ -15,6 +15,12 @@ use Livewire\Component;
 class BalanceSheetReport extends Component
 {
     use HasReportFilter;
+    use \App\Traits\HasAuthorization;
+
+    public function mount(): void
+{
+    $this->requirePermission('reports.financial');
+}
 
     #[Computed]
     public function balanceSheet(): array

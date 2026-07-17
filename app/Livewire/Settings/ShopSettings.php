@@ -111,6 +111,10 @@ class ShopSettings extends Component
 
     public function mount(): void
     {
+        if (! Auth::user()->isOwner()) {
+            abort(403, 'Only the shop owner can access settings.');
+        }
+        
         $shop = $this->shop;
         $this->shopName = $shop->name;
         $this->shopPhone = $shop->phone ?? '';

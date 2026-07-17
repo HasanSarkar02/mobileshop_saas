@@ -58,6 +58,41 @@ class EmployeeList extends Component
             'message' => $user->is_active ? "{$user->name} deactivated." : "{$user->name} activated."]);
     }
 
+    // ── New: create payroll-only local employee (no account) ──────────────────
+    public bool   $showLocalEmpForm = false;
+    public string $localEmpName     = '';
+    public string $localEmpPhone    = '';
+
+    public function createLocalEmployee(): void
+    {
+        $this->validate([
+            'localEmpName'  => 'required|string|max:255',
+            'localEmpPhone' => 'nullable|string|max:20',
+        ]);
+
+        $shopId  = Auth::user()->shop_id;
+        $unique  = \Illuminate\Support\Str::random(8) . '@local.noaccount';
+
+        User::create([
+            'shop_id'            => $shopId,
+            'user_type'          => \App\Enums\UserType::Employee->value,
+            'name'               => $this->localEmpName,
+            'email'              => $unique,
+            'password'           => \Illuminate\Support\Str::password(40),
+            'phone'              => $this->localEmpPhone ?: null,
+            'is_active'          => true,
+            'has_system_access'  => false, // cannot login
+            'email_verified_at'  => now(),
+        ]);
+
+        unset($this->employees);
+        $this->showLocalEmpForm = false;
+        $this->localEmpName     = '';
+        $this->localEmpPhone    = '';
+        $this->dispatch('notify', ['type' => 'success',
+            'message' => "Local employee \"{$this->localEmpName}\" added (payroll only)."]);
+    }
+
     public function render()
     {
         $employees = User::where('user_type', UserType::Employee->value)

@@ -15,7 +15,13 @@ use Livewire\Component;
 class ProfitLossReport extends Component
 {
     use HasReportFilter;
+    use \App\Traits\HasAuthorization;
 
+    public function mount(): void
+    {
+        $this->requirePermission('reports.view');
+    }
+    
     #[Computed]
     public function report(): ProfitLossDTO
     {
