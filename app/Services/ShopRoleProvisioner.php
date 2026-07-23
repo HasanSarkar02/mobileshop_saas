@@ -83,8 +83,26 @@ class ShopRoleProvisioner
 
     public function provisionForNewShop(Shop $shop, User $owner): void
     {
-        $this->provision($shop);
-        $owner->assignRole('Owner');
+        $registrar = app(PermissionRegistrar::class);
+
+        $previousTeamId = $registrar->getPermissionsTeamId();
+
+        try {
+            $this->provision($shop);
+
+            $registrar->setPermissionsTeamId($shop->id);
+
+            $ownerRole = Role::query()
+                ->where('shop_id', $shop->id)
+                ->where('guard_name', 'web')
+                ->where('name', 'Owner')
+                ->firstOrFail();
+
+            $owner->assignRole($ownerRole);
+
+        } finally {
+            $registrar->setPermissionsTeamId($previousTeamId);
+        }
     }
 
     public function provision(Shop $shop): void

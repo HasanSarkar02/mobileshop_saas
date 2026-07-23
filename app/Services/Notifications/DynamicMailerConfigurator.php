@@ -26,7 +26,8 @@ class DynamicMailerConfigurator
     public function configure(Shop $shop): string
     {
         if (! $shop->smtp_enabled || ! $shop->smtp_host) {
-            throw new RuntimeException("SMTP is not configured for shop [{$shop->id}].");
+            // Use platform default mailer (.env) — system emails, invites, etc.
+            return config('mail.default');
         }
 
         $mailerName = 'shop_' . $shop->id;

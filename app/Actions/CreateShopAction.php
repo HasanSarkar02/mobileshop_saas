@@ -62,7 +62,7 @@ class CreateShopAction
                 'branch_id' => null,
                 'name' => $data['owner_name'],
                 'email' => $data['email'],
-                'password' => Str::password(40), // unusable placeholder — real password set via invite link
+                'password' => Str::password(40),
                 'user_type' => UserType::Owner,
                 'phone' => $data['phone'] ?? null,
                 'is_active' => true,
