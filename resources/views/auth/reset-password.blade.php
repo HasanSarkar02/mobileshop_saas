@@ -4,15 +4,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Set Password — ShopSaaS</title>
+    <title>Set Password — SmartShop ERP</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="{{ asset('favicon.png') }}" type="image/x-icon">
     @vite(['resources/css/app.css'])
 </head>
 
 <body class="h-full bg-gradient-to-br from-indigo-50 to-white flex items-center justify-center px-4 font-sans">
     <div class="w-full max-w-sm">
         <div class="text-center mb-8">
-            <h1 class="text-2xl font-bold text-indigo-700">ShopSaaS</h1>
+            @php $settings = App\Models\PlatformSetting::current(); @endphp
+
+            @if ($settings->logo_path)
+                <img src="{{ asset('storage/' . $settings->logo_path) }}"
+                    alt="{{ $settings->app_name ?? 'SmartShop ERP' }}" class="mx-auto h-24 w-auto mb-4">
+            @else
+                <h1 class="text-2xl font-bold text-indigo-700">{{ $settings->app_name ?? 'SmartShop ERP' }}</h1>
+            @endif
         </div>
         <div class="card p-6">
             <h2 class="text-lg font-semibold text-gray-900 mb-1">Set your password</h2>

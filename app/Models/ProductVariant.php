@@ -45,8 +45,9 @@ class ProductVariant extends Model
         return $this->min_stock_level ?? $globalThreshold;
     }
 
-    public function scopeByBarcode($query, string $barcode)
+    public function scopeByBarcode($query, string $barcode, ?int $shopId = null)
     {
-        return $query->where('barcode', $barcode);
+        return $query->where('barcode', $barcode)
+            ->when($shopId, fn ($q) => $q->where('shop_id', $shopId));
     }
 }

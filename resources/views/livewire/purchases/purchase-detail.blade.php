@@ -97,24 +97,40 @@
             </div>
 
             {{-- Serialized units (IMEI list) --}}
-            @if ($item->units->isNotEmpty())
-                <div class="divide-y divide-gray-50">
-                    @foreach ($item->units as $unit)
-                        <div class="px-5 py-2.5 flex items-center gap-3 text-sm">
-                            <span class="font-mono text-gray-800 font-medium">{{ $unit->serial_number }}</span>
-                            @if ($unit->secondary_serial_number)
-                                <span class="text-gray-400 text-xs">/ {{ $unit->secondary_serial_number }}</span>
-                            @endif
-                            <span class="badge badge-green ml-auto">{{ ucfirst($unit->status->value) }}</span>
-                            @if ($unit->manufacturer_warranty_months > 0)
-                                <span class="text-xs text-gray-400">{{ $unit->manufacturer_warranty_months }}mo
-                                    warranty</span>
-                            @endif
-                        </div>
-                    @endforeach
+            {{-- purchase-detail.blade.php — replace the unconditional units block --}}
+            @if ($item->units_count > 0)
+                <div class="px-5 py-3 flex items-center justify-between">
+                    <span class="text-sm text-gray-600">{{ $item->units_count }} serialized unit(s) received</span>
+                    <button wire:click="toggleLineItem({{ $item->id }})"
+                        class="text-xs text-indigo-600 hover:underline font-medium">
+                        {{ $expandedLineItemId === $item->id ? 'Hide IMEIs ▲' : 'Show IMEIs ▼' }}
+                    </button>
                 </div>
+
+                @if ($expandedLineItemId === $item->id)
+                    <div class="divide-y divide-gray-50">
+                        @foreach ($this->unitsForLineItem($item->id) as $unit)
+                            <div class="px-5 py-2.5 flex items-center gap-3 text-sm">
+                                <span class="font-mono text-gray-800 font-medium">{{ $unit->serial_number }}</span>
+                                @if ($unit->secondary_serial_number)
+                                    <span class="text-gray-400 text-xs">/ {{ $unit->secondary_serial_number }}</span>
+                                @endif
+                                <span class="badge badge-green ml-auto">{{ ucfirst($unit->status->value) }}</span>
+                                @if ($unit->manufacturer_warranty_months > 0)
+                                    <span class="text-xs text-gray-400">{{ $unit->manufacturer_warranty_months }}mo
+                                        warranty</span>
+                                @endif
+                            </div>
+                        @endforeach
+                        @if ($item->units_count > 200)
+                            <div class="px-5 py-2 text-xs text-gray-400 text-center">
+                                Showing first 200 of {{ $item->units_count }} — use Product Detail's IMEI search for
+                                the full ledger.
+                            </div>
+                        @endif
+                    </div>
+                @endif
             @else
-                {{-- Non-serialized: just show quantity --}}
                 <div class="px-5 py-3 text-sm text-gray-500">
                     {{ $item->quantity }} units received into stock (non-serialized)
                 </div>

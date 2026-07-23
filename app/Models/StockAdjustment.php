@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'shop_id','branch_id','product_variant_id','product_unit_id',
     'adjustment_type','quantity','unit_cost','total_cost',
-    'reason','notes','journal_entry_id','created_by',
+    'reason','notes','journal_entry_id','created_by','reference_type',
+    'reference_id','held_for_name','held_for_phone','hold_expires_at',
 ])]
 class StockAdjustment extends Model
 {
@@ -21,6 +22,7 @@ class StockAdjustment extends Model
             'quantity'   => 'decimal:2',
             'unit_cost'  => 'decimal:2',
             'total_cost' => 'decimal:2',
+            'hold_expires_at'  => 'datetime',
         ];
     }
 
@@ -29,4 +31,9 @@ class StockAdjustment extends Model
     public function branch(): BelongsTo       { return $this->belongsTo(Branch::class); }
     public function journalEntry(): BelongsTo { return $this->belongsTo(JournalEntry::class); }
     public function createdBy(): BelongsTo    { return $this->belongsTo(User::class, 'created_by'); }
+    public function reference(): \Illuminate\Database\Eloquent\Relations\MorphTo { return $this->morphTo(); }
+    public function isHoldExpired(): bool
+    {
+        return $this->hold_expires_at !== null && $this->hold_expires_at->isPast();
+    }
 }

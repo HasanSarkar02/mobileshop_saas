@@ -57,7 +57,7 @@ class EmailChannelHandler implements NotificationChannelHandler
             Mail::mailer($mailerName)
                 ->to($user->email)
                 ->send((new NotificationMail(
-                    subject: $rendered['subject'] ?: $notification->title,
+                    mailSubject: $rendered['subject'] ?: $notification->title,
                     bodyText: $rendered['body'],
                     actionUrl: $notification->payload['deep_link'] ?? null,
                     actionLabel: $notification->action_label,

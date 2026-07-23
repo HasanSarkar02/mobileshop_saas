@@ -33,7 +33,7 @@ class ImeiLedgerReport extends Component
 
     public function mount(): void
 {
-    $this->requirePermission('reports.view');
+    $this->requirePermission('accounting.view_basic_reports');
 }
     public function updatingSearch(): void   { $this->resetPage(); }
     public function updatingUnitStatus(): void { $this->resetPage(); }

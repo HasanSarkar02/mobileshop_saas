@@ -13,6 +13,7 @@ use App\Livewire\Suppliers\SupplierForm;
 use App\Livewire\Suppliers\SupplierList;
 use App\Http\Controllers\Admin\AdminLoginController;
 use App\Http\Controllers\Admin\ImpersonationController;
+use App\Http\Controllers\Admin\AdminTwoFactorSettingsController;
 use App\Livewire\Products\ProductDetail;
 use App\Livewire\Products\ProductForm;
 use App\Livewire\Products\ProductList;
@@ -63,22 +64,39 @@ use App\Livewire\Notifications\NotificationPreferences;
 use App\Livewire\Payroll\PayrollReports;
 use App\Livewire\Settings\{SmtpSettings, NotificationTemplateList, NotificationTemplateForm, NotificationRuleList, NotificationRuleForm};
 
+use App\Http\Controllers\Api\DeviceTokenController;
+use App\Livewire\Products\ProductLabelPrint;
+use App\Livewire\Sms\SmsLogViewer;
+use App\Livewire\SuperAdmin\PlatformSettings;
+use App\Models\UserPushToken;
+use App\Services\Notifications\Channels\FirebasePushProvider;
+use App\Services\Notifications\Providers\FirebasePushProvider as ProvidersFirebasePushProvider;
+
 // ─── Super Admin ──────────────────────────────────────────────────────────────
 Route::prefix('admin')->name('admin.')->group(function () {
 
     // Guest-facing (login page) — no middleware, controller handles already-logged-in redirect
     Route::get('login', [AdminLoginController::class, 'create'])->name('login');
     Route::post('login', [AdminLoginController::class, 'store'])->name('login.store');
+    // 2FA challenge — no auth guard yet (pending login)
+    Route::get('/2fa/challenge', [AdminLoginController::class, 'showTwoFactorChallenge'])->name('2fa.challenge');
+    Route::post('/2fa/challenge', [AdminLoginController::class, 'verifyTwoFactorChallenge'])->name('2fa.verify');
+
 
     // Protected admin routes — must be authenticated via the admin guard
     Route::middleware('super_admin')->group(function () {
         Route::post('logout', [AdminLoginController::class, 'destroy'])->name('logout');
+        Route::get('/2fa/recovery-codes', [AdminLoginController::class, 'showRecoveryCodesOnce'])->name('2fa.recovery-codes.show');
+        Route::post('/2fa/regenerate-recovery-codes', [AdminTwoFactorSettingsController::class, 'regenerateRecoveryCodes'])->name('2fa.regenerate');
         Route::get('dashboard', Dashboard::class)->name('dashboard');
         Route::get('shops/create', CreateShop::class)->name('shops.create');
         Route::get('shops/{shop}', ShopDetail::class)->name('shops.show');
+        Route::get('/settings', \App\Livewire\SuperAdmin\PlatformSettings::class)->name('settings');
+        Route::get('/impersonation-logs', \App\Livewire\SuperAdmin\ImpersonationLogList::class)->name('impersonation-logs');
+        Route::get('/announcements', \App\Livewire\SuperAdmin\AnnouncementManager::class)->name('announcements');
         Route::post('impersonate/{user}', [ImpersonationController::class, 'start'])->name('impersonate.start');
         Route::get('billing', \App\Livewire\SuperAdmin\BillingDashboard::class)->name('billing');
-        Route::get('/',        \App\Livewire\Admin\ShopList::class)->name('dashboard');
+        //Route::get('/',        \App\Livewire\Admin\ShopList::class)->name('dashboard');
         Route::get('/shops',   \App\Livewire\Admin\ShopList::class)->name('shops');
         Route::get('/shops/{shop}', \App\Livewire\Admin\ShopDetail::class)->name('shops.show');
         Route::get('/billing', \App\Livewire\SuperAdmin\BillingDashboard::class)->name('billing');
@@ -93,9 +111,10 @@ Route::middleware(['auth:web'])->group(function () {
 
     Route::get('/', fn() => redirect()->route('dashboard'));
     Route::livewire('dashboard', \App\Livewire\Dashboard::class)->name('dashboard');
+    Route::get('/profile', \App\Livewire\Profile\OwnerProfile::class)->name('profile');
 
     // Impersonation stop
-    Route::post('impersonation/stop', [ImpersonationController::class, 'stop'])->name('impersonation.stop');
+    Route::post('impersonation/stop', [ImpersonationController::class, 'stop'])->name('impersonation.stop')->middleware('impersonation.timeout');
 
     // Products
     Route::prefix('products')->name('products.')->middleware('feature:inventory')->group(function () {
@@ -130,6 +149,8 @@ Route::middleware(['auth:web'])->group(function () {
     Route::livewire('settings/notifications/rules', NotificationRuleList::class)->name('settings.notification-rules');
     Route::livewire('settings/notifications/rules/create', NotificationRuleForm::class)->name('settings.notification-rules.create');
     Route::livewire('settings/notifications/rules/{rule}/edit', NotificationRuleForm::class)->name('settings.notification-rules.edit');
+
+    Route::get('/sms/logs', SmsLogViewer::class)->name('sms.logs');
 
 
     // Customers
@@ -319,5 +340,12 @@ Route::middleware(['auth:web'])->group(function () {
     Route::livewire('notifications/preferences', NotificationPreferences::class)->name('notifications.preferences');
     Route::get('inventory/adjustments',\App\Livewire\Inventory\StockAdjustmentLog::class)->name('inventory.adjustments')->middleware('feature:inventory');
 
-    
+    Route::prefix('api')->middleware('auth')->group(function () {
+        Route::post('/device-token', [DeviceTokenController::class, 'register']);
+        Route::delete('/device-token', [DeviceTokenController::class, 'remove']);
+    });
+
+    Route::get('/products/{product}/labels/print', ProductLabelPrint::class)->name('products.labels.print');
+
+
 });

@@ -10,11 +10,15 @@ use App\Models\Shop;
 use App\Models\StockAdjustment;
 use App\Models\User;
 use App\Services\AccountingService;
+use App\Services\UnitStatusTransitioner;
 use Illuminate\Support\Facades\DB;
 
 class WriteOffStockAction
 {
-    public function __construct(private readonly AccountingService $accounting) {}
+    public function __construct(
+        private readonly AccountingService $accounting, 
+        private readonly UnitStatusTransitioner $transitioner,
+    ) {}
 
     /**
      * Write off non-serialized stock.
@@ -85,40 +89,27 @@ class WriteOffStockAction
      * Posts journal and changes unit status to WrittenOff.
      */
     public function executeSerialized(
-        Shop        $shop,
-        ProductUnit $unit,
-        string      $reason,
-        User        $actor,
+        Shop $shop, ProductUnit $unit, string $reason, User $actor,
     ): StockAdjustment {
-        $allowedStatuses = [
-            \App\Enums\UnitStatus::InStock,
-            \App\Enums\UnitStatus::Damaged,
-            \App\Enums\UnitStatus::Lost,
-        ];
-
-        if (! in_array($unit->status, $allowedStatuses)) {
-            throw new \RuntimeException("Cannot write off a unit with status: {$unit->status->label()}");
-        }
-
         return DB::transaction(function () use ($shop, $unit, $reason, $actor) {
-            $alreadyDamaged = $unit->status === \App\Enums\UnitStatus::Damaged;
-            $totalCost      = (float) $unit->cost_price;
+            $result = $this->transitioner->writeOff($unit->id);
+            $lockedUnit = $result['unit'];
+            $wasAlreadyDamaged = $result['was_already_damaged'];
 
-            $unit->update(['status' => \App\Enums\UnitStatus::WrittenOff]);
+            $totalCost = (float) $lockedUnit->cost_price;
 
-            // Only post GL if not already posted when damaged
             $journalEntry = null;
-            if (! $alreadyDamaged) {
+            if (! $wasAlreadyDamaged) {
                 $journalEntry = $this->postWriteOffJournal(
-                    $shop, $unit->branch, $totalCost, "IMEI: {$unit->serial_number}", $actor
+                    $shop, $lockedUnit->branch, $totalCost, "IMEI: {$lockedUnit->serial_number}", $actor
                 );
             }
 
             return StockAdjustment::create([
                 'shop_id'            => $shop->id,
-                'branch_id'          => $unit->branch_id,
-                'product_variant_id' => $unit->product_variant_id,
-                'product_unit_id'    => $unit->id,
+                'branch_id'          => $lockedUnit->branch_id,
+                'product_variant_id' => $lockedUnit->product_variant_id,
+                'product_unit_id'    => $lockedUnit->id,
                 'adjustment_type'    => 'written_off',
                 'quantity'           => 1,
                 'unit_cost'          => $totalCost,

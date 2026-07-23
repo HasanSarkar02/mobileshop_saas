@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'notification_id', 'user_id', 'shop_id', 'delivered_at', 'read_at',
     'dismissed_at', 'archived_at', 'pinned_at', 'snoozed_until', 'action_taken_at',
+    'external_phone', 'external_email', 'external_name',
 ])]
 class NotificationRecipient extends Model
 {
@@ -66,5 +67,10 @@ class NotificationRecipient extends Model
         if ($this->read_at === null) {
             $this->update(['read_at' => now()]);
         }
+    }
+
+    public function isExternal(): bool
+    {
+        return $this->user_id === null;
     }
 }

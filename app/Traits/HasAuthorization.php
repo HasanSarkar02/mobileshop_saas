@@ -18,10 +18,6 @@ trait HasAuthorization
             abort(403);
         }
         
-
-        // Owner and SuperAdmin bypass all permission checks
-        // Gate::before in AppServiceProvider handles this for policy checks,
-        // but we enforce it explicitly here too.
         if ($user->isOwner() || $user->isSuperAdmin()) {
             return;
         }

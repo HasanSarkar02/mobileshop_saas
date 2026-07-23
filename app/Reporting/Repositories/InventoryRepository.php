@@ -47,7 +47,7 @@ class InventoryRepository extends BaseReportRepository
     /** SKUs below minimum threshold — "low stock" */
     public function lowStockItems(int $shopId, ?int $branchId = null, int $threshold = 3): Collection
     {
-        // Non-serialized variants with qty <= threshold
+        // Non-serialized variants with qty <= variant's min_stock_level (fallback to parameter)
         return DB::table('branch_stocks')
             ->join('product_variants', 'product_variants.id', '=', 'branch_stocks.product_variant_id')
             ->join('products', 'products.id', '=', 'product_variants.product_id')
@@ -55,17 +55,18 @@ class InventoryRepository extends BaseReportRepository
             ->where('branch_stocks.shop_id', $shopId)
             ->where('products.tracking_type', 'non_serialized')
             ->where('products.is_active', true)
-            ->where('branch_stocks.quantity', '<=', $threshold)
+            ->whereRaw('branch_stocks.quantity <= COALESCE(product_variants.min_stock_level, ?)', [$threshold])
             ->when($branchId, fn ($q) => $q->where('branch_stocks.branch_id', $branchId))
             ->selectRaw('
-                products.name                               AS product_name,
-                COALESCE(brands.name, "—")                 AS brand,
+                products.name                                 AS product_name,
+                COALESCE(brands.name, "—")                    AS brand,
                 product_variants.sku,
                 product_variants.selling_price,
+                COALESCE(product_variants.min_stock_level, ?) AS threshold,
                 branch_stocks.quantity,
                 branch_stocks.average_cost,
                 (branch_stocks.quantity * branch_stocks.average_cost) AS stock_value
-            ')
+            ', [$threshold])
             ->orderBy('branch_stocks.quantity')
             ->get();
     }

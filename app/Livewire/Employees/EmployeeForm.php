@@ -94,6 +94,8 @@ class EmployeeForm extends Component
             }
         } else {
             // Edit existing employee
+            $oldRole   = $this->employee->roles->first()?->name;
+            $oldBranch = $this->employee->branch_id;
             $this->employee->update([
                 'name'      => $this->name,
                 'phone'     => $this->phone ?: null,
@@ -106,6 +108,19 @@ class EmployeeForm extends Component
                     ->setPermissionsTeamId($shop->id);
                 $this->employee->syncRoles([$this->role]);
             }
+
+            activity()
+                ->causedBy(Auth::user())
+                ->performedOn($this->employee)
+                ->withProperties([
+                    'name'       => $this->name,
+                    'phone'      => $this->phone,
+                    'branch_id'  => $this->branchId ?: null,
+                    'old_branch' => $oldBranch,
+                    'role'       => $this->role,
+                    'old_role'   => $oldRole,
+                ])
+                ->log('employee.updated');
 
             $this->dispatch('notify', ['type' => 'success', 'message' => 'Employee updated.']);
             $this->redirect(route('employees.show', $this->employee), navigate: true);

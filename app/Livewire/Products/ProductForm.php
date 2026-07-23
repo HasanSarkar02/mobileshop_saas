@@ -55,7 +55,9 @@ class ProductForm extends Component
                 'id'               => $v->id,
                 'attributes_label' => $v->attributes_label ?? '',
                 'sku'              => $v->sku,
+                'barcode'          => $v->barcode,
                 'selling_price'    => $v->selling_price,
+                'min_stock_level'  => $v->min_stock_level,
                 'is_active'        => $v->is_active,
                 '_destroy'         => false,
             ])->toArray();
@@ -70,7 +72,9 @@ class ProductForm extends Component
             'id'               => null,
             'attributes_label' => '',
             'sku'              => '',
+            'barcode'          => null,
             'selling_price'    => '',
+            'min_stock_level'  => null,
             'is_active'        => true,
             '_destroy'         => false,
         ];
@@ -212,31 +216,51 @@ class ProductForm extends Component
                     continue;
                 }
 
+                $barcode = $this->normalizeBarcode($variantData['barcode'] ?? null);
+
                 $vData = [
                     'shop_id'          => $shopId,
                     'product_id'       => $product->id,
                     'attributes_label' => $variantData['attributes_label'] ?: null,
                     'sku'              => strtoupper(trim($variantData['sku'])),
+                    'barcode'          => $barcode,
                     'selling_price'    => (float) $variantData['selling_price'],
+                    'min_stock_level'  => isset($variantData['min_stock_level']) && $variantData['min_stock_level'] !== '' 
+                          ? (int) $variantData['min_stock_level'] : null,
                     'is_active'        => $variantData['is_active'],
                 ];
 
-                if (! empty($variantData['id'])) {
-                    ProductVariant::where('id', $variantData['id'])
-                        ->where('shop_id', $shopId) // security: never update another shop's variant
-                        ->update($vData);
-                } else {
-                    // Check SKU uniqueness in DB (not just in form)
-                    $existing = ProductVariant::withTrashed()
+                if ($barcode !== null) {
+                    $dupe = ProductVariant::withTrashed()
                         ->where('shop_id', $shopId)
-                        ->where('sku', $vData['sku'])
-                        ->first();
+                        ->where('barcode', $barcode)
+                        ->when(! empty($variantData['id']), fn ($q) => $q->where('id', '!=', $variantData['id']))
+                        ->exists();
 
-                    if ($existing) {
-                        throw new \RuntimeException("SKU \"{$vData['sku']}\" is already used. Please choose a different one.");
+                    if ($dupe) {
+                        throw new \RuntimeException("Barcode \"{$barcode}\" is already assigned to another product in this shop.");
                     }
+                }
 
-                    ProductVariant::create($vData);
+                // Real guarantee — DB unique constraint, caught for a friendly race-condition message
+                try {
+                    if (! empty($variantData['id'])) {
+                        ProductVariant::where('id', $variantData['id'])->where('shop_id', $shopId)->update($vData);
+                    } else {
+                        $existingSku = ProductVariant::withTrashed()
+                            ->where('shop_id', $shopId)->where('sku', $vData['sku'])->first();
+                        if ($existingSku) {
+                            throw new \RuntimeException("SKU \"{$vData['sku']}\" is already used. Please choose a different one.");
+                        }
+                        ProductVariant::create($vData);
+                    }
+                } catch (\Illuminate\Database\QueryException $e) {
+                    if ((int) $e->getCode() === 23000) {
+                        throw new \RuntimeException(
+                            "SKU or barcode was just taken by another request (possibly a concurrent save). Please refresh and try again."
+                        );
+                    }
+                    throw $e;
                 }
             }
         });
@@ -247,6 +271,12 @@ class ProductForm extends Component
 
         $this->dispatch('notify', type: 'success', message: $message);
         $this->redirect(route('products.index'), navigate: true);
+    }
+
+    private function normalizeBarcode(?string $value): ?string
+    {
+        $value = trim((string) $value);
+        return $value === '' ? null : $value;
     }
 
     public function render()

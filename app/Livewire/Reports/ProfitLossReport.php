@@ -19,7 +19,7 @@ class ProfitLossReport extends Component
 
     public function mount(): void
     {
-        $this->requirePermission('reports.view');
+        $this->requirePermission('accounting.view_full_reports');
     }
     
     #[Computed]

@@ -25,6 +25,9 @@ class StockAdjustmentModal extends Component
     public string  $quantity      = '1';
     public string  $reason        = '';
     public bool    $alreadyDamaged= false;
+    public string $heldForName  = '';
+    public string $heldForPhone = '';
+    public string $holdExpiresAt = '';
 
     // Read-only display
     public string  $productName   = '';
@@ -34,19 +37,29 @@ class StockAdjustmentModal extends Component
     public float   $reservedStock = 0;
 
     #[On('open-stock-adjustment')]
-    public function open(array $data): void
-    {
+    public function open(
+        int     $variant_id,
+        int     $branch_id      = 0,
+        string  $type           = 'damaged',
+        string  $product_name   = '',
+        string  $tracking_type  = 'non_serialized',
+        ?int    $unit_id        = null,
+        
+    ): void {
         $this->requirePermission('inventory.edit');
 
-        $this->variantId      = $data['variant_id'];
-        $this->unitId         = $data['unit_id'] ?? null;
-        $this->branchId       = $data['branch_id'] ?? Auth::user()->branch_id ?? 0;
-        $this->adjustmentType = $data['type'] ?? 'damaged';
-        $this->productName    = $data['product_name'] ?? '';
-        $this->trackingType   = $data['tracking_type'] ?? 'non_serialized';
+        $this->variantId      = $variant_id;
+        $this->unitId         = $unit_id;
+        $this->branchId       = $branch_id ?: (Auth::user()->branch_id ?? 0);
+        $this->adjustmentType = $type;
+        $this->productName    = $product_name;
+        $this->trackingType   = $tracking_type;
         $this->quantity       = '1';
         $this->reason         = '';
         $this->alreadyDamaged = false;
+        $this->heldForName  = '';
+        $this->heldForPhone = '';
+        $this->holdExpiresAt = now()->addDays(3)->format('Y-m-d');
 
         $this->loadCurrentStock();
         $this->show = true;
@@ -54,11 +67,21 @@ class StockAdjustmentModal extends Component
 
     private function loadCurrentStock(): void
     {
-        if ($this->trackingType === 'non_serialized' && $this->variantId && $this->branchId) {
-            $stock = BranchStock::withoutGlobalScopes()
-                ->where('product_variant_id', $this->variantId)
-                ->where('branch_id', $this->branchId)
-                ->first();
+        if ($this->trackingType === 'non_serialized' && $this->variantId) {
+            $query = BranchStock::withoutGlobalScopes()
+                ->where('shop_id', Auth::user()->shop_id)
+                ->where('product_variant_id', $this->variantId);
+
+            // If no specific branch, sum across all branches
+            if ($this->branchId) {
+                $stock = $query->where('branch_id', $this->branchId)->first();
+            } else {
+                // Owner with no branch — use main branch or first available
+                $stock = $query->first();
+                if ($stock) {
+                    $this->branchId = $stock->branch_id;
+                }
+            }
 
             $this->currentStock  = (float) ($stock?->quantity ?? 0);
             $this->damagedStock  = (float) ($stock?->damaged_quantity ?? 0);
@@ -81,49 +104,73 @@ class StockAdjustmentModal extends Component
     }
 
     public function save(
-        MarkStockDamagedAction $damageAction,
-        WriteOffStockAction    $writeOffAction,
-        ReserveStockAction     $reserveAction,
-    ): void {
+    MarkStockDamagedAction $damageAction,
+    WriteOffStockAction    $writeOffAction,
+    ReserveStockAction     $reserveAction,
+): void {
+    $this->validate([
+        'quantity' => 'required|numeric|min:0.01',
+        'reason'   => 'required|string|min:3|max:255',
+    ]);
+
+    if ($this->adjustmentType === 'reserved') {
         $this->validate([
-            'quantity' => 'required|numeric|min:0.01',
-            'reason'   => 'required|string|min:3|max:255',
+            'heldForName'  => 'required|string|max:150',
+            'heldForPhone' => 'nullable|string|max:30',
         ]);
+    }
 
-        $shop  = Auth::user()->shop()->withoutGlobalScopes()->findOrFail(Auth::user()->shop_id);
-        $actor = Auth::user();
+    if (! $this->branchId && $this->trackingType === 'non_serialized') {
+        $this->dispatch('notify', ['type' => 'error', 'message' => 'Please select a branch.']);
+        return;
+    }
 
-        try {
-            if ($this->trackingType === 'serialized' && $this->unitId) {
-                $unit = ProductUnit::withoutGlobalScopes()->findOrFail($this->unitId);
+    $shop   = Auth::user()->shop()->withoutGlobalScopes()->findOrFail(Auth::user()->shop_id);
+    $actor  = Auth::user();
+    $branch = $this->branchId ? Branch::where('shop_id', $shop->id)->findOrFail($this->branchId) : null;
 
-                match($this->adjustmentType) {
-                    'damaged'    => $damageAction->executeSerialized($shop, $unit, $this->reason, $actor),
-                    'written_off'=> $writeOffAction->executeSerialized($shop, $unit, $this->reason, $actor),
-                    default      => throw new \RuntimeException('Invalid adjustment type for serialized unit.'),
-                };
-            } else {
-                $variant = ProductVariant::withoutGlobalScopes()->findOrFail($this->variantId);
-                $branch  = Branch::findOrFail($this->branchId);
-                $qty     = (float) $this->quantity;
+    try {
+        if ($this->trackingType === 'serialized' && $this->unitId) {
+            $unit = ProductUnit::withoutGlobalScopes()->findOrFail($this->unitId);
 
-                match($this->adjustmentType) {
-                    'damaged'    => $damageAction->executeNonSerialized($shop, $variant, $branch, $qty, $this->reason, $actor),
-                    'written_off'=> $writeOffAction->executeNonSerialized($shop, $variant, $branch, $qty, $this->reason, $this->alreadyDamaged, $actor),
-                    'reserved'   => $reserveAction->reserve($shop, $variant, $this->branchId, $qty, $this->reason, $actor),
-                    'unreserved' => $reserveAction->release($shop, $variant, $this->branchId, $qty, $this->reason, $actor),
-                    default      => throw new \RuntimeException('Invalid adjustment type.'),
-                };
-            }
+            match($this->adjustmentType) {
+                'damaged'     => $damageAction->executeSerialized($shop, $unit, $this->reason, $actor),
+                'written_off' => $writeOffAction->executeSerialized($shop, $unit, $this->reason, $actor),
+                'reserved'    => $reserveAction->reserveSerialized(
+                                    $shop, $unit, $this->reason, $actor,
+                                    $this->heldForName ?: null,
+                                    $this->heldForPhone ?: null,
+                                    $this->holdExpiresAt ? \Carbon\Carbon::parse($this->holdExpiresAt) : null,
+                                ),
+                'unreserved'  => $reserveAction->releaseSerialized($shop, $unit, $this->reason, $actor),
+                default       => throw new \RuntimeException('Invalid adjustment type for serialized unit.'),
+            };
+        } else {
+            $variant = ProductVariant::withoutGlobalScopes()->findOrFail($this->variantId);
+            $qty     = (float) $this->quantity;
 
-            $this->show = false;
-            $this->dispatch('stock-adjusted');
-            $this->dispatch('notify', ['type' => 'success',
-                'message' => ucfirst($this->adjustmentType) . ' recorded successfully.']);
-
-        } catch (\Exception $e) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => $e->getMessage()]);
+            match($this->adjustmentType) {
+                'damaged'     => $damageAction->executeNonSerialized($shop, $variant, $branch, $qty, $this->reason, $actor),
+                'written_off' => $writeOffAction->executeNonSerialized($shop, $variant, $branch, $qty, $this->reason, $this->alreadyDamaged, $actor),
+                'reserved'    => $reserveAction->reserve($shop, $variant, $this->branchId, $qty, $this->reason, $actor , $this->heldForName ?: null, $this->heldForPhone ?: null,$this->holdExpiresAt ? \Carbon\Carbon::parse($this->holdExpiresAt) : null,),
+                'unreserved'  => $reserveAction->release($shop, $variant, $this->branchId, $qty, $this->reason, $actor),
+                default       => throw new \RuntimeException('Invalid adjustment type.'),
+            };
         }
+
+        $this->show = false;
+        $this->dispatch('stock-adjusted');
+        $this->dispatch('notify', ['type' => 'success',
+            'message' => ucfirst(str_replace('_', ' ', $this->adjustmentType)) . ' recorded successfully.']);
+
+    } catch (\Exception $e) {
+        $this->dispatch('notify', ['type' => 'error', 'message' => $e->getMessage()]);
+    }
+}
+
+    public function updatedBranchId(): void
+    {
+        $this->loadCurrentStock();
     }
 
     public function render()

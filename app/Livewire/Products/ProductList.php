@@ -15,6 +15,7 @@ use Livewire\WithPagination;
 #[Title('Products')]
 class ProductList extends Component
 {
+    use \App\Traits\HasAuthorization;
     use WithPagination;
 
     #[Url(as: 'q')]
@@ -31,6 +32,11 @@ class ProductList extends Component
     public string $newBrandName    = '';
     public string $newCategoryName = '';
 
+    public function mount(): void
+    {
+        $this->requirePermission('inventory.view');
+    }
+
     public function updatingSearch(): void { $this->resetPage(); }
     public function updatingTrackingType(): void { $this->resetPage(); }
     public function updatingCategoryId(): void { $this->resetPage(); }
@@ -44,7 +50,7 @@ class ProductList extends Component
 
     public function render()
     {
-        $products = Product::with(['brand', 'category', 'variants'])
+        $products = Product::with(['brand', 'category'])
             ->when($this->search, fn($q) =>
                 $q->where('name', 'like', "%{$this->search}%")
             )
@@ -65,6 +71,7 @@ class ProductList extends Component
 
     public function addBrand(): void
     {
+        $this->requirePermission('inventory.edit');
         $this->validate(['newBrandName' => 'required|string|max:100']);
 
         \App\Models\Brand::firstOrCreate(
@@ -72,7 +79,6 @@ class ProductList extends Component
             ['is_active' => true]
         );
 
-        unset($this->brands);
         $this->showAddBrand  = false;
         $this->newBrandName  = '';
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Brand added.']);
@@ -80,6 +86,7 @@ class ProductList extends Component
 
     public function addCategory(): void
     {
+        $this->requirePermission('inventory.edit');
         $this->validate(['newCategoryName' => 'required|string|max:100']);
 
         \App\Models\Category::firstOrCreate(
@@ -87,7 +94,6 @@ class ProductList extends Component
             ['is_active' => true]
         );
 
-        unset($this->categories);
         $this->showAddCategory  = false;
         $this->newCategoryName  = '';
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Category added.']);

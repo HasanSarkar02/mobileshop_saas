@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\ImpersonationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use RuntimeException;
 
 class ImpersonationController extends Controller
 {
@@ -16,7 +17,19 @@ class ImpersonationController extends Controller
     {
         $superAdmin = Auth::guard('admin')->user();
 
-        $this->impersonationService->start($request, $superAdmin, $user, $request->input('reason'));
+        abort_unless($superAdmin instanceof User && $superAdmin->isSuperAdmin(), 403);
+
+        if (! $user->is_active) {
+            return redirect()->back()->withErrors([
+                'impersonation' => "Cannot impersonate {$user->name} — this account is deactivated.",
+            ]);
+        }
+
+        try {
+            $this->impersonationService->start($request, $superAdmin, $user, $request->input('reason'));
+        } catch (RuntimeException $e) {
+            return redirect()->back()->withErrors(['impersonation' => $e->getMessage()]);
+        }
 
         return redirect('/dashboard');
     }

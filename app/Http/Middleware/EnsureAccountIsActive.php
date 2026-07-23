@@ -12,6 +12,11 @@ class EnsureAccountIsActive
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Admin Guard হলে পুরোপুরি স্কিপ করুন
+        if (Auth::guard('admin')->check()) {
+            return $next($request);
+        }
+
         $user = Auth::guard('web')->user();
 
         if (! $user) {

@@ -23,6 +23,7 @@ use Livewire\Component;
 #[Title('POS')]
 class Pos extends Component
 {
+    use \App\Traits\HasAuthorization;
     // ── Cart ─────────────────────────────────────────────────────────────────
     public array $cart = [];
 
@@ -83,6 +84,7 @@ class Pos extends Component
 
     public function mount(): void
     {
+        $this->requirePermission('sales.create');
         $user = Auth::user();
         $shop = $user->shop()->withoutGlobalScopes()->findOrFail($user->shop_id);
 
@@ -229,14 +231,13 @@ class Pos extends Component
             return;
         }
 
-        // 2. Non-Serialized Product by Barcode (NEW)
-        $variantByBarcode = ProductVariant::where('shop_id', $shopId)
-            ->where('barcode', $code)
+        $variantByBarcode = ProductVariant::byBarcode($code, $shopId)
             ->where('is_active', true)
+            ->whereHas('product', fn ($q) => $q->where('is_active', true))
             ->with('product.brand')
             ->first();
         
-        if ($variantByBarcode && $variantByBarcode->product->tracking_type === ProductTrackingType::NonSerialized) {
+       if ($variantByBarcode && $variantByBarcode->product->tracking_type === ProductTrackingType::NonSerialized) {
             $this->addVariantToCart($variantByBarcode->id);
             $this->dispatch('notify', type: 'success', message: "Added: {$variantByBarcode->product->name}");
             return;
@@ -350,14 +351,26 @@ class Pos extends Component
     {
         $variant = ProductVariant::with('product.brand')->findOrFail($variantId);
         $product = $variant->product;
+        $available = $this->availableStockFor($variantId);
 
         // Check existing cart item for same variant (increment quantity for non-serialized)
         foreach ($this->cart as $idx => $item) {
             if ($item['product_variant_id'] === $variantId && empty($item['product_unit_id'])) {
+                if (($item['quantity'] + 1) > $available) {
+                $this->dispatch('notify', type: 'error',
+                    message: "Only {$available} unit(s) available for \"{$product->name}\" at this branch.");
+                return;
+                }
                 $this->cart[$idx]['quantity']++;
                 $this->recalcItem($idx);
                 return;
             }
+        }
+
+        if ($available < 1) {
+            $this->dispatch('notify', type: 'error',
+                message: 'No available stock for this item at this branch (it may be reserved).');
+            return;
         }
 
         // Check available stock
@@ -442,6 +455,14 @@ class Pos extends Component
         if (! empty($this->cart[$idx]['product_unit_id'])) return; // serialized units = always qty 1
 
         $newQty = max(1, (int) $this->cart[$idx]['quantity'] + $delta);
+
+        if ($delta > 0) {
+        $available = $this->availableStockFor($this->cart[$idx]['product_variant_id']);
+        if ($newQty > $available) {
+            $this->dispatch('notify', type: 'error', message: "Only {$available} unit(s) available at this branch.");
+            return;
+            }
+        }
         $this->cart[$idx]['quantity'] = $newQty;
         $this->recalcItem($idx);
     }
@@ -461,6 +482,16 @@ class Pos extends Component
         }
     }
 
+    private function availableStockFor(int $variantId): float
+    {
+        $stock = BranchStock::withoutGlobalScopes()
+            ->where('shop_id', Auth::user()->shop_id)
+            ->where('branch_id', $this->currentBranchId)
+            ->where('product_variant_id', $variantId)
+            ->first();
+
+        return $stock ? max(0, (float) $stock->quantity - (float) $stock->reserved_quantity) : 0.0;
+    }
     // ── Customer ──────────────────────────────────────────────────────────────
 
     public function updatedCustomerSearch(): void
@@ -665,9 +696,6 @@ class Pos extends Component
         $this->showCustomerDropdown = false;
         $this->customerSearch = '';
     }
-
-
-    
 
     // ── Hold Sale ─────────────────────────────────────────────────────────────
 

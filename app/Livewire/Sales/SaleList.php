@@ -74,7 +74,7 @@ class SaleList extends Component
         $this->showVoidModal = true;
     }
 
-    public function voidSale(int $saleId, VoidSaleAction $action): void
+    public function voidSale(VoidSaleAction $action): void
     {
         $this->requirePermission('sales.void');
         if (! Auth::user()->isOwner() && ! Auth::user()->can('sales.void')) {
@@ -83,7 +83,7 @@ class SaleList extends Component
             return;
         }
 
-        $sale = Sale::findOrFail($saleId);
+        $sale = Sale::findOrFail($this->voidSaleId);
 
         if (! $sale->isVoidable()) {
             $this->dispatch('notify', ['type' => 'error',
@@ -94,7 +94,7 @@ class SaleList extends Component
         $shop = Auth::user()->shop()->withoutGlobalScopes()->findOrFail(Auth::user()->shop_id);
 
         try {
-            $action->execute($sale, $this->voidReason, $shop, Auth::user());
+            $action->execute($sale, $this->voidReason,  Auth::user());
             $this->showVoidModal = false;
             $this->voidReason    = '';
             $this->dispatch('notify', ['type' => 'success',

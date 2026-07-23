@@ -17,11 +17,13 @@ use App\Services\AccountingService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use App\Events\SaleVoided;
+use App\Services\UnitStatusTransitioner;
 
 class VoidSaleAction
 {
     public function __construct(
         private readonly AccountingService $accounting,
+        private readonly UnitStatusTransitioner $transitioner,
     ) {}
 
     public function execute(Sale $sale, string $reason, User $actor): Sale
@@ -54,36 +56,72 @@ class VoidSaleAction
             // ── 2. Restore inventory ───────────────────────────────────────────
             foreach ($sale->items as $item) {
                 if ($item->product_unit_id) {
+
+                    $this->transitioner->reverseVoidedSale($item->product_unit_id, $sale);
                     // Force direct update to bypass any model casting issues
-                    ProductUnit::withoutGlobalScopes()
-                        ->where('id', $item->product_unit_id)
-                        ->update([
-                            'status'           => 'in_stock',   // direct string value
-                            'sold_at'          => null,
-                            'is_archived'      => false,
-                            'disposition_type' => null,
-                            'disposition_id'   => null,
-                        ]);
+                    // ProductUnit::withoutGlobalScopes()
+                    //     ->where('id', $item->product_unit_id)
+                    //     ->update([
+                    //         'status'           => 'in_stock',   // direct string value
+                    //         'sold_at'          => null,
+                    //         'is_archived'      => false,
+                    //         'disposition_type' => null,
+                    //         'disposition_id'   => null,
+                    //     ]);
                 } else {
-                    // Non-serialized — restore at the ORIGINAL sale's branch
-                    $existing = BranchStock::withoutGlobalScopes()
+
+                    DB::table('branch_stocks')
                         ->where('shop_id', $sale->shop_id)
                         ->where('branch_id', $sale->branch_id)
                         ->where('product_variant_id', $item->product_variant_id)
-                        ->first();
+                        ->lockForUpdate()
+                        ->exists();
 
-                    if ($existing) {
-                        $existing->increment('quantity', $item->quantity);
-                    } else {
-                        // Create stock row if it doesn't exist (edge case)
-                        BranchStock::create([
-                            'shop_id'            => $sale->shop_id,
-                            'branch_id'          => $sale->branch_id,
-                            'product_variant_id' => $item->product_variant_id,
-                            'quantity'           => $item->quantity,
-                            'average_cost'       => $item->cost_price,
-                        ]);
+                    $affected = BranchStock::withoutGlobalScopes()
+                        ->where('shop_id', $sale->shop_id)
+                        ->where('branch_id', $sale->branch_id)
+                        ->where('product_variant_id', $item->product_variant_id)
+                        ->increment('quantity', $item->quantity);
+
+                    if ($affected === 0) {
+                        // Row genuinely doesn't exist yet for this branch —
+                        // upsert to create it atomically rather than a
+                        // separate check-then-create that could race with
+                        // another void or a concurrent purchase receipt
+                        // creating the same row.
+                        DB::table('branch_stocks')->upsert(
+                            [[
+                                'shop_id'            => $sale->shop_id,
+                                'branch_id'          => $sale->branch_id,
+                                'product_variant_id' => $item->product_variant_id,
+                                'quantity'           => $item->quantity,
+                                'average_cost'       => $item->cost_price,
+                                'created_at'         => now(),
+                                'updated_at'         => now(),
+                            ]],
+                            ['branch_id', 'product_variant_id'],
+                            ['quantity' => DB::raw('quantity + ' . (int) $item->quantity)]
+                        );
                     }
+                    // Non-serialized — restore at the ORIGINAL sale's branch
+                    // $existing = BranchStock::withoutGlobalScopes()
+                    //     ->where('shop_id', $sale->shop_id)
+                    //     ->where('branch_id', $sale->branch_id)
+                    //     ->where('product_variant_id', $item->product_variant_id)
+                    //     ->first();
+
+                    // if ($existing) {
+                    //     $existing->increment('quantity', $item->quantity);
+                    // } else {
+                    //     // Create stock row if it doesn't exist (edge case)
+                    //     BranchStock::create([
+                    //         'shop_id'            => $sale->shop_id,
+                    //         'branch_id'          => $sale->branch_id,
+                    //         'product_variant_id' => $item->product_variant_id,
+                    //         'quantity'           => $item->quantity,
+                    //         'average_cost'       => $item->cost_price,
+                    //     ]);
+                    // }
                 }
             }
             // ── 3. Reverse customer baki ───────────────────────────────────────

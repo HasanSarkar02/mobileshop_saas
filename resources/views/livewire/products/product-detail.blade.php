@@ -20,6 +20,11 @@
                     {{ $product->is_active ? 'Active' : 'Inactive' }}
                 </span>
             </div>
+            @if ($product->description)
+                <p class="text-sm text-gray-500 mt-3 leading-relaxed whitespace-pre-line">
+                    {{ $product->description }}
+                </p>
+            @endif
         </div>
         <div class="flex gap-2">
             <a href="{{ route('products.edit', $product) }}" wire:navigate class="btn-secondary btn-sm">Edit</a>
@@ -84,80 +89,8 @@
                 @endforeach
             </div>
         @endif
-        {{-- Include the modal component --}}
+        {{-- Stock Adjustment Modal --}}
         @livewire('inventory.stock-adjustment-modal')
-
-        {{-- For non-serialized variants --}}
-        @foreach ($product->variants as $variant)
-            @php
-                $stock = $variant->branchStocks->where('branch_id', auth()->user()->branch_id)->first();
-            @endphp
-            <div class="flex items-center gap-2 mt-2">
-                @can('inventory.edit')
-                    <button
-                        wire:click="$dispatch('open-stock-adjustment', {
-                    variant_id: {{ $variant->id }},
-                    branch_id: {{ auth()->user()->branch_id }},
-                    type: 'damaged',
-                    product_name: '{{ addslashes($product->name . ' — ' . $variant->attributes_label) }}',
-                    tracking_type: '{{ $product->tracking_type }}'
-                })"
-                        class="text-xs text-amber-500 hover:underline font-medium">
-                        ⚠ Mark Damaged
-                    </button>
-                    <button
-                        wire:click="$dispatch('open-stock-adjustment', {
-                    variant_id: {{ $variant->id }},
-                    branch_id: {{ auth()->user()->branch_id }},
-                    type: 'written_off',
-                    product_name: '{{ addslashes($product->name . ' — ' . $variant->attributes_label) }}',
-                    tracking_type: '{{ $product->tracking_type }}'
-                })"
-                        class="text-xs text-red-400 hover:underline font-medium">
-                        ✗ Write Off
-                    </button>
-                    <button
-                        wire:click="$dispatch('open-stock-adjustment', {
-                    variant_id: {{ $variant->id }},
-                    branch_id: {{ auth()->user()->branch_id }},
-                    type: 'reserved',
-                    product_name: '{{ addslashes($product->name . ' — ' . $variant->attributes_label) }}',
-                    tracking_type: '{{ $product->tracking_type }}'
-                })"
-                        class="text-xs text-blue-400 hover:underline font-medium">
-                        🔒 Reserve
-                    </button>
-                @endcan
-            </div>
-        @endforeach
-
-        {{-- For serialized units --}}
-        @foreach ($product->variants as $variant)
-            @foreach ($variant->Units->where('status', 'in_stock') as $unit)
-                @can('inventory.edit')
-                    <div class="flex gap-2 mt-1">
-                        <button
-                            wire:click="$dispatch('open-stock-adjustment', {
-                        unit_id: {{ $unit->id }},
-                        variant_id: {{ $variant->id }},
-                        type: 'damaged',
-                        product_name: '{{ addslashes($variant->product->name) }} – {{ $unit->serial_number }}',
-                        tracking_type: 'serialized'
-                    })"
-                            class="text-xs text-amber-500 hover:underline">⚠ Damage</button>
-                        <button
-                            wire:click="$dispatch('open-stock-adjustment', {
-                        unit_id: {{ $unit->id }},
-                        variant_id: {{ $variant->id }},
-                        type: 'written_off',
-                        product_name: '{{ addslashes($variant->product->name) }} – {{ $unit->serial_number }}',
-                        tracking_type: 'serialized'
-                    })"
-                            class="text-xs text-red-400 hover:underline">✗ Write Off</button>
-                    </div>
-                @endcan
-            @endforeach
-        @endforeach
 
         {{-- ── Pricing ── --}}
         <div class="card p-4 flex flex-wrap items-center gap-6">
@@ -170,9 +103,32 @@
                 <div class="text-xs text-gray-400 mb-0.5">SKU</div>
                 <div class="font-mono text-sm font-semibold text-gray-800">{{ $variant->sku }}</div>
             </div>
+            @if ($variant->barcode)
+                <div class="h-8 border-l border-gray-200"></div>
+                <div>
+                    <div class="text-xs text-gray-400 mb-0.5">
+                        {{ $product->tracking_type->value === 'serialized' ? 'Carton Barcode' : 'Barcode' }}
+                    </div>
+                    <div class="font-mono text-sm font-semibold text-gray-800 flex items-center gap-2">
+                        {{ $variant->barcode }}
+                        <button type="button" x-data
+                            @click="navigator.clipboard.writeText('{{ $variant->barcode }}'); $dispatch('notify', {type:'success', message:'Barcode copied'})"
+                            class="text-gray-300 hover:text-indigo-600 transition-colors" title="Copy barcode">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            @endif
+            @if ($product->tracking_type->value === 'non_serialized' && $variant->barcode)
+                <a href="{{ route('products.labels.print', $product) }}?variant={{ $variant->id }}" target="_blank"
+                    class="ml-auto btn-secondary btn-sm">🏷 Print Labels</a>
+            @endif
             @if ($unitStatus)
                 <button wire:click="$set('unitStatus', '')"
-                    class="ml-auto text-xs text-gray-400 hover:text-indigo-600 transition-colors">
+                    class="text-xs text-gray-400 hover:text-indigo-600 transition-colors">
                     Show all statuses ×
                 </button>
             @endif
@@ -213,6 +169,7 @@
                                 <th class="table-th">Received</th>
                                 <th class="table-th">Sale Info</th>
                                 <th class="table-th">Warranty</th>
+                                <th class="table-th">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -253,6 +210,22 @@
                                         <span class="badge {{ $statusColors[$unit->status->value] ?? 'badge-gray' }}">
                                             {{ ucfirst(str_replace('_', ' ', $unit->status->value)) }}
                                         </span>
+                                        @if ($unit->status->value === 'reserved' && isset($unitHolds[$unit->id]))
+                                            @php $hold = $unitHolds[$unit->id]; @endphp
+                                            <div class="text-xs text-amber-600 mt-1 max-w-[150px]">
+                                                👤 {{ $hold->held_for_name ?: 'Unnamed' }}
+                                                @if ($hold->held_for_phone)
+                                                    <div class="text-gray-400">{{ $hold->held_for_phone }}</div>
+                                                @endif
+                                                @if ($hold->hold_expires_at)
+                                                    <div
+                                                        class="{{ $hold->isHoldExpired() ? 'text-red-500 font-semibold' : 'text-gray-400' }}">
+                                                        {{ $hold->isHoldExpired() ? '⚠ Expired' : 'Until' }}
+                                                        {{ $hold->hold_expires_at->format('d M') }}
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        @endif
                                     </td>
                                     <td class="table-td text-gray-500 text-sm">
                                         {{ $unit->branch?->name ?? '—' }}
@@ -339,6 +312,58 @@
                                             <span class="text-gray-300 text-xs">No warranty</span>
                                         @endif
                                     </td>
+                                    <td class="table-td">
+                                        @can('inventory.edit')
+                                            @if ($unit->status->value === 'in_stock')
+                                                <div class="flex flex-col gap-1 text-xs whitespace-nowrap">
+                                                    <button
+                                                        wire:click="$dispatch('open-stock-adjustment', {
+                        unit_id: {{ $unit->id }}, variant_id: {{ $variant->id }},
+                        branch_id: {{ $unit->branch_id ?? 0 }}, type: 'damaged',
+                        product_name: '{{ addslashes($product->name) }} – {{ $unit->serial_number }}',
+                        tracking_type: 'serialized'
+                    })"
+                                                        class="text-amber-500 hover:underline text-left">⚠ Damage</button>
+                                                    <button
+                                                        wire:click="$dispatch('open-stock-adjustment', {
+                        unit_id: {{ $unit->id }}, variant_id: {{ $variant->id }},
+                        branch_id: {{ $unit->branch_id ?? 0 }}, type: 'written_off',
+                        product_name: '{{ addslashes($product->name) }} – {{ $unit->serial_number }}',
+                        tracking_type: 'serialized'
+                    })"
+                                                        class="text-red-400 hover:underline text-left">✗ Write Off</button>
+                                                    <button
+                                                        wire:click="$dispatch('open-stock-adjustment', {
+                        unit_id: {{ $unit->id }}, variant_id: {{ $variant->id }},
+                        branch_id: {{ $unit->branch_id ?? 0 }}, type: 'reserved',
+                        product_name: '{{ addslashes($product->name) }} – {{ $unit->serial_number }}',
+                        tracking_type: 'serialized'
+                    })"
+                                                        class="text-blue-500 hover:underline text-left">🔒 Reserve</button>
+                                                </div>
+                                            @elseif ($unit->status->value === 'reserved')
+                                                <button
+                                                    wire:click="$dispatch('open-stock-adjustment', {
+                    unit_id: {{ $unit->id }}, variant_id: {{ $variant->id }},
+                    branch_id: {{ $unit->branch_id ?? 0 }}, type: 'unreserved',
+                    product_name: '{{ addslashes($product->name) }} – {{ $unit->serial_number }}',
+                    tracking_type: 'serialized'
+                })"
+                                                    class="text-green-600 hover:underline text-xs">🔓 Release Hold</button>
+                                            @elseif ($unit->status->value === 'damaged')
+                                                <button
+                                                    wire:click="$dispatch('open-stock-adjustment', {
+                    unit_id: {{ $unit->id }}, variant_id: {{ $variant->id }},
+                    branch_id: {{ $unit->branch_id ?? 0 }}, type: 'written_off',
+                    product_name: '{{ addslashes($product->name) }} – {{ $unit->serial_number }}',
+                    tracking_type: 'serialized'
+                })"
+                                                    class="text-red-400 hover:underline text-xs">✗ Write Off</button>
+                                            @else
+                                                <span class="text-gray-300 text-xs">—</span>
+                                            @endif
+                                        @endcan
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
@@ -379,6 +404,9 @@
                             <th class="table-th">Quantity</th>
                             <th class="table-th">Average Cost</th>
                             <th class="table-th">Stock Value</th>
+                            @can('inventory.edit')
+                                <th class="table-th">Actions</th>
+                            @endcan
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -390,6 +418,27 @@
                                         class="{{ $stock->quantity > 0 ? 'text-green-700 font-bold' : 'text-red-600 font-bold' }}">
                                         {{ $stock->quantity }}
                                     </span>
+                                    @if ($stock->reserved_quantity > 0)
+                                        @php $hold = $branchHolds[$stock->branch_id] ?? null; @endphp
+                                        <div class="text-xs text-amber-600 mt-0.5">
+                                            🔒 {{ $stock->reserved_quantity }} reserved
+                                            @if ($hold)
+                                                <div class="text-gray-400">
+                                                    for {{ $hold->held_for_name ?: 'Unnamed' }}
+                                                    @if ($hold->held_for_phone)
+                                                        · {{ $hold->held_for_phone }}
+                                                    @endif
+                                                </div>
+                                                @if ($hold->hold_expires_at)
+                                                    <div
+                                                        class="{{ $hold->isHoldExpired() ? 'text-red-500 font-semibold' : 'text-gray-400' }}">
+                                                        {{ $hold->isHoldExpired() ? '⚠ Expired' : 'Until' }}
+                                                        {{ $hold->hold_expires_at->format('d M Y') }}
+                                                    </div>
+                                                @endif
+                                            @endif
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="table-td text-gray-500">
                                     ৳{{ number_format($stock->average_cost, 2) }}
@@ -397,10 +446,50 @@
                                 <td class="table-td font-semibold text-gray-800">
                                     ৳{{ number_format($stock->quantity * $stock->average_cost, 2) }}
                                 </td>
+                                @can('inventory.edit')
+                                    <td class="table-td">
+                                        <div class="flex flex-wrap gap-2 text-xs">
+                                            <button
+                                                wire:click="$dispatch('open-stock-adjustment', {
+                                    variant_id: {{ $variant->id }}, branch_id: {{ $stock->branch_id }},
+                                    type: 'damaged',
+                                    product_name: '{{ addslashes($product->name . ($variant->attributes_label ? ' — ' . $variant->attributes_label : '')) }}',
+                                    tracking_type: 'non_serialized'
+                                })"
+                                                class="text-amber-500 hover:underline">⚠ Damage</button>
+                                            <button
+                                                wire:click="$dispatch('open-stock-adjustment', {
+                                    variant_id: {{ $variant->id }}, branch_id: {{ $stock->branch_id }},
+                                    type: 'written_off',
+                                    product_name: '{{ addslashes($product->name . ($variant->attributes_label ? ' — ' . $variant->attributes_label : '')) }}',
+                                    tracking_type: 'non_serialized'
+                                })"
+                                                class="text-red-400 hover:underline">✗ Write Off</button>
+                                            @if ($stock->reserved_quantity > 0)
+                                                <button
+                                                    wire:click="$dispatch('open-stock-adjustment', {
+                                        variant_id: {{ $variant->id }}, branch_id: {{ $stock->branch_id }},
+                                        type: 'unreserved',
+                                        product_name: '{{ addslashes($product->name . ($variant->attributes_label ? ' — ' . $variant->attributes_label : '')) }}',
+                                        tracking_type: 'non_serialized'
+                                    })"
+                                                    class="text-green-600 hover:underline">🔓 Release</button>
+                                            @endif
+                                            <button
+                                                wire:click="$dispatch('open-stock-adjustment', {
+                                    variant_id: {{ $variant->id }}, branch_id: {{ $stock->branch_id }},
+                                    type: 'reserved',
+                                    product_name: '{{ addslashes($product->name . ($variant->attributes_label ? ' — ' . $variant->attributes_label : '')) }}',
+                                    tracking_type: 'non_serialized'
+                                })"
+                                                class="text-blue-500 hover:underline">🔒 Reserve</button>
+                                        </div>
+                                    </td>
+                                @endcan
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="table-td text-center text-gray-400 py-8">
+                                <td colspan="5" class="table-td text-center text-gray-400 py-8">
                                     No stock received yet.
                                 </td>
                             </tr>

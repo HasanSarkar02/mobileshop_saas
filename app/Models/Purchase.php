@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use RuntimeException;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 #[Fillable(['shop_id', 'branch_id', 'supplier_id', 'reference_number', 'purchase_date', 'total_amount', 'payment_status', 'created_by'])]
 class Purchase extends Model
 {
-    use BelongsToBranch;
+    use BelongsToBranch, LogsActivity;
 
     protected function casts(): array
     {
@@ -20,6 +22,22 @@ class Purchase extends Model
             'purchase_date' => 'date',
             'total_amount' => 'decimal:2',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'supplier_id', 
+                'branch_id', 
+                'reference_number', 
+                'purchase_date', 
+                'total_amount', 
+                'payment_status'
+            ])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('purchase');
     }
 
     public function supplier(): BelongsTo

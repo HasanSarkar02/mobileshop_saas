@@ -25,7 +25,7 @@ class NotificationPreferences extends Component
 
         foreach (NotificationCategory::cases() as $category) {
             foreach (NotificationChannel::cases() as $channel) {
-                if (! $channel->isImplemented()) {
+                if (! $channel->isImplemented() || $channel === NotificationChannel::InApp) {
                     continue;
                 }
 
@@ -56,7 +56,7 @@ class NotificationPreferences extends Component
     {
         return view('livewire.notifications.notification-preferences', [
             'categories' => NotificationCategory::cases(),
-            'channels' => array_filter(NotificationChannel::cases(), fn ($c) => $c->isImplemented()),
+            'channels' => array_filter(NotificationChannel::cases() , fn ($c) => $c->isImplemented() && $c !== NotificationChannel::InApp),
         ]);
     }
 }

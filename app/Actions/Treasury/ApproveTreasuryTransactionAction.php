@@ -69,11 +69,11 @@ class ApproveTreasuryTransactionAction
                 'updated_by'        => $actor->id,
             ]);
 
-            // activity()
-            //     ->causedBy($actor)
-            //     ->performedOn($txn)
-            //     ->withProperties(['journal_entry_id' => $journalEntry->id])
-            //     ->log('treasury_transaction.completed');
+            activity()
+                ->causedBy($actor)
+                ->performedOn($txn)
+                ->withProperties(['journal_entry_id' => $journalEntry->id])
+                ->log('treasury_transaction.completed');
             DB::afterCommit(fn () => event(new TreasuryApproved($txn, $shop, $actor)));
             return $txn->fresh(['fromAccount', 'toAccount', 'journalEntry', 'approvedBy']);
         });

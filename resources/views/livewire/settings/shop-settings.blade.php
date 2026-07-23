@@ -6,7 +6,6 @@
             @php
                 $tabs = [
                     ['key' => 'profile', 'label' => 'Shop Profile'],
-                    ['key' => 'subscription', 'label' => '📋 My Subscription'],
                     ['key' => 'payments', 'label' => 'Payment Accounts'],
                     ['key' => 'finance_partners', 'label' => 'Finance Partners (EMI)'],
                     ['key' => 'branches', 'label' => 'Branches'],
@@ -115,18 +114,6 @@
             </div>
         </div>
 
-        <div wire:show="activeTab === 'subscription'" class="p-6 space-y-5">
-            <a href="{{ route('settings.subscription') }}" wire:navigate
-                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100">
-                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="1.75"
-                    viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round"
-                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                <span>Subscription</span>
-            </a>
-        </div>
-
         {{-- ── PAYMENT ACCOUNTS TAB ── --}}
         <div wire:show="activeTab === 'payments'" class="p-6 space-y-4">
             <div class="flex items-center justify-between">
@@ -149,8 +136,7 @@
                 <div class="grid sm:grid-cols-2 gap-4">
                     <div class="sm:col-span-2">
                         <label class="label">Account Label *</label>
-                        <input wire:model="paymentName" type="text"
-                            placeholder="e.g. bKash Business — 01711000000"
+                        <input wire:model="paymentName" type="text" placeholder="e.g. bKash Business — 01711000000"
                             class="input @error('paymentName') input-error @enderror">
                         @error('paymentName')
                             <p class="error">{{ $message }}</p>
@@ -228,35 +214,50 @@
             <div class="space-y-2">
                 @forelse (\App\Models\PaymentAccount::where('shop_id', auth()->user()->shop_id)->get() as $pa)
                     <div
-                        class="flex items-center justify-between p-3 border border-gray-200 rounded-xl
-            {{ !$pa->is_active ? 'opacity-50 bg-gray-50' : '' }}">
+                        class="flex items-center justify-between p-4 border border-gray-200 rounded-xl {{ !$pa->is_active ? 'opacity-50 bg-gray-50' : '' }}">
 
-                        <div>
-                            <div class="font-medium text-sm text-gray-900">
-                                {{ $pa->name }}
-                            </div>
+                        <div class="flex items-center gap-4">
+                            {{-- Badge --}}
+                            @php
+                                $label = $providerLabels[$pa->provider] ?? [
+                                    'label' => ucfirst($pa->provider),
+                                    'color' => 'badge-gray',
+                                ];
+                            @endphp
+                            <span class="badge {{ $label['color'] }} text-xs font-medium">
+                                {{ $label['label'] }}
+                            </span>
 
-                            <div class="text-xs text-gray-400">
-                                {{ ucfirst($pa->provider) }}
+                            <div>
+                                <div class="font-medium text-gray-900">{{ $pa->name }}</div>
+                                @if ($pa->account_number)
+                                    <div class="text-sm text-gray-600 font-mono">
+                                        {{ $pa->account_number }}
+                                    </div>
+                                @endif
+                                @if ($pa->bank_name)
+                                    <div class="text-xs text-gray-500">{{ $pa->bank_name }}</div>
+                                @endif
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-3">
                             @if (!$pa->is_active)
                                 <span class="badge badge-red text-xs">Inactive</span>
                             @endif
 
+                            <button wire:click="openPaymentForm({{ $pa->id }})"
+                                class="text-indigo-600 hover:text-indigo-700 text-sm">
+                                Edit
+                            </button>
+
                             <button wire:click="togglePaymentAccount({{ $pa->id }})"
-                                wire:confirm="{{ $pa->is_active
-                                    ? 'Deactivate this account? It will be hidden from POS and payment forms.'
-                                    : 'Reactivate this account?' }}"
-                                class="text-xs {{ $pa->is_active ? 'text-red-500 hover:underline' : 'text-green-600 hover:underline' }}">
+                                wire:confirm="{{ $pa->is_active ? 'Deactivate?' : 'Reactivate?' }}"
+                                class="text-xs {{ $pa->is_active ? 'text-red-500' : 'text-green-600' }} hover:underline">
                                 {{ $pa->is_active ? 'Deactivate' : 'Reactivate' }}
                             </button>
                         </div>
-
                     </div>
-
                 @empty
 
                     <div class="text-center py-10 text-gray-400 text-sm">
@@ -617,6 +618,70 @@
                         <span wire:loading wire:target="testSms">Sending…</span>
                     </button>
                 </div>
+            </div>
+        </div>
+        <div class="bg-gray-50 p-3 border-b border-gray-200">
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+
+                {{-- 1. Activity Log --}}
+                <a href="{{ route('settings.activity-log') }}" wire:navigate
+                    class="flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Activity Log</span>
+                </a>
+
+                <a href="{{ route('sms.logs') }}" wire:navigate
+                    class="flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 9h8M8 13h5m-1 7l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                    </svg>
+                    <span>Sms Log</span>
+                </a>
+
+                {{-- 2. Subscription --}}
+                <a href="{{ route('settings.subscription') }}" wire:navigate
+                    class="flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <span>Subscription</span>
+                </a>
+
+                {{-- 3. SMTP Settings --}}
+                <a href="{{ route('settings.smtp') }}" wire:navigate
+                    class="flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <span>SMTP Mail</span>
+                </a>
+
+                {{-- 4. Notification Templates --}}
+                <a href="{{ route('settings.notification-templates') }}" wire:navigate
+                    class="flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <span>Email Templates</span>
+                </a>
+
+                {{-- 5. Notification Rules --}}
+                <a href="{{ route('settings.notification-rules') }}" wire:navigate
+                    class="flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    </svg>
+                    <span>Notify Rules</span>
+                </a>
+
             </div>
         </div>
     </div>

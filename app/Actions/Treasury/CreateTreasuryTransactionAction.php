@@ -123,11 +123,11 @@ class CreateTreasuryTransactionAction
                 'updated_by'                => $actor->id,
             ]);
 
-            // activity()
-            //     ->causedBy($actor)
-            //     ->performedOn($txn)
-            //     ->withProperties(['type' => $type->value, 'amount' => $amount, 'needs_approval' => $needsApproval])
-            //     ->log('treasury_transaction.created');
+            activity()
+                ->causedBy($actor)
+                ->performedOn($txn)
+                ->withProperties(['type' => $type->value, 'amount' => $amount, 'needs_approval' => $needsApproval])
+                ->log('treasury_transaction.created');
 
             // ── Auto-approve if no approval needed ─────────────────────────────
             if (! $needsApproval) {

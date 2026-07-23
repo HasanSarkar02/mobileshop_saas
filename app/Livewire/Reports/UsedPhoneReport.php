@@ -20,7 +20,7 @@ class UsedPhoneReport extends Component
 
     public function mount(): void
 {
-    $this->requirePermission('reports.view');
+    $this->requirePermission('accounting.view_basic_reports');
 }
     #[Url(as: 'view')]
     public string $activeView = 'summary';

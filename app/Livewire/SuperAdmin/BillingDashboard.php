@@ -224,15 +224,36 @@ class BillingDashboard extends Component
             'message' => 'Payment recorded. Subscription activated until ' . $nextDate . '.']);
     }
 
-    public function suspend(int $subId): void
+    public bool $showSuspendModal = false;
+    public ?int $suspendSubId = null;
+    public string $suspendReason = '';
+
+    public function openSuspendModal(int $subId): void
     {
-        $sub = ShopSubscription::withoutGlobalScopes()->findOrFail($subId);
+        $this->suspendSubId = $subId;
+        $this->suspendReason = '';
+        $this->showSuspendModal = true;
+    }
+
+    public function confirmSuspend(\App\Services\AdminAuditLogger $audit): void
+    {
+        $this->validate(['suspendReason' => 'required|string|min:3|max:500']);
+
+        $sub = ShopSubscription::withoutGlobalScopes()->findOrFail($this->suspendSubId);
         $sub->update(['status' => 'suspended']);
 
-        Shop::withoutGlobalScopes()->where('id', $sub->shop_id)
-            ->update(['status' => 'suspended', 'is_active' => false]);
+        $shop = Shop::withoutGlobalScopes()->where('id', $sub->shop_id)->first();
+        Shop::withoutGlobalScopes()->where('id', $sub->shop_id)->update([
+            'status' => 'suspended',
+            'is_active' => false,
+            'suspension_reason' => $this->suspendReason,
+            'suspended_at' => now(),
+        ]);
+
+        $audit->log(\Illuminate\Support\Facades\Auth::guard('admin')->user(), 'shop.suspended', $shop, $this->suspendReason, ['subscription_id' => $sub->id]);
 
         unset($this->subscriptions, $this->stats);
+        $this->showSuspendModal = false;
         $this->dispatch('notify', ['type' => 'warning', 'message' => 'Shop suspended.']);
     }
 

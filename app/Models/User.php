@@ -33,6 +33,9 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'password_changed_at' => 'datetime',
             'has_system_access' => 'boolean',
+            'two_factor_confirmed_at' => 'datetime',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_secret' => 'encrypted',
         ];
     }
 
@@ -44,6 +47,11 @@ class User extends Authenticatable
     public function isSuperAdmin(): bool
     {
         return $this->user_type === UserType::SuperAdmin;
+    }
+
+    public function hasTwoFactorEnabled(): bool
+    {
+        return ! is_null($this->two_factor_confirmed_at);
     }
 
     public function isOwner(): bool
@@ -64,7 +72,7 @@ class User extends Authenticatable
     public function sendPasswordResetNotification($token): void
     {
         if ($this->isSuperAdmin()) {
-            return; // Silently discard — never send reset emails to Super Admin
+            return;
         }
 
         $this->notify(new \App\Notifications\SetInitialPasswordNotification(

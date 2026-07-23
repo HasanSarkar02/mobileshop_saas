@@ -32,6 +32,18 @@ class SendNotificationChannelJob implements ShouldQueue
 
         if (! $delivery) {
             return;
+                }
+
+                if (
+            in_array(
+                $delivery->status,
+                [
+                    NotificationDeliveryStatus::Sent,
+                    NotificationDeliveryStatus::Delivered,
+                ]
+            )
+        ) {
+            return;
         }
 
         $delivery->increment('attempts');

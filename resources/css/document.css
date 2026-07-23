@@ -70,6 +70,22 @@ html, body {
 
     .no-print { display: none !important; }
 
+    html, body {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Update your .doc-page rule to this */
+    .doc-page {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+    }
     /* Repeat table headers on every page */
     thead { display: table-header-group; }
     tfoot { display: table-footer-group; }

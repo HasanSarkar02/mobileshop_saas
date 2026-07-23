@@ -30,11 +30,11 @@ class RejectTreasuryTransactionAction
             'updated_by'       => $actor->id,
         ]);
 
-        // activity()
-        //     ->causedBy($actor)
-        //     ->performedOn($txn)
-        //     ->withProperties(['reason' => $reason])
-        //     ->log('treasury_transaction.rejected');
+        activity()
+            ->causedBy($actor)
+            ->performedOn($txn)
+            ->withProperties(['reason' => $reason])
+            ->log('treasury_transaction.rejected');
         $shop = Shop::withoutGlobalScopes()->findOrFail($txn->shop_id);
         DB::afterCommit(fn () => event(new TreasuryRejected($txn, $shop, $actor, $reason)));
         return $txn->fresh();

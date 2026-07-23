@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Customers;
 
+use App\Events\CustomerDueReminderRequested;
 use App\Models\Customer;
 use App\Models\CustomerTransaction;
 use App\Models\PaymentAccount;
@@ -13,6 +14,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Events\CustomerPaymentRecorded;
 
 #[Layout('components.layouts.app')]
 #[Title('Customer Profile')]
@@ -69,7 +71,7 @@ class CustomerProfile extends Component
 
         $paymentAccount = PaymentAccount::findOrFail($this->paymentAccountId);
 
-        $ledger->recordPayment(
+       $transaction = $ledger->recordPayment(
             customer: $this->customer,
             amount: (float) $this->paymentAmount,
             paymentAccount: $paymentAccount,
@@ -78,6 +80,10 @@ class CustomerProfile extends Component
         );
 
         $this->customer->refresh();
+
+        $shop = Auth::user()->shop()->withoutGlobalScopes()->findOrFail(Auth::user()->shop_id);
+        event(new CustomerPaymentRecorded($transaction, $this->customer, $shop));
+        
         $this->showPaymentForm = false;
         $this->paymentAmount = '';
         $this->paymentNotes = '';
@@ -140,11 +146,14 @@ class CustomerProfile extends Component
         }
 
         $shop   = Auth::user()->shop()->withoutGlobalScopes()->findOrFail(Auth::user()->shop_id);
-        $result = app(\App\Services\SmsService::class)->sendDueReminder($shop, $this->customer);
+        event(new CustomerDueReminderRequested(
+            shop: $shop,
+            customer: $this->customer,
+        ));
 
         $this->dispatch('notify', [
-            'type'    => $result ? 'success' : 'error',
-            'message' => $result ? "Due reminder sent to {$this->customer->phone}." : 'SMS failed or SMS not enabled.',
+            'type' => 'success',
+            'message' => 'Due reminder queued.',
         ]);
     }
 }

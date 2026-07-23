@@ -167,8 +167,7 @@
 
                                     {{-- Suspend / Reactivate --}}
                                     @if ($sub->status === 'active')
-                                        <button wire:click="suspend({{ $sub->id }})"
-                                            wire:confirm="Suspend this shop? They will lose access."
+                                        <button wire:click="openSuspendModal({{ $sub->id }})"
                                             class="text-xs text-red-400 hover:underline font-medium">
                                             Suspend
                                         </button>
@@ -321,6 +320,25 @@
                         <span wire:loading>Creating…</span>
                     </button>
                     <button wire:click="$set('showInvoiceModal', false)" class="btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($showSuspendModal)
+        <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+                <h3 class="font-bold text-gray-900">Suspend Shop</h3>
+                <div>
+                    <label class="label text-xs">Reason *</label>
+                    <textarea wire:model="suspendReason" rows="3" class="input @error('suspendReason') input-error @enderror"></textarea>
+                    @error('suspendReason')
+                        <p class="error">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div class="flex gap-3">
+                    <button wire:click="confirmSuspend" class="btn-primary flex-1">Confirm Suspend</button>
+                    <button wire:click="$set('showSuspendModal', false)" class="btn-secondary">Cancel</button>
                 </div>
             </div>
         </div>

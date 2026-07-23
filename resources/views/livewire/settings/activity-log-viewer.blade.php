@@ -4,12 +4,6 @@
         <p class="text-sm text-amber-700">
             Install <code class="bg-amber-100 px-1 rounded">spatie/laravel-activitylog</code> to enable audit logging.
         </p>
-        <code class="block bg-white border border-amber-200 rounded p-3 text-xs text-left">
-            composer require spatie/laravel-activitylog<br>
-            php artisan vendor:publish --provider="Spatie\Activitylog\ActivitylogServiceProvider"
-            --tag="activitylog-migrations"<br>
-            php artisan migrate
-        </code>
     </div>
 @else
     <div class="space-y-4">
@@ -31,11 +25,11 @@
                 <table class="w-full">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
-                            <th class="table-th">Time</th>
-                            <th class="table-th">User</th>
-                            <th class="table-th">Action</th>
-                            <th class="table-th">Subject</th>
-                            <th class="table-th">Details</th>
+                            <th class="table-th normal-case">Time</th>
+                            <th class="table-th normal-case">User</th>
+                            <th class="table-th normal-case">Action</th>
+                            <th class="table-th normal-case">Subject</th>
+                            <th class="table-th normal-case">Details</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -45,21 +39,22 @@
                                     {{ \Carbon\Carbon::parse($log->created_at)->format('d M Y H:i:s') }}
                                 </td>
                                 <td class="table-td">
-                                    <span class="font-medium text-sm text-gray-900">{{ $log->user_name }}</span>
+                                    <span
+                                        class="font-medium text-sm text-gray-900">{{ $log->user_name ?? ($log->causer?->name ?? 'System') }}</span>
                                 </td>
                                 <td class="table-td">
                                     <span
-                                        class="badge {{ match ($log->event ?? '') {
-                                            'created' => 'badge-green',
-                                            'updated' => 'badge-blue',
+                                        class="badge {{ match ($log->event ?? ($log->description ?? '')) {
+                                            'created', 'customer.created', 'employee.created' => 'badge-green',
+                                            'updated', 'customer.updated', 'employee.updated' => 'badge-blue',
                                             'deleted' => 'badge-red',
                                             default => 'badge-gray',
                                         } }} text-xs">
-                                        {{ $log->event ?? 'action' }}
+                                        {{ $log->event ?? ($log->description ?? 'action') }}
                                     </span>
                                 </td>
                                 <td class="table-td">
-                                    <div class="text-xs text-gray-700">
+                                    <div class="text-xs text-gray-700 font-medium">
                                         {{ class_basename($log->subject_type) }}
                                         @if ($log->subject_id)
                                             <span class="text-gray-400">#{{ $log->subject_id }}</span>
@@ -67,12 +62,84 @@
                                     </div>
                                     <div class="text-xs text-gray-400">{{ $log->description }}</div>
                                 </td>
+
+                                {{-- 🛠️ DETAILS COLUMN WITH ATTRIBUTE_CHANGES FALLBACK --}}
                                 <td class="table-td">
-                                    @if ($log->properties && $log->properties !== '[]' && $log->properties !== '{}')
-                                        <details class="cursor-pointer">
-                                            <summary class="text-xs text-indigo-500 hover:underline">View changes
+                                    @php
+                                        // 1. properties কলাম না পেলে attribute_changes কলাম থেকে ডাটা নিবে
+                                        $rawProps = $log->properties ?? null;
+                                        if (is_string($rawProps)) {
+                                            $props = json_decode($rawProps, true) ?? [];
+                                        } elseif ($rawProps instanceof \Illuminate\Support\Collection) {
+                                            $props = $rawProps->toArray();
+                                        } else {
+                                            $props = (array) $rawProps;
+                                        }
+
+                                        // Fallback: Check custom 'attribute_changes' column
+                                        if (empty($props) && isset($log->attribute_changes)) {
+                                            $attrChanges = $log->attribute_changes;
+                                            $props = is_string($attrChanges)
+                                                ? json_decode($attrChanges, true) ?? []
+                                                : (array) $attrChanges;
+                                        }
+
+                                        // 2. Double Nesting (attributes.attributes) আনর‍্যাপ করা
+                                        $attributes = $props['attributes'] ?? [];
+                                        if (isset($attributes['attributes']) && is_array($attributes['attributes'])) {
+                                            $attributes = $attributes['attributes'];
+                                        }
+
+                                        $old = $props['old'] ?? [];
+                                        if (isset($old['old']) && is_array($old['old'])) {
+                                            $old = $old['old'];
+                                        }
+
+                                        $customProps = array_diff_key($props, ['attributes' => [], 'old' => []]);
+                                    @endphp
+
+                                    @if (!empty($attributes) || !empty($customProps))
+                                        <details class="cursor-pointer group">
+                                            <summary
+                                                class="text-xs text-indigo-600 font-medium hover:underline inline-flex items-center gap-1">
+                                                <span>View details</span>
                                             </summary>
-                                            <pre class="text-xs text-gray-500 mt-1 max-w-xs overflow-x-auto whitespace-pre-wrap">{{ json_encode(json_decode($log->properties), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+
+                                            <div
+                                                class="mt-2 text-xs p-2.5 bg-gray-50 rounded-lg border border-gray-200 space-y-1.5 max-w-sm">
+                                                {{-- Model Attributes (Name, Phone, Address, etc.) --}}
+                                                @foreach ($attributes as $key => $val)
+                                                    <div
+                                                        class="flex items-start justify-between gap-2 border-b border-gray-100 last:border-0 pb-1">
+                                                        <span
+                                                            class="font-medium text-gray-600 capitalize">{{ str_replace('_', ' ', $key) }}:</span>
+                                                        <span class="text-gray-900 font-semibold text-right break-all">
+                                                            @if (isset($old[$key]))
+                                                                <span
+                                                                    class="line-through text-red-400 font-normal mr-1">
+                                                                    {{ is_array($old[$key]) ? json_encode($old[$key]) : $old[$key] }}
+                                                                </span>
+                                                                <span class="text-gray-400 mr-1">→</span>
+                                                            @endif
+                                                            <span class="text-emerald-700">
+                                                                {{ is_array($val) ? json_encode($val) : $val }}
+                                                            </span>
+                                                        </span>
+                                                    </div>
+                                                @endforeach
+
+                                                {{-- Custom properties --}}
+                                                @foreach ($customProps as $key => $val)
+                                                    <div
+                                                        class="flex items-start justify-between gap-2 border-b border-gray-100 last:border-0 pb-1">
+                                                        <span
+                                                            class="font-medium text-gray-600 capitalize">{{ str_replace('_', ' ', $key) }}:</span>
+                                                        <span class="text-gray-900 font-semibold text-right break-all">
+                                                            {{ is_array($val) ? json_encode($val) : $val }}
+                                                        </span>
+                                                    </div>
+                                                @endforeach
+                                            </div>
                                         </details>
                                     @else
                                         <span class="text-gray-300 text-xs">—</span>
@@ -82,8 +149,7 @@
                         @empty
                             <tr>
                                 <td colspan="5" class="table-td text-center text-gray-400 py-10">No activity logged
-                                    yet.
-                                </td>
+                                    yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

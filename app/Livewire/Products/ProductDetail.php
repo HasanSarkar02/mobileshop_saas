@@ -36,19 +36,14 @@ class ProductDetail extends Component
     {
         $this->requirePermission('inventory.view');
         $this->product = $product->load([
-            'brand',
-            'category',
-            'variants' => fn($q) => $q->withCount([
-                'units as in_stock_count' => fn($q) =>
-                    $q->where('status', UnitStatus::InStock)->where('is_archived', false),
-                'units as sold_count' => fn($q) =>
-                    $q->where('status', UnitStatus::Sold),
-                'units as total_count',
-            ])
-            ->with(['Units' => function ($q) { 
-            $q->where('status', UnitStatus::InStock);
-        }]),
-        ]);
+        'brand',
+        'category',
+        'variants' => fn($q) => $q->withCount([
+            'units as in_stock_count' => fn($q) => $q->where('status', UnitStatus::InStock)->where('is_archived', false),
+            'units as sold_count'     => fn($q) => $q->where('status', UnitStatus::Sold),
+            'units as total_count',
+        ]),
+    ]);
 
         $this->selectedVariantId = $this->product->variants->first()?->id ?? 0;
     }
@@ -154,8 +149,46 @@ class ProductDetail extends Component
             ];
         }
 
+        // ── Reservation / hold info ─────────────────────────────────────────────
+        $unitHolds = [];
+        if ($this->product->tracking_type->value === 'serialized' && $variant && $units) {
+            $reservedUnitIds = collect($units->items())
+                ->filter(fn ($u) => $u->status->value === 'reserved')
+                ->pluck('id');
+
+            if ($reservedUnitIds->isNotEmpty()) {
+                $unitHolds = \App\Models\StockAdjustment::withoutGlobalScopes()
+                    ->where('shop_id', $this->product->shop_id)
+                    ->whereIn('product_unit_id', $reservedUnitIds)
+                    ->where('adjustment_type', 'reserved')
+                    ->orderByDesc('created_at')
+                    ->get()
+                    ->unique('product_unit_id')
+                    ->keyBy('product_unit_id');
+            }
+        }
+
+        $branchHolds = [];
+        if ($this->product->tracking_type->value === 'non_serialized' && $variant && $branchStocks) {
+            $branchIdsWithReservation = $branchStocks->where('reserved_quantity', '>', 0)->pluck('branch_id');
+
+            if ($branchIdsWithReservation->isNotEmpty()) {
+                $branchHolds = \App\Models\StockAdjustment::withoutGlobalScopes()
+                    ->where('shop_id', $this->product->shop_id)
+                    ->where('product_variant_id', $variant->id)
+                    ->whereIn('branch_id', $branchIdsWithReservation)
+                    ->where('adjustment_type', 'reserved')
+                    ->whereNull('product_unit_id')
+                    ->orderByDesc('created_at')
+                    ->get()
+                    ->unique('branch_id')
+                    ->keyBy('branch_id');
+            }
+        }
+
+
         return view('livewire.products.product-detail',
-            compact('variant', 'units', 'branchStocks', 'statusCounts', 'nonSerializedSummary'));
+            compact('variant', 'units', 'branchStocks', 'statusCounts', 'nonSerializedSummary', 'unitHolds', 'branchHolds'));
 
     }
 }

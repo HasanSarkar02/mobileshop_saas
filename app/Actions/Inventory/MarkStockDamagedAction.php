@@ -10,11 +10,15 @@ use App\Models\Shop;
 use App\Models\StockAdjustment;
 use App\Models\User;
 use App\Services\AccountingService;
+use App\Services\UnitStatusTransitioner;
 use Illuminate\Support\Facades\DB;
 
 class MarkStockDamagedAction
 {
-    public function __construct(private readonly AccountingService $accounting) {}
+    public function __construct(
+        private readonly AccountingService $accounting,
+        private readonly UnitStatusTransitioner $transitioner,
+        ) {}
 
     /**
      * Mark non-serialized stock as damaged.
@@ -69,7 +73,19 @@ class MarkStockDamagedAction
                 'created_by'         => $actor->id,
             ]);
 
+            activity()
+                ->causedBy($actor)
+                ->performedOn($adjustment)
+                ->withProperties([
+                    'type' => 'damaged',
+                    'tracking_type' => 'non_serialized',
+                    'quantity' => $quantity,
+                    'branch_id' => $branch->id,
+                    'reason' => $reason
+                ])
+                ->log('inventory.stock_damaged');
             return $adjustment;
+
         });
     }
 
@@ -77,33 +93,26 @@ class MarkStockDamagedAction
      * Mark a serialized unit (IMEI) as damaged.
      */
     public function executeSerialized(
-        Shop        $shop,
-        ProductUnit $unit,
-        string      $reason,
-        User        $actor,
+        Shop $shop, ProductUnit $unit, string $reason, User $actor,
     ): StockAdjustment {
-        if ($unit->status !== \App\Enums\UnitStatus::InStock) {
-            throw new \RuntimeException("Unit is not in stock. Current status: {$unit->status->label()}");
-        }
-
         return DB::transaction(function () use ($shop, $unit, $reason, $actor) {
-            $unit->update(['status' => \App\Enums\UnitStatus::Damaged]);
+            $lockedUnit = $this->transitioner->markDamaged($unit->id);
 
-            $totalCost = (float) $unit->cost_price;
+            $totalCost = (float) $lockedUnit->cost_price;
 
             $journal = $this->postShrinkageJournal(
                 $shop,
-                $unit->branch,
+                $lockedUnit->branch,
                 $totalCost,
-                "IMEI: {$unit->serial_number}",
+                "IMEI: {$lockedUnit->serial_number}",
                 $actor
             );
 
-            return StockAdjustment::create([
+            $adjustment = StockAdjustment::create([
                 'shop_id'            => $shop->id,
-                'branch_id'          => $unit->branch_id,
-                'product_variant_id' => $unit->product_variant_id,
-                'product_unit_id'    => $unit->id,
+                'branch_id'          => $lockedUnit->branch_id,
+                'product_variant_id' => $lockedUnit->product_variant_id,
+                'product_unit_id'    => $lockedUnit->id,
                 'adjustment_type'    => 'damaged',
                 'quantity'           => 1,
                 'unit_cost'          => $totalCost,
@@ -112,12 +121,27 @@ class MarkStockDamagedAction
                 'journal_entry_id'   => $journal->id,
                 'created_by'         => $actor->id,
             ]);
+
+            activity()
+                ->causedBy($actor)
+                ->performedOn($adjustment)
+                ->withProperties([
+                    'type' => 'damaged',
+                    'tracking_type' => 'serialized',
+                    'imei' => $lockedUnit->serial_number,
+                    'quantity' => 1,
+                    'branch_id' => $lockedUnit->branch_id,
+                    'reason' => $reason
+                ])
+                ->log('inventory.stock_damaged');
+
+            return $adjustment;
         });
     }
 
     private function postShrinkageJournal(
         Shop   $shop,
-        Branch|\App\Models\Branch|null $branch,
+        Branch|null $branch,
         float  $cost,
         string $description,
         User   $actor,

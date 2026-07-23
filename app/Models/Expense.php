@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 #[Fillable([
     'shop_id', 'branch_id', 'expense_category_id', 'payment_account_id',
@@ -16,7 +18,7 @@ use Illuminate\Support\Facades\Storage;
 ])]
 class Expense extends Model
 {
-    use BelongsToBranch;
+    use BelongsToBranch, LogsActivity;
 
     protected function casts(): array
     {
@@ -26,6 +28,24 @@ class Expense extends Model
             'expense_date' => 'date',
             'approved_at'  => 'datetime',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'amount', 
+                'status', 
+                'expense_category_id', 
+                'payment_account_id', 
+                'expense_date', 
+                'description', 
+                'notes', 
+                'approved_by'
+            ])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('expense');
     }
 
     public function category(): BelongsTo

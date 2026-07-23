@@ -13,9 +13,9 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(
+        $this->app->singleton(
             \App\Services\Notifications\Contracts\PushProviderInterface::class,
-            \App\Services\Notifications\Providers\NullPushProvider::class,
+            \App\Services\Notifications\Providers\FirebasePushProvider::class,
         );
     }
 
@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(function (User $user, string $ability) {
             if ($user->isSuperAdmin()) return true;
             if ($user->isOwner()) return true;
-            return null; // Employee → checked by Spatie
+            return null;
         });
 
         Event::subscribe(NotificationEventSubscriber::class);

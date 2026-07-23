@@ -104,9 +104,14 @@ class ReceivePurchaseAction
             throw new InvalidArgumentException('Number of serial numbers entered does not match the quantity purchased.');
         }
 
+        $submitted = collect($serials)->pluck('serial_number');
+        if ($submitted->count() !== $submitted->unique()->count()) {
+            throw new InvalidArgumentException('Duplicate IMEI/serial numbers were entered in the same purchase. Each unit must have a unique serial number.');
+        }
+
         foreach ($serials as $serial) {
             $this->assertSerialNumberNotActive($serial['serial_number']);
-
+        try{
             ProductUnit::create([
                 'shop_id' => $shop->id,
                 'branch_id' => $branch->id,
@@ -120,6 +125,14 @@ class ReceivePurchaseAction
                 'shop_warranty_days' => $line['shop_warranty_days'] ?? 0,
                 'is_archived' => false,
             ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ((int) $e->getCode() === 23000) {
+                throw new InvalidArgumentException(
+                    "IMEI/serial number \"{$serial['serial_number']}\" was just registered as active inventory by another transaction. Verify the number and try again."
+                );
+            }
+            throw $e;
+        }
         }
     }
 

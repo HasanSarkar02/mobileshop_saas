@@ -19,7 +19,7 @@ class StockValuationReport extends Component
 
     public function mount(): void
 {
-    $this->requirePermission('reports.view');
+    $this->requirePermission('accounting.view_basic_reports');
 }
     #[Computed]
     public function valuationData(): Collection

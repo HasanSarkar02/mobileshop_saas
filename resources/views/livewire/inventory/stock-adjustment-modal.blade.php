@@ -18,6 +18,18 @@
                     </h3>
                     <button wire:click="$set('show', false)" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
                 </div>
+                {{-- Branch selector — show if multi-branch OR if branchId not yet resolved --}}
+                @if ($trackingType === 'non_serialized' && ($this->branches->count() > 1 || !$branchId))
+                    <div>
+                        <label class="label text-xs">Branch *</label>
+                        <select wire:model.live="branchId" class="input text-sm">
+                            <option value="0">Select branch…</option>
+                            @foreach ($this->branches as $b)
+                                <option value="{{ $b->id }}">{{ $b->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
 
                 <div class="text-sm font-semibold text-gray-700">{{ $productName }}</div>
 
@@ -111,6 +123,29 @@
                         @if ($trackingType === 'non_serialized')
                             = ৳{{ number_format((float) ($quantity ?: 0) * ($this->currentStock ?? 0), 2) }}
                         @endif
+                    </div>
+                @endif
+
+                @if ($adjustmentType === 'reserved')
+                    <div class="grid sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="label text-xs">Held For (Customer Name) *</label>
+                            <input wire:model="heldForName" type="text"
+                                class="input @error('heldForName') input-error @enderror">
+                            @error('heldForName')
+                                <p class="error">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div>
+                            <label class="label text-xs">Phone (optional)</label>
+                            <input wire:model="heldForPhone" type="text" class="input">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="label text-xs">Hold Until (optional)</label>
+                            <input wire:model="holdExpiresAt" type="date" class="input">
+                            <p class="text-xs text-gray-400 mt-0.5">Leave blank for no automatic expiry — you'll need to
+                                release it manually.</p>
+                        </div>
                     </div>
                 @endif
 

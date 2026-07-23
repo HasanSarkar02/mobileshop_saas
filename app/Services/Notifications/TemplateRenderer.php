@@ -59,14 +59,18 @@ class TemplateRenderer
     /** @return array<int, string> */
     public static function availablePlaceholders(): array
     {
-        return ['customer_name', 'employee_name', 'supplier_name', 'invoice_no', 'sale_total', 'amount', 'branch', 'date'];
+        return ['shop_name','shop_phone', 'shop_mail', 'branch_name','customer_phone','cashier_name','ticket_number','device_model','sale_date','due_date','remaining_due','refund_amount','return_amount','service_status','customer_name', 'employee_name', 'supplier_name', 'invoice_no', 'sale_total', 'amount', 'branch', 'date'];
     }
 
     /** @return array<string, string> */
     public static function samplePlaceholders(): array
     {
         return [
+            'shop_name' => 'Smart Mobile Shop',
+            'shop_phone' => '01XXXXXXXXX',
+            'shop_mail' => 'demo@gmail.com',
             'customer_name' => 'Rahim Uddin',
+            'customer_phone' => '01XXXXXXXXX',
             'employee_name' => 'Karim Hossain',
             'supplier_name' => 'ABC Distributors',
             'invoice_no' => 'INV-2026-00042',
@@ -74,6 +78,7 @@ class TemplateRenderer
             'amount' => '৳3,000.00',
             'branch' => 'Main Branch',
             'date' => now()->format('d M Y'),
+            'service_status' => 'Ready to Deliver',
         ];
     }
 }

@@ -75,7 +75,7 @@ class RecordUsedPhoneAcquisitionAction
                     (float) ($data['expected_sell_price'] ?? $data['purchase_price'] * 1.15),
                 );
             }
-
+        try {
             $productUnit = ProductUnit::create([
                 'shop_id'                      => $shop->id,
                 'branch_id'                    => $data['branch_id'],
@@ -88,6 +88,14 @@ class RecordUsedPhoneAcquisitionAction
                 'shop_warranty_days'           => 0,
                 'manufacturer_warranty_months' => 0,
             ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            if ((int) $e->getCode() === 23000) {
+                throw new InvalidArgumentException(
+                    "IMEI {$data['imei_1']} was just registered as active inventory by another transaction. If this is a legitimate trade-in, verify the number and try again."
+                );
+            }
+            throw $e;
+        }
 
             // ── 3. Create acquisition record ───────────────────────────────────
             $number = $this->nextAcquisitionNumber($shop);

@@ -25,13 +25,32 @@ class ShopList extends Component
     public function updatingSearch(): void { $this->resetPage(); }
     public function updatingStatus(): void { $this->resetPage(); }
 
-    public function suspend(int $shopId): void
+    public bool $showSuspendModal = false;
+    public ?int $suspendTargetId = null;
+    public string $suspendReason = '';
+
+    public function openSuspendModal(int $shopId): void
     {
-        // DB::transaction not needed — single model update
-        Shop::withoutGlobalScopes()->findOrFail($shopId)->update([
+        $this->suspendTargetId = $shopId;
+        $this->suspendReason = '';
+        $this->showSuspendModal = true;
+    }
+
+    public function confirmSuspend(\App\Services\AdminAuditLogger $audit): void
+    {
+        $this->validate(['suspendReason' => 'required|string|min:3|max:500']);
+
+        $shop = Shop::withoutGlobalScopes()->findOrFail($this->suspendTargetId);
+        $shop->update([
             'status' => ShopStatus::Suspended,
             'is_active' => false,
+            'suspension_reason' => $this->suspendReason,
+            'suspended_at' => now(),
         ]);
+
+        $audit->log(\Illuminate\Support\Facades\Auth::guard('admin')->user(), 'shop.suspended', $shop, $this->suspendReason);
+
+        $this->showSuspendModal = false;
         $this->dispatch('notify', type: 'warning', message: 'Shop suspended.');
     }
 

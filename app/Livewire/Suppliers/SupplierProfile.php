@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\PaymentAccount;
 use App\Models\Supplier;
 use App\Models\SupplierPayment;
+use App\Traits\HasAuthorization;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
@@ -20,7 +21,7 @@ use Livewire\WithPagination;
 #[Title('Supplier Profile')]
 class SupplierProfile extends Component
 {
-    use WithPagination;
+    use WithPagination, HasAuthorization;
 
     public Supplier $supplier;
 
@@ -39,7 +40,7 @@ class SupplierProfile extends Component
 
     public function mount(Supplier $supplier): void
     {
-         $this->requirePermission('suppliers.view');
+         $this->requirePermission('suppliers.manage');
         if ($supplier->shop_id !== Auth::user()->shop_id) {
             abort(403);
         }

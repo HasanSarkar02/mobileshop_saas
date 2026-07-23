@@ -21,7 +21,7 @@ class SupplierLedgerReport extends Component
 
     public function mount(): void
 {
-    $this->requirePermission('reports.financial');
+    $this->requirePermission('accounting.view_full_reports');
 }
     #[Url(as: 'supplier')]
     public int $supplierId = 0;

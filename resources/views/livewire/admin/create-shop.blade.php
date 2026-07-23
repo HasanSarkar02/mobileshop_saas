@@ -9,7 +9,7 @@
             <h3 class="text-lg font-semibold text-gray-900">Shop Created!</h3>
             <p class="text-gray-500 text-sm">{{ $successMessage }}</p>
             <div class="flex gap-3 justify-center pt-2">
-                <a href="{{ route('admin.shops.index') }}" wire:navigate class="btn-secondary">View All Shops</a>
+                <a href="{{ route('admin.shops') }}" wire:navigate class="btn-secondary">View All Shops</a>
                 <button wire:click="createAnother" class="btn-primary">Create Another</button>
             </div>
         </div>
@@ -124,7 +124,7 @@
                         <span wire:loading.remove>Create Shop & Send Invite</span>
                         <span wire:loading>Creating…</span>
                     </button>
-                    <a href="{{ route('admin.shops.index') }}" wire:navigate class="btn-secondary">Cancel</a>
+                    <a href="{{ route('admin.shops') }}" wire:navigate class="btn-secondary">Cancel</a>
                 </div>
             </form>
         </div>

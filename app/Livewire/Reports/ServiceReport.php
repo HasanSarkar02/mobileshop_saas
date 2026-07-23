@@ -25,7 +25,7 @@ class ServiceReport extends Component
 
     public function mount(): void
     {
-        $this->requirePermission('reports.view');
+        $this->requirePermission('accounting.view_basic_reports');
     }
     #[Computed]
     public function stats(): object

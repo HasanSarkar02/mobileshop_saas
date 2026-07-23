@@ -22,6 +22,7 @@ use App\Services\CustomerLedgerService;
 use App\Services\UnitStatusTransitioner;
 use Illuminate\Support\Facades\DB;
 use App\Events\SaleConfirmed;
+use App\Events\SaleReceiptRequested;
 use RuntimeException;
 
 class SaleConfirmationAction
@@ -84,12 +85,18 @@ class SaleConfirmationAction
                 : Customer::getWalkInForShop($shop->id);
 
             // ── Credit limit check ─────────────────────────────────────────────
-            if ($customer && $customer->customer_type->value !== 'walk_in') {
                 $creditPayment = collect($data['payments'])
                     ->where('type', 'customer_credit')
                     ->sum('amount');
 
-                if ($creditPayment > 0 && $customer->credit_limit > 0) {
+            if ($customer && $customer->customer_type->value !== 'walk_in' && $creditPayment > 0) {
+
+                $customer = Customer::withoutGlobalScopes()
+                    ->where('shop_id', $shop->id)
+                    ->lockForUpdate()
+                    ->findOrFail($customer->id);
+                
+                if ($customer->credit_limit > 0) {
                     $newBalance = (float) $customer->current_balance + $creditPayment;
                     if ($newBalance > (float) $customer->credit_limit) {
                         throw new \RuntimeException(
@@ -101,6 +108,18 @@ class SaleConfirmationAction
                         );
                     }
                 }
+                // if ($creditPayment > 0 && $customer->credit_limit > 0) {
+                //     $newBalance = (float) $customer->current_balance + $creditPayment;
+                //     if ($newBalance > (float) $customer->credit_limit) {
+                //         throw new \RuntimeException(
+                //             "Credit limit exceeded for {$customer->name}. " .
+                //             "Limit: ৳" . number_format($customer->credit_limit, 2) . ", " .
+                //             "Current balance: ৳" . number_format($customer->current_balance, 2) . ", " .
+                //             "This credit: ৳" . number_format($creditPayment, 2) . ". " .
+                //             "Available credit: ৳" . number_format(max(0, $customer->credit_limit - $customer->current_balance), 2)
+                //         );
+                //     }
+                // }
             }
 
             // ── 2. Lock IMEI units (race-condition protection) ─────────────────
@@ -363,15 +382,13 @@ class SaleConfirmationAction
                 );
             }
 
-            try {
-                app(\App\Services\SmsService::class)->sendSaleReceipt(
-                    $shop, $customer, $sale
-                );
-            } catch (\Throwable) {
-                // SMS failure never blocks a confirmed sale
-            }
-
-            DB::afterCommit(fn () => event(new SaleConfirmed($sale, $shop)));
+            DB::afterCommit(function () use ($shop, $sale, $customer) {
+                event(new SaleReceiptRequested(
+                    shop: $shop,
+                    sale: $sale,
+                    customer: $customer,
+                ));
+            });
 
             return $sale->fresh(['items', 'payments', 'customer', 'branch', 'cashier',
                                   'financePartnerReceivable.financePartner']);

@@ -19,8 +19,9 @@ use App\Models\ShopSubscription;
     'business_type', 'currency', 'timezone', 'status',
     'vat_enabled', 'vat_registration_number', 'default_vat_rate',
     'trial_ends_at', 'subscription_ends_at', 'is_active', 'settings',
-    'subscription_plan_id', 'books_locked_through', 'onboarding_completed_at','expense_approval_threshold','logo_path', 'trade_license_number', 'website', 'document_footer_note', 'show_document_confidential',
-    'smtp_enabled','smtp_host', 'smtp_port', 'smtp_username', 'smtp_from_address', 'smtp_from_name', 'smtp_encryption'
+    'subscription_plan_id', 'books_locked_through', 'onboarding_completed_at','expense_approval_threshold','logo_path', 'trade_license_number',
+    'website', 'document_footer_note', 'show_document_confidential','sms_enabled','sms_provider','sms_sender_id', 'sms_api_key', 'sms_on_sale', 'sms_on_due_reminder', 'sms_on_service_ready',
+    'smtp_enabled','smtp_host', 'smtp_port', 'smtp_username', 'smtp_password', 'smtp_from_address', 'smtp_from_name', 'smtp_encryption','suspension_reason', 'suspended_at',
 ])]
 class Shop extends Model
 {
@@ -42,6 +43,7 @@ class Shop extends Model
             'show_document_confidential' => 'boolean',
             'enabled_features' => 'array',
             'smtp_password' => 'encrypted',
+            'suspended_at' => 'datetime',
         ];
     }
 

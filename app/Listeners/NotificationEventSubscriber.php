@@ -32,6 +32,10 @@ use App\Events\UsedPhoneAcquired;
 use App\Services\Notifications\NotificationDispatcher;
 use App\Services\Notifications\RecipientResolver;
 use Illuminate\Events\Dispatcher;
+use App\Events\SaleReceiptRequested;
+use App\Events\CustomerDueReminderRequested;
+use App\Events\ServiceReadyRequested;
+use App\Events\CustomerPaymentRecorded;
 
 class NotificationEventSubscriber
 {
@@ -55,7 +59,7 @@ class NotificationEventSubscriber
                 'body' => '৳' . number_format((float) $expense->amount, 2) . " — {$expense->description}",
                 'reference' => $expense,
                 'branch_id' => $expense->branch_id,
-                'group_key' => "expense_pending:{$event->shop->id}",
+                'group_key' => "expense_pending:{$event->shop->id}:{$expense->branch_id}",
                 'placeholders' => ['amount' => '৳' . number_format((float) $expense->amount, 2), 'branch' => $expense->branch?->name, 'date' => $expense->expense_date?->format('d M Y')],
             ],
             ['amount' => (float) $expense->amount],
@@ -108,7 +112,7 @@ class NotificationEventSubscriber
                 'branch_id' => $sale->branch_id,
                 'group_key' => "sale_confirmed:{$sale->branch_id}:" . now()->format('Y-m-d'),
                 'group_cooldown_minutes' => 1440,
-                'placeholders' => ['invoice_no' => $sale->sale_number, 'sale_total' => '৳' . number_format((float) $sale->grand_total, 2), 'branch' => $sale->branch?->name],
+                'placeholders' => ['shop_name' => $event->shop->name,'invoice_no' => $sale->sale_number, 'sale_total' => '৳' . number_format((float) $sale->grand_total, 2), 'branch' => $sale->branch?->name],
             ]
         );
     }
@@ -138,7 +142,7 @@ class NotificationEventSubscriber
                 'body' => "{$txn->transaction_type->label()} — ৳" . number_format((float) $txn->amount, 2),
                 'reference' => $txn,
                 'branch_id' => $txn->branch_id,
-                'group_key' => "treasury_pending:{$event->shop->id}",
+                'group_key' => "treasury_pending:{$event->shop->id}:{$txn->branch_id}",
                 'placeholders' => ['amount' => '৳' . number_format((float) $txn->amount, 2), 'branch' => $txn->branch?->name, 'date' => $txn->transaction_date?->format('d M Y')],
             ],
             ['amount' => (float) $txn->amount],
@@ -224,7 +228,7 @@ class NotificationEventSubscriber
                 'reference' => $supplier,
                 'group_key' => "supplier_balance_high:{$supplier->id}",
                 'group_cooldown_minutes' => 1440,
-                'placeholders' => ['supplier_name' => $supplier->name, 'amount' => '৳' . number_format((float) $supplier->current_balance, 2)],
+                'placeholders' => ['shop_name' => $event->shop->name,'supplier_name' => $supplier->name, 'amount' => '৳' . number_format((float) $supplier->current_balance, 2)],
             ]
         );
     }
@@ -278,7 +282,7 @@ class NotificationEventSubscriber
                 'reference' => $customer,
                 'group_key' => "customer_credit_limit:{$customer->id}",
                 'group_cooldown_minutes' => 4320,
-                'placeholders' => ['customer_name' => $customer->name, 'amount' => '৳' . number_format((float) $customer->current_balance, 2)],
+                'placeholders' => ['shop_name' => $event->shop->name,'customer_name' => $customer->name, 'amount' => '৳' . number_format((float) $customer->current_balance, 2)],
             ]
         );
     }
@@ -365,7 +369,7 @@ class NotificationEventSubscriber
                 'reference' => $event->employee,
                 'group_key' => "salary_overdrawn:{$event->employee->id}:" . now()->format('Y-m'),
                 'group_cooldown_minutes' => 40320,
-                'placeholders' => ['employee_name' => $event->employee->name, 'amount' => '৳' . number_format($event->overdrawAmount, 2)],
+                'placeholders' => ['shop_name' => $event->shop->name,'employee_name' => $event->employee->name, 'amount' => '৳' . number_format($event->overdrawAmount, 2)],
             ]
         );
     }
@@ -390,7 +394,7 @@ class NotificationEventSubscriber
         $this->notifications->dispatch(
             NotificationEventType::FpSettlementRecorded,
             $event->shop,
-            $this->recipients->byPermission($event->shop, PermissionEnum::FinancePartnersRecordPayment->value),
+            $this->recipients->byPermission($event->shop, PermissionEnum::EmiSettle->value),
             ['title' => 'Finance partner settlement recorded', 'body' => "{$settlement->partner?->name} — ৳" . number_format((float) $settlement->net_amount, 2), 'reference' => $settlement]
         );
     }
@@ -431,6 +435,102 @@ class NotificationEventSubscriber
         );
     }
 
+    public function handleSaleReceiptRequested(SaleReceiptRequested $event): void
+    {
+        if (! $event->customer) return;
+
+        $this->notifications->dispatch(
+            NotificationEventType::SaleReceipt,
+            $event->shop,
+            $this->recipients->customer($event->customer),
+            [
+                'title' => 'Sale Receipt',
+                'body' => "Invoice {$event->sale->sale_number}",
+                'reference' => $event->sale,
+                'branch_id' => $event->sale->branch_id,
+                'group_key' => "sale_receipt_sms:{$event->sale->id}",
+                'group_cooldown_minutes' => 1440,
+                'payload' => ['customer_id' => $event->customer->id],
+                'placeholders' => [
+                    'shop_name' => $event->shop->name,
+                    'customer_name' => $event->customer->name,
+                    'invoice_no' => $event->sale->sale_number,
+                    'sale_total' => number_format($event->sale->grand_total, 2),
+                ],
+            ]
+        );
+    }
+
+    public function handleCustomerDueReminderRequested(CustomerDueReminderRequested $event): void
+    {
+        $this->notifications->dispatch(
+            NotificationEventType::CustomerPaymentReminderSms,
+            $event->shop,
+            $this->recipients->customer($event->customer),
+            [
+                'title' => 'Due Payment Reminder',
+                'body' => 'Outstanding balance reminder.',
+                'reference' => $event->customer,
+                'group_key' => "customer_due_reminder_sms:{$event->customer->id}",
+                'group_cooldown_minutes' => 60,
+                'payload' => ['customer_id' => $event->customer->id],
+                'placeholders' => [
+                    'shop_name' => $event->shop->name,
+                    'customer_name' => $event->customer->name,
+                    'amount' => number_format($event->customer->current_balance, 2),
+                ],
+            ]
+        );
+    }
+
+    public function handleCustomerPaymentRecorded(CustomerPaymentRecorded $event): void
+    {
+        $this->notifications->dispatch(
+            NotificationEventType::CustomerPaymentReceived,
+            $event->shop,
+            $this->recipients->customer($event->customer),
+            [
+                'title' => 'Payment received',
+                'body' => "Payment of ৳" . number_format((float) $event->transaction->amount, 2) . " received.",
+                'reference' => $event->transaction,
+                'group_key' => "customer_payment_received:{$event->transaction->id}",
+                'group_cooldown_minutes' => 60,
+                'payload' => ['customer_id' => $event->customer->id],
+                'placeholders' => [
+                    'shop_name' => $event->shop->name,
+                    'customer_name' => $event->customer->name,
+                    'amount' => number_format((float) $event->transaction->amount, 2),
+                    'remaining_due' => number_format((float) $event->customer->current_balance, 2),
+                ],
+            ]
+        );
+    }
+
+    public function handleServiceReadyRequested(ServiceReadyRequested $event): void
+    {
+        if (! $event->ticket->customer) return;
+
+        $this->notifications->dispatch(
+            NotificationEventType::ServiceTicketReady,
+            $event->shop,
+            $this->recipients->customer($event->ticket->customer),
+            [
+                'title' => 'Device Ready',
+                'body' => "Ticket {$event->ticket->ticket_number}",
+                'reference' => $event->ticket,
+                'branch_id' => $event->ticket->branch_id,
+                'group_key' => "service_ready_sms:{$event->ticket->id}",
+                'group_cooldown_minutes' => 1440,
+                'payload' => ['customer_id' => $event->ticket->customer_id],
+                'placeholders' => [
+                    'shop_name' => $event->shop->name,
+                    'ticket_no' => $event->ticket->ticket_number,
+                    'customer_name' => $event->ticket->customer?->name,
+                ],
+            ]
+        );
+    }
+
     public function subscribe(Dispatcher $events): void
     {
         $events->listen(ExpensePendingApproval::class, [self::class, 'handleExpensePendingApproval']);
@@ -441,7 +541,6 @@ class NotificationEventSubscriber
         $events->listen(TreasuryPendingApproval::class, [self::class, 'handleTreasuryPendingApproval']);
         $events->listen(TreasuryApproved::class, [self::class, 'handleTreasuryApproved']);
         $events->listen(TreasuryRejected::class, [self::class, 'handleTreasuryRejected']);
-
         $events->listen(ReturnProcessed::class, [self::class, 'handleReturnProcessed']);
         $events->listen(PurchaseReceived::class, [self::class, 'handlePurchaseReceived']);
         $events->listen(SupplierBalanceHigh::class, [self::class, 'handleSupplierBalanceHigh']);
@@ -459,5 +558,9 @@ class NotificationEventSubscriber
         $events->listen(UsedPhoneAcquired::class, [self::class, 'handleUsedPhoneAcquired']);
         $events->listen(EmployeeInvited::class, [self::class, 'handleEmployeeInvited']);
         $events->listen(ImpersonationStarted::class, [self::class, 'handleImpersonationStarted']);
+        $events->listen(SaleReceiptRequested::class, [self::class, 'handleSaleReceiptRequested']);
+        $events->listen(CustomerDueReminderRequested::class, [self::class, 'handleCustomerDueReminderRequested']);
+        $events->listen(CustomerPaymentRecorded::class, [self::class, 'handleCustomerPaymentRecorded']);
+        $events->listen(ServiceReadyRequested::class, [self::class, 'handleServiceReadyRequested']);
     }
 }

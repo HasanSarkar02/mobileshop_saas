@@ -32,6 +32,49 @@
     @keydown.f12.window.prevent="if (@js(count($cart)) > 0) $wire.confirmSale()"
     @keydown.escape.window="showProductResults = false; showCustomerResults = false; $wire.showUnitPicker = false">
 
+    <div wire:ignore x-data="{
+        toasts: [],
+        add(detail) {
+            const data = typeof detail === 'string' ? { message: detail, type: 'success' } : detail;
+            const id = Date.now() + Math.random();
+    
+            this.toasts.push({
+                id,
+                type: data.type || 'success',
+                message: data.message || ''
+            });
+            setTimeout(() => {
+                this.remove(id);
+            }, 4000);
+        },
+        remove(id) {
+            this.toasts = this.toasts.filter(t => t.id !== id);
+        }
+    }" x-on:notify.window="add($event.detail)"
+        class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none">
+
+        <template x-for="toast in toasts" :key="toast.id">
+            <div x-transition:enter="transition ease-out duration-300"
+                x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                x-transition:leave="transition ease-in duration-200"
+                x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+                :class="{
+                    'bg-emerald-600': toast.type === 'success',
+                    'bg-red-600': toast.type === 'error',
+                    'bg-amber-600': toast.type === 'warning'
+                }"
+                class="pointer-events-auto text-white px-4 py-3 rounded-xl shadow-xl text-sm font-medium min-w-[250px] flex items-center justify-between gap-3">
+
+                <span x-text="toast.message"></span>
+
+                <button @click="remove(toast.id)" class="text-white/80 hover:text-white font-bold ml-2">
+                    ✕
+                </button>
+            </div>
+        </template>
+    </div>
     {{-- ── HEADER ─────────────────────────────────────────────────────────── --}}
     <header class="bg-white border-b border-gray-200 px-4 py-2 flex items-center gap-3 shrink-0 z-20">
         <a href="{{ route('dashboard') }}" wire:navigate class="text-gray-500 hover:text-gray-700 p-1">

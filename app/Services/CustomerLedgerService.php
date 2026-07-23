@@ -10,6 +10,7 @@ use App\Models\PaymentAccount;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use App\Events\CustomerPaymentRecorded;
 
 class CustomerLedgerService
 {
@@ -112,6 +113,9 @@ class CustomerLedgerService
                 reference: $customer,
                 actor: $actor,
             );
+
+            // $customer->refresh();
+            // DB::afterCommit(fn () => event(new CustomerPaymentRecorded($transaction, $customer, $shop)));
 
             return $transaction;
         });

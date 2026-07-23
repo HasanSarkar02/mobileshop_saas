@@ -51,6 +51,9 @@ class StockAdjustmentLog extends Component
 
     public function render()
     {
-        return view('livewire.inventory.stock-adjustment-log');
+        return view('livewire.inventory.stock-adjustment-log', [
+            'adjustments' => $this->adjustments,
+            'summary'     => $this->summary,
+        ]);
     }
 }

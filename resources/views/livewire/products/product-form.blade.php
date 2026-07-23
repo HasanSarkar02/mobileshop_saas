@@ -202,26 +202,29 @@
                                         <p class="error">{{ $message }}</p>
                                     @enderror
                                 </div>
-                                {{-- Inside each variant form row --}}
-                                <div>
+                                {{-- Replace the barcode section in product-form_blade.php --}}
+                                <div x-data
+                                    @variant-barcode-scanned-{{ $idx }}.window="$wire.set('variants.{{ $idx }}.barcode', $event.detail.value)">
                                     <label class="label text-xs">Barcode / EAN
-                                        <span class="text-xs font-normal text-gray-400">(optional, for POS
-                                            scanning)</span>
+                                        <span class="text-xs font-normal text-gray-400">(optional)</span>
                                     </label>
-                                    <x-barcode-scanner event="variant-barcode-scanned-{{ $idx }}"
-                                        label="Scan or type barcode…" :continuous="false"
-                                        input-id="barcode-variant-{{ $idx }}" />
-                                    <input type="hidden" wire:model="variants.{{ $idx }}.barcode"
-                                        id="barcode-variant-{{ $idx }}-value">
+                                    <div class="flex gap-2 items-center">
+                                        <input wire:model="variants.{{ $idx }}.barcode" type="text"
+                                            inputmode="numeric" placeholder="Type or scan barcode…"
+                                            class="input text-sm font-mono flex-1 @error('variants.' . $idx . '.barcode') input-error @enderror">
+                                        <x-barcode-scanner event="variant-barcode-scanned-{{ $idx }}"
+                                            :continuous="false" :show-manual-input="false" />
+                                    </div>
+                                    @error('variants.' . $idx . '.barcode')
+                                        <p class="error">{{ $message }}</p>
+                                    @enderror
                                 </div>
-
                                 <div>
-                                    <label class="label text-xs">Low Stock Alert Threshold
-                                        <span class="text-xs font-normal text-gray-400">(blank = use shop
-                                            default)</span>
-                                    </label>
+                                    <label class="label text-xs">Min Stock Alert</label>
                                     <input wire:model="variants.{{ $idx }}.min_stock_level" type="number"
-                                        min="0" class="input text-sm" placeholder="e.g. 5">
+                                        min="0" placeholder="3"
+                                        class="input text-sm @error('variants.' . $idx . '.min_stock_level') input-error @enderror">
+                                    <p class="text-xs text-gray-400 mt-0.5">Threshold for low stock alerts.</p>
                                 </div>
                             </div>
 

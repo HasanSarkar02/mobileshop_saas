@@ -15,13 +15,14 @@
     <div class="w-full max-w-md">
         {{-- Logo / Brand --}}
         <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-14 h-14 bg-indigo-600 rounded-2xl mb-4 shadow-lg">
-                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-            </div>
-            <h1 class="text-2xl font-bold text-white">SmartShop ERP</h1>
+            @php $settings = App\Models\PlatformSetting::current(); @endphp
+
+            @if ($settings->logo_path)
+                <img src="{{ asset('storage/' . $settings->logo_path) }}"
+                    alt="{{ $settings->app_name ?? 'SmartShop ERP' }}" class="mx-auto h-24 w-auto mb-4 ">
+            @else
+                <h1 class="text-2xl font-bold text-indigo-700">{{ $settings->app_name ?? 'SmartShop ERP' }}</h1>
+            @endif
             <p class="text-slate-400 text-sm mt-1">Super Admin Panel</p>
         </div>
 

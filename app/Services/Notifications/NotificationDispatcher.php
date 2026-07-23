@@ -17,6 +17,9 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use App\Services\Notifications\Data\ExternalRecipient;
+use Illuminate\Support\Facades\Cache;
 
 class NotificationDispatcher
 {
@@ -54,44 +57,51 @@ class NotificationDispatcher
             return null;
         }
 
+        // NotificationDispatcher::dispatch()  (replace lines 59–97)
         return DB::transaction(function () use ($eventType, $shop, $recipients, $data, $rule) {
             $groupKey = $data['group_key'] ?? null;
             $cooldownMinutes = $data['group_cooldown_minutes'] ?? 30;
 
-            if ($groupKey) {
-                $existing = $this->reopenGroupedNotification($shop, $groupKey, $cooldownMinutes);
-                if ($existing) {
-                    return $existing;
+            $create = function () use ($eventType, $shop, $recipients, $data, $rule, $groupKey, $cooldownMinutes) {
+                if ($groupKey) {
+                    $existing = $this->reopenGroupedNotification($shop, $groupKey, $cooldownMinutes);
+                    if ($existing) return $existing;
                 }
+
+                $reference = $data['reference'] ?? null;
+                $priority = $rule?->priority_override ?? $data['priority'] ?? $eventType->defaultPriority();
+
+                $notification = Notification::create([
+                    'shop_id' => $shop->id,
+                    'branch_id' => $data['branch_id'] ?? null,
+                    'event_type' => $eventType->value,
+                    'category' => $eventType->category()->value,
+                    'priority' => $priority->value,
+                    'status' => NotificationStatus::Created->value,
+                    'title' => $data['title'],
+                    'body' => $data['body'],
+                    'icon' => $data['icon'] ?? $eventType->category()->icon(),
+                    'reference_type' => $reference?->getMorphClass(),
+                    'reference_id' => $reference?->getKey(),
+                    'action_required' => $data['action_required'] ?? $eventType->actionRequired(),
+                    'action_label' => $data['action_label'] ?? $eventType->defaultActionLabel(),
+                    'group_key' => $groupKey,
+                    'occurrence_count' => 1,
+                    'last_occurred_at' => now(),
+                    'payload' => $this->buildPayload($data, $reference),
+                    'created_by' => $data['created_by'] ?? null,
+                ]);
+
+                $this->fanOut($notification, $recipients, $eventType, $rule);
+
+                return $notification->fresh();
+            };
+
+            if (! $groupKey) {
+                return $create();
             }
 
-            $reference = $data['reference'] ?? null;
-            $priority = $rule?->priority_override ?? $data['priority'] ?? $eventType->defaultPriority();
-
-            $notification = Notification::create([
-                'shop_id' => $shop->id,
-                'branch_id' => $data['branch_id'] ?? null,
-                'event_type' => $eventType->value,
-                'category' => $eventType->category()->value,
-                'priority' => $priority->value,
-                'status' => NotificationStatus::Created->value,
-                'title' => $data['title'],
-                'body' => $data['body'],
-                'icon' => $data['icon'] ?? $eventType->category()->icon(),
-                'reference_type' => $reference?->getMorphClass(),
-                'reference_id' => $reference?->getKey(),
-                'action_required' => $data['action_required'] ?? $eventType->actionRequired(),
-                'action_label' => $data['action_label'] ?? $eventType->defaultActionLabel(),
-                'group_key' => $groupKey,
-                'occurrence_count' => 1,
-                'last_occurred_at' => now(),
-                'payload' => $this->buildPayload($data, $reference),
-                'created_by' => $data['created_by'] ?? null,
-            ]);
-
-            $this->fanOut($notification, $recipients, $eventType, $rule);
-
-            return $notification->fresh();
+            return Cache::lock("notif-group:{$shop->id}:{$groupKey}", 10)->block(5, $create);
         });
     }
 
@@ -138,15 +148,20 @@ class NotificationDispatcher
     {
         $anyQueued = false;
 
-        foreach ($recipients as $user) {
+        foreach ($recipients as $target) {
+            $isExternal = $target instanceof ExternalRecipient;
+
             $recipient = NotificationRecipient::create([
                 'notification_id' => $notification->id,
-                'user_id' => $user->id,
+                'user_id' => $isExternal ? null : $target->id,
                 'shop_id' => $notification->shop_id,
+                'external_phone' => $isExternal ? $target->phone : null,
+                'external_email' => $isExternal ? $target->email : null,
+                'external_name' => $isExternal ? $target->name : null,
                 'delivered_at' => now(),
             ]);
 
-            foreach ($this->effectiveChannels($user, $notification, $eventType, $rule) as $channel) {
+            foreach ($this->effectiveChannels($target, $notification, $eventType, $rule) as $channel) {
                 $delivery = NotificationDelivery::create([
                     'notification_recipient_id' => $recipient->id,
                     'channel' => $channel->value,
@@ -184,20 +199,35 @@ class NotificationDispatcher
      *
      * @return array<int, NotificationChannel>
      */
-    private function effectiveChannels(User $user, Notification $notification, NotificationEventType $eventType, ?NotificationRule $rule): array
+    private function effectiveChannels(User|ExternalRecipient $recipient, Notification $notification, NotificationEventType $eventType, ?NotificationRule $rule): array
     {
-        $preferences = NotificationPreference::withoutGlobalScopes()
-            ->where('user_id', $user->id)
-            ->where('category', $notification->category->value)
-            ->get()
-            ->keyBy(fn (NotificationPreference $p) => $p->channel->value);
-
         $baseline = $rule?->channel_override
             ?? collect($eventType->defaultChannels())->map(fn (NotificationChannel $c) => $c->value)->all();
 
         $baseline = collect($baseline);
 
-        return collect(NotificationChannel::cases())
+        if ($recipient instanceof ExternalRecipient) {
+            $result = collect(NotificationChannel::cases())
+                ->filter(fn (NotificationChannel $c) => in_array($c, [NotificationChannel::Sms, NotificationChannel::Email, NotificationChannel::WhatsApp], true)
+                    && $baseline->contains($c->value))
+                ->values()
+                ->all();
+
+            Log::info('Effective channels', [
+                'recipient' => 'external',
+                'channels' => array_map(fn ($c) => $c->value, $result),
+            ]);
+
+            return $result;
+        }
+
+        $preferences = NotificationPreference::withoutGlobalScopes()
+            ->where('user_id', $recipient->id)
+            ->where('category', $notification->category->value)
+            ->get()
+            ->keyBy(fn (NotificationPreference $p) => $p->channel->value);
+
+        $result = collect(NotificationChannel::cases())
             ->filter(function (NotificationChannel $channel) use ($preferences, $baseline) {
                 if ($channel === NotificationChannel::InApp) {
                     return true;
@@ -205,10 +235,21 @@ class NotificationDispatcher
 
                 $pref = $preferences->get($channel->value);
 
-                return $pref !== null ? $pref->is_enabled : $baseline->contains($channel->value);
+                if ($channel === NotificationChannel::Push) {
+                    return $pref !== null && $pref->is_enabled;
+                }
+
+                return $baseline->contains($channel->value) && ($pref === null || $pref->is_enabled);
             })
             ->values()
             ->all();
+
+        Log::info('Effective channels', [
+            'user' => $recipient->id,
+            'channels' => array_map(fn ($c) => $c->value, $result),
+        ]);
+
+        return $result;
     }
 
     private function buildPayload(array $data, ?Model $reference): array

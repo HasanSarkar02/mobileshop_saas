@@ -3,6 +3,7 @@ namespace App\Livewire\Service;
 
 use App\Actions\RecordServicePaymentAction;
 use App\Enums\ServiceTicketStatus;
+use App\Events\ServiceReadyRequested;
 use App\Models\Account;
 use App\Models\BranchStock;
 use App\Models\PaymentAccount;
@@ -71,10 +72,16 @@ class ServiceTicketDetail extends Component
             if ($this->showDeductParts) {
                 $this->deductInventoryParts();
             }
-            try {
-                $shop = Auth::user()->shop()->withoutGlobalScopes()->findOrFail(Auth::user()->shop_id);
-                app(\App\Services\SmsService::class)->sendServiceReady($shop, $this->ticket);
-            } catch (\Throwable) {}
+            $shop = Auth::user()
+                ->shop()
+                ->withoutGlobalScopes()
+                ->findOrFail(Auth::user()->shop_id);
+            DB::afterCommit(function () use ($shop) {
+                event(new ServiceReadyRequested(
+                    shop: $shop,
+                    ticket: $this->ticket,
+                ));
+            });
         }
 
         $this->ticket->update($updates);

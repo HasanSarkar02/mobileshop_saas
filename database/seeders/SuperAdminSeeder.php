@@ -10,12 +10,11 @@ class SuperAdminSeeder extends Seeder
 {
     public function run(): void
     {
-        // password auto-hash হবে User model এর 'hashed' cast এর কারণে
         User::updateOrCreate(
-            ['email' => 'admin@gmail.com'],
+            ['email' => 'hasansarkar6343@gmail.com'],
             [
-                'name' => 'Super Admin',
-                'password' => '111111',
+                'name' => 'HASAN SARKAR',
+                'password' => 'Hasan1122@',
                 'shop_id' => null,
                 'user_type' => UserType::SuperAdmin,
                 'is_active' => true,

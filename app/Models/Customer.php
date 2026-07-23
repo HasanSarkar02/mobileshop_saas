@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Activitylog\support\LogOptions;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 #[Fillable([
     'shop_id', 'customer_type', 'name', 'phone', 'phone_alt', 'email',
@@ -23,6 +25,7 @@ use Illuminate\Support\Facades\Storage;
 class Customer extends Model
 {
     use HasFactory, SoftDeletes, BelongsToShop;
+    use LogsActivity;
 
     protected function casts(): array
     {
@@ -35,6 +38,15 @@ class Customer extends Model
             'total_paid_amount'     => 'decimal:2',
             'is_active'             => 'boolean',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'phone', 'customer_type', 'credit_limit', 'address'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges()
+            ->useLogName('customer');
     }
 
     // ── Relationships ─────────────────────────────────────────────────────────

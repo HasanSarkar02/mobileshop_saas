@@ -2,7 +2,7 @@
     <h2 class="text-xl font-bold text-gray-900">Stock Adjustment Log</h2>
 
     {{-- Summary --}}
-    @php $s = $this->summary; @endphp
+    @php $s = $summary; @endphp
     <div class="grid grid-cols-2 gap-4">
         <div class="card p-4 border-0 bg-amber-50">
             <div class="text-xs font-semibold text-amber-500 uppercase mb-1">Total Damaged Value</div>
@@ -47,7 +47,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
-                    @forelse($this->adjustments as $adj)
+                    @forelse($adjustments as $adj)
                         <tr class="hover:bg-gray-50">
                             <td class="table-td text-xs text-gray-500 whitespace-nowrap">
                                 {{ $adj->created_at->format('d M Y H:i') }}
@@ -99,8 +99,8 @@
                 </tbody>
             </table>
         </div>
-        @if ($this->adjustments->hasPages())
-            <div class="px-4 py-3 border-t">{{ $this->adjustments->links() }}</div>
+        @if ($adjustments->hasPages())
+            <div class="px-4 py-3 border-t">{{ $adjustments->links() }}</div>
         @endif
     </div>
 </div>

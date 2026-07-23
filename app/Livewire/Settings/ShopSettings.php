@@ -9,6 +9,7 @@ use App\Models\Shop;
 use App\Services\ChartOfAccountsProvisioner;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -528,13 +529,19 @@ class ShopSettings extends Component
         $acc = \App\Models\PaymentAccount::where('shop_id', Auth::user()->shop_id)
             ->findOrFail($id);
 
-        $acc->update(['is_active' => ! $acc->is_active]);
+        $newStatus = !$acc->is_active;
+
+        $acc->update(['is_active' => $newStatus]);
+
+        $message = $newStatus 
+            ? "{$acc->name} has been reactivated."
+            : "{$acc->name} deactivated. It will no longer appear in POS or payment forms.";
 
         $this->dispatch('notify', [
             'type'    => 'success',
-            'message' => $acc->is_active
-                ? "{$acc->name} deactivated. It will no longer appear in POS or payment forms."
-                : "{$acc->name} reactivated.",
+            'message' => $message,
         ]);
+
+        unset($this->paymentAccounts);
     }
 }

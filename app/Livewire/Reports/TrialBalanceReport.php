@@ -20,7 +20,7 @@ class TrialBalanceReport extends Component
 
     public function mount(): void
 {
-    $this->requirePermission('reports.financial');
+    $this->requirePermission('accounting.view_full_reports');
 }
     #[Computed]
     public function trialBalance(): array

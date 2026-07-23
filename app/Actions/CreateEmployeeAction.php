@@ -7,6 +7,7 @@ use App\Events\EmployeeInvited;
 use App\Models\Shop;
 use App\Models\User;
 use App\Services\UserInviter;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -34,13 +35,22 @@ class CreateEmployeeAction
                 'email_verified_at' => null,
             ]);
 
-            // Assumes this runs in a request where the authenticated Owner's
-            // own shop_id already set the correct permission team context
-            // via SetTenantContext — no manual team-switching needed here.
             $employee->assignRole($data['role']);
 
-            $this->userInviter->invite($employee, "an employee of {$shop->name}");
+            $this->userInviter->invite($employee, "an employee of {$shop->name}", $shop);
             DB::afterCommit(fn () => event(new EmployeeInvited($employee, $shop)));
+
+            activity()
+            ->causedBy(Auth::user())
+            ->performedOn($employee)
+            ->withProperties([
+                'name'      => $data['name'],
+                'email'     => $data['email'],
+                'phone'     => $data['phone'] ?? null,
+                'branch_id' => $data['branch_id'] ?? null,
+                'role'      => $data['role'],
+            ])
+            ->log('employee.created');
 
             return $employee;
         });

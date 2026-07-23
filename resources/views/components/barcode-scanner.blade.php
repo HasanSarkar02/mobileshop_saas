@@ -11,6 +11,7 @@
     'label' => 'Scan Barcode',
     'continuous' => false,
     'inputId' => 'barcode-input-' . uniqid(),
+    'showManualInput' => true,
 ])
 
 <div x-data="{
@@ -100,11 +101,12 @@
 }" @keydown.escape.window="stopCamera()" class="space-y-2">
     {{-- Manual input (always available) --}}
     <div class="flex items-center gap-2">
-        <input id="{{ $inputId }}" type="text" placeholder="{{ $label }}" autocomplete="off"
-            class="input flex-1 font-mono"
-            @keydown.enter.prevent="onScanned($event.target.value); $event.target.value = ''">
+        @if ($showManualInput)
+            <input id="{{ $inputId }}" type="text" placeholder="{{ $label }}" autocomplete="off"
+                class="input flex-1 font-mono"
+                @keydown.enter.prevent="onScanned($event.target.value); $event.target.value = ''">
+        @endif
 
-        {{-- Camera button (only if BarcodeDetector available) --}}
         <button type="button" x-show="cameraAvailable && !scanning" @click="startCamera()"
             class="btn-secondary btn-sm shrink-0 flex items-center gap-1.5" title="Scan with camera">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.75">

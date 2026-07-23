@@ -21,9 +21,9 @@ class SmsChannelHandler implements NotificationChannelHandler
     {
         $recipient = $delivery->recipient()->with(['notification', 'user'])->first();
         $notification = $recipient?->notification;
-        $user = $recipient?->user;
+        $phone = $recipient?->isExternal() ? $recipient->external_phone : $recipient?->user?->phone;
 
-        if (! $notification || ! $user || ! $user->phone) {
+        if (! $notification || ! $recipient || ! $phone) {
             $delivery->update([
                 'status' => NotificationDeliveryStatus::Skipped->value,
                 'error_message' => 'Recipient has no phone number on file.',
@@ -38,11 +38,19 @@ class SmsChannelHandler implements NotificationChannelHandler
             return;
         }
 
+        if (! $shop->sms_enabled || ! $shop->sms_api_key) {
+            $delivery->update([
+                'status' => NotificationDeliveryStatus::Skipped->value,
+                'error_message' => 'SMS is not configured for this shop.',
+            ]);
+            return;
+        }
+
         $rendered = $this->templates->render($shop, $notification->event_type, NotificationChannel::Sms, $notification);
 
         $sent = $this->sms->send(
             shop: $shop,
-            to: $user->phone,
+            to: $phone,
             message: $rendered['body'],
             template: 'notification_' . $notification->event_type->value,
             reference: $notification,

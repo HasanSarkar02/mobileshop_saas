@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'shop_id', 'branch_id', 'sale_number', 'customer_id', 'cashier_id', 'status',
     'subtotal', 'order_discount_type', 'order_discount_value',
     'item_discount_amount', 'order_discount_amount', 'total_discount_amount',
-    'vat_amount', 'grand_total', 'total_cost', 'gross_profit', 'due_collection_amount',
+    'vat_amount', 'grand_total', 'total_cost', 'gross_profit', 'previous_due', 'due_collection_amount',
     'notes', 'created_by', 'voided_by', 'void_reason', 'void_journal_entry_id',
     'confirmed_at', 'voided_at', 'return_processed',
 ])]

@@ -40,8 +40,8 @@ enum NotificationChannel: string
     public function isImplemented(): bool
     {
         return match ($this) {
-            self::InApp, self::Popup, self::Sms => true,
-            self::Email, self::Push, self::WhatsApp => false,
+            self::InApp, self::Popup, self::Sms, self::Email, self::Push, => true,
+            self::WhatsApp => false,
         };
     }
 }

@@ -10,6 +10,24 @@ use Illuminate\Database\Seeder;
 class NotificationTemplateSeeder extends Seeder
 {
     private const TEMPLATES = [
+        ['event' => NotificationEventType::SaleReceipt, 'channel' => NotificationChannel::Sms,
+            'subject' => null,
+            'body' => 'Dear {{customer_name}}, thank you for shopping with us. Invoice: {{invoice_no}}. Total: {{sale_total}}.'],
+        [
+            'event' => NotificationEventType::SaleVoided,
+            'channel' => NotificationChannel::Sms,
+            'subject' => null,
+            'body' => 'Invoice {{invoice_no}} has been voided. Please contact {{shop_name}} if this was unexpected.',
+        ],
+        ['event' => NotificationEventType::CustomerPaymentReminderSms, 'channel' => NotificationChannel::Sms,
+            'subject' => null,
+            'body' => 'Dear {{customer_name}}, your outstanding balance is {{amount}}. Please clear at your earliest convenience.'],
+        [
+            'event' => NotificationEventType::ReturnProcessed,
+            'channel' => NotificationChannel::Sms,
+            'subject' => null,
+            'body' => 'Your return has been processed. Refund: {{amount}}. Invoice: {{invoice_no}}.',
+        ],
         ['event' => NotificationEventType::ExpensePendingApproval, 'channel' => NotificationChannel::Email,
             'subject' => 'Expense needs your approval — {{amount}}',
             'body' => "An expense of {{amount}} was submitted and is waiting for approval.\n\nBranch: {{branch}}\nDate: {{date}}"],
@@ -18,13 +36,9 @@ class NotificationTemplateSeeder extends Seeder
             'subject' => 'Treasury transaction needs your approval',
             'body' => "A treasury transaction of {{amount}} is waiting for approval.\n\nBranch: {{branch}}\nDate: {{date}}"],
 
-        ['event' => NotificationEventType::CustomerDueReminder, 'channel' => NotificationChannel::Sms,
-            'subject' => null,
-            'body' => 'Dear {{customer_name}}, your outstanding balance is {{amount}}. Please clear at your earliest convenience.'],
-
         ['event' => NotificationEventType::ServiceTicketReady, 'channel' => NotificationChannel::Sms,
             'subject' => null,
-            'body' => 'Dear {{customer_name}}, your device is ready for pickup. Invoice: {{invoice_no}}.'],
+            'body' => 'Dear {{customer_name}}, your device is ready for pickup. Invoice: {{ticket_no}}.'],
 
         ['event' => NotificationEventType::ImpersonationStarted, 'channel' => NotificationChannel::Email,
             'subject' => 'Security notice: your account was accessed by support',
@@ -45,6 +59,9 @@ class NotificationTemplateSeeder extends Seeder
         ['event' => NotificationEventType::LoanRepaymentDue, 'channel' => NotificationChannel::Email,
             'subject' => 'Loan repayment reminder',
             'body' => 'Outstanding loan balance: {{amount}}. No repayment recorded recently.'],
+        ['event' => NotificationEventType::CustomerPaymentReceived, 'channel' => NotificationChannel::Sms,
+            'subject' => null,
+            'body' => 'Dear {{customer_name}}, we have received your payment of {{amount}}. Remaining due: {{remaining_due}}. Thank you.'],
     ];
 
     public function run(): void

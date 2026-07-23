@@ -60,8 +60,7 @@
                                     <a href="{{ route('admin.shops.show', $shop) }}" wire:navigate
                                         class="text-xs text-indigo-600 hover:underline font-medium">View</a>
                                     @if ($shop->is_active)
-                                        <button wire:click="suspend({{ $shop->id }})"
-                                            wire:confirm="Suspend {{ $shop->name }}?"
+                                        <button wire:click="openSuspendModal({{ $shop->id }})"
                                             class="text-xs text-red-600 hover:underline font-medium">Suspend</button>
                                     @else
                                         <button wire:click="activate({{ $shop->id }})"
@@ -84,4 +83,23 @@
             </div>
         @endif
     </div>
+    @if ($showSuspendModal)
+        <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+                <h3 class="font-bold text-gray-900">Suspend Shop</h3>
+                <div>
+                    <label class="label text-xs">Reason *</label>
+                    <textarea wire:model="suspendReason" rows="3" class="input @error('suspendReason') input-error @enderror"
+                        placeholder="Why is this shop being suspended?"></textarea>
+                    @error('suspendReason')
+                        <p class="error">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div class="flex gap-3">
+                    <button wire:click="confirmSuspend" class="btn-primary flex-1">Confirm Suspend</button>
+                    <button wire:click="$set('showSuspendModal', false)" class="btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    @endif
 </div>

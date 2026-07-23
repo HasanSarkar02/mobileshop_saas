@@ -20,8 +20,6 @@ class ShopRoleProvisioner
         'Owner' => '*',
         'Manager' =>[
             PermissionEnum::CustomersView,
-            PermissionEnum::CustomersCreate,
-            PermissionEnum::CustomersEdit,
             PermissionEnum::SalesCreate,
             PermissionEnum::SalesView,
             PermissionEnum::ServiceView,
@@ -38,7 +36,7 @@ class ShopRoleProvisioner
             PermissionEnum::CustomersView,
             PermissionEnum::CustomersManage,
             PermissionEnum::CustomersRecordDuePayment,
-            PermissionEnum::FinancePartnersRecordPayment,
+            PermissionEnum::EmiSettle,
         ],
         'Inventory Manager' => [
             PermissionEnum::DashboardView,
@@ -52,6 +50,7 @@ class ShopRoleProvisioner
             PermissionEnum::SuppliersManage,
             PermissionEnum::PurchasesView,
             PermissionEnum::PurchasesCreate,
+            PermissionEnum::SalesView,
         ],
         'Accountant' => [
             PermissionEnum::DashboardView,
@@ -62,21 +61,18 @@ class ShopRoleProvisioner
             PermissionEnum::AccountingViewFullReports,
             PermissionEnum::AccountingReverseEntry,
             PermissionEnum::ReportsExport,
-            PermissionEnum::FinancePartnersViewDue,
             PermissionEnum::FinancePartnersWriteOff,
             PermissionEnum::CustomersWriteOffDue,
         ],
         'Service Technicial' =>[
             PermissionEnum::ServiceView,
             PermissionEnum::ServiceManage,
-            PermissionEnum::ServiceCreate,
-            PermissionEnum::ServiceEdit,
             PermissionEnum::ServicePayment,
             PermissionEnum::InventoryView,
         ],
         'Sales Staff' => [
             PermissionEnum::CustomersView,
-            PermissionEnum::CustomersCreate,
+            PermissionEnum::CustomersManage,
             PermissionEnum::SalesView,
             PermissionEnum::SalesCreate,
             PermissionEnum::InventoryView,
@@ -87,31 +83,8 @@ class ShopRoleProvisioner
 
     public function provisionForNewShop(Shop $shop, User $owner): void
     {
-        $registrar = app(PermissionRegistrar::class);
-        $previousTeamId = $registrar->getPermissionsTeamId();
-
-        $registrar->setPermissionsTeamId($shop->id);
-
-        foreach (self::DEFAULT_ROLES as $roleName => $permissions) {
-            $role = Role::firstOrCreate([
-                'name' => $roleName,
-                'guard_name' => 'web',
-                'shop_id' => $shop->id,
-            ], [
-                'is_system' => $roleName === 'Owner',
-            ]);
-
-            $permissionNames = $permissions === '*'
-                ? array_map(fn (PermissionEnum $p) => $p->value, PermissionEnum::cases())
-                : array_map(fn (PermissionEnum $p) => $p->value, $permissions);
-
-            $role->syncPermissions($permissionNames);
-        }
-
+        $this->provision($shop);
         $owner->assignRole('Owner');
-
-        $registrar->forgetCachedPermissions();
-        $registrar->setPermissionsTeamId($previousTeamId);
     }
 
     public function provision(Shop $shop): void
@@ -120,7 +93,7 @@ class ShopRoleProvisioner
 
         $previousTeamId = $registrar->getPermissionsTeamId();
         $registrar->setPermissionsTeamId($shop->id);
-
+     try {
         foreach (self::DEFAULT_ROLES as $roleName => $permissions) {
 
             $role = Role::firstOrCreate([
@@ -137,8 +110,9 @@ class ShopRoleProvisioner
 
             $role->syncPermissions($permissionNames);
         }
-
+    } finally {
         $registrar->forgetCachedPermissions();
         $registrar->setPermissionsTeamId($previousTeamId);
+    }
     }
 }

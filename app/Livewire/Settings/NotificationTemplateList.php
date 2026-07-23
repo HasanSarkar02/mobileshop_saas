@@ -42,11 +42,7 @@ class NotificationTemplateList extends Component
         $rows = collect();
 
         foreach (NotificationEventType::cases() as $eventType) {
-            foreach ($eventType->defaultChannels() as $channel) {
-                if (! in_array($channel, [NotificationChannel::Email, NotificationChannel::Sms], true)) {
-                    continue; // In-App / Popup use title/body directly, no template
-                }
-
+            foreach ([NotificationChannel::Email, NotificationChannel::Sms] as $channel) {
                 $key = $eventType->value . ':' . $channel->value;
                 $rows->push([
                     'event_type' => $eventType,

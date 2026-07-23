@@ -28,15 +28,19 @@ class DocumentController extends Controller
 
     // ── Sale Invoice ──────────────────────────────────────────────────────────
 
+    // ── Sale Invoice ──────────────────────────────────────────────────────────
+
     public function saleInvoice(Sale $sale)
     {
         $this->shopGuard($sale->shop_id);
         $sale->load([
             'shop', 'branch', 'cashier', 'customer',
-            'items', 'payments.paymentAccount', 'payments.financePartner',
-            'financePartnerReceivable.financePartner',
+            'items', 'payments.paymentAccount',
         ]);
-        return view('documents.sale-invoice', compact('sale'));
+
+        $presenter = new \App\Presenters\SaleInvoicePresenter($sale);
+
+        return view('documents.sale-invoice', compact('sale', 'presenter'));
     }
 
     public function saleInvoicePdf(Sale $sale)
@@ -44,11 +48,14 @@ class DocumentController extends Controller
         $this->shopGuard($sale->shop_id);
         $sale->load([
             'shop', 'branch', 'cashier', 'customer',
-            'items', 'payments.paymentAccount', 'payments.financePartner',
-            'financePartnerReceivable.financePartner',
+            'items', 'payments.paymentAccount',
         ]);
-        $pdf = Pdf::loadView('documents.sale-invoice', compact('sale'))
+
+        $presenter = new \App\Presenters\SaleInvoicePresenter($sale);
+
+        $pdf = Pdf::loadView('documents.sale-invoice', compact('sale', 'presenter'))
             ->setPaper('A4', 'portrait');
+
         return $pdf->download("{$sale->sale_number}.pdf");
     }
 

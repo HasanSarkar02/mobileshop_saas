@@ -6,6 +6,8 @@ use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Spatie\Permission\PermissionRegistrar;
+use App\Models\Customer;
+use App\Services\Notifications\Data\ExternalRecipient;
 
 /**
  * Turns "who should know about this" into a concrete list of Users.
@@ -79,5 +81,16 @@ class RecipientResolver
             ->first();
 
         return $owner ? collect([$owner]) : collect();
+    }
+
+    public function customer(Customer $customer): Collection
+    {
+        return collect([
+            new ExternalRecipient(
+                phone: $customer->phone,
+                email: $customer->email,
+                name: $customer->name,
+            ),
+        ]);
     }
 }

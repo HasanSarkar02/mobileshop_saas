@@ -11,8 +11,30 @@ class EnsureIsSuperAdmin
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! Auth::guard('admin')->check()) {
+        $admin = Auth::guard('admin')->user();
+
+        if (! $admin) {
             return redirect()->route('admin.login');
+        }
+
+        if (! $admin->isSuperAdmin()) {
+            Auth::guard('admin')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('admin.login')->withErrors([
+                'email' => 'This account does not have Super Admin access.',
+            ]);
+        }
+
+        if (! $admin->is_active) {
+            Auth::guard('admin')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->route('admin.login')->withErrors([
+                'email' => 'This account has been deactivated. Please contact your platform administrator.',
+            ]);
         }
 
         return $next($request);

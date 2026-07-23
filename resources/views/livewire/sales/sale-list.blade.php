@@ -83,7 +83,7 @@
                                 <div class="flex items-center gap-2">
                                     <a href="{{ route('sales.show', $sale) }}" wire:navigate
                                         class="text-xs text-indigo-600 hover:underline font-medium">Detail</a>
-                                    <a href="{{ route('sales.receipt', $sale) }}" target="_blank"
+                                    <a href="{{ route('documents.sale', $sale) }}" target="_blank"
                                         class="text-xs text-indigo-600 hover:underline font-medium">Receipt</a>
                                     {{-- Only show Void if not returned and voidable --}}
                                     @if ($sale->isVoidable() && !$sale->return_processed)
