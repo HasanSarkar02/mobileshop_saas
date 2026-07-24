@@ -14,7 +14,9 @@
     </button>
 
     <div x-show="open" x-cloak x-transition
-        class="absolute right-0 mt-2 w-96 card shadow-lg z-50 max-h-[28rem] overflow-y-auto">
+        class="fixed left-4 right-4 top-16 z-50
+               sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96
+               card shadow-lg max-h-[70vh] sm:max-h-[28rem] overflow-y-auto">
         <div class="flex items-center justify-between px-4 py-2 border-b">
             <span class="font-semibold">Notifications</span>
             @if ($unreadCount > 0)

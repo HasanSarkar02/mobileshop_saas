@@ -152,15 +152,108 @@
             {{-- Barcode / Product Search --}}
             <div class="bg-white border-b border-gray-200 p-3 space-y-2">
                 {{-- Barcode/IMEI scan input --}}
-                <div class="relative">
+                <div class="relative" x-data="{
+                    scanning: false,
+                    videoStream: null,
+                    detector: null,
+                    lastCode: null,
+                    lastScanAt: 0,
+                
+                    async startScan() {
+                        if (this.scanning) return; // already running — never request a second stream
+                        if (!('BarcodeDetector' in window)) {
+                            $dispatch('notify', { type: 'error', message: 'Camera scanning isn\'t supported in this browser. Try Chrome on Android, or use a USB barcode scanner.' });
+                            return;
+                        }
+                        if (!window.isSecureContext) {
+                            $dispatch('notify', { type: 'error', message: 'Camera access needs HTTPS. Ask your admin to enable SSL for this site.' });
+                            return;
+                        }
+                        this.detector = new BarcodeDetector({ formats: ['code_128', 'ean_13', 'ean_8', 'qr_code'] });
+                        try {
+                            this.videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                            this.$refs.posScanVideo.srcObject = this.videoStream;
+                            await this.$refs.posScanVideo.play();
+                            this.scanning = true;
+                            this.detectLoop();
+                        } catch (e) {
+                            const msg = e.name === 'NotAllowedError' ?
+                                'Camera permission denied. Please allow camera access in your browser settings and try again.' :
+                                (e.name === 'NotFoundError' ? 'No camera found on this device.' : 'Could not start camera: ' + e.message);
+                            $dispatch('notify', { type: 'error', message: msg });
+                        }
+                    },
+                
+                    async detectLoop() {
+                        if (!this.scanning) return;
+                        try {
+                            const found = await this.detector.detect(this.$refs.posScanVideo);
+                            if (found.length > 0) {
+                                const val = found[0].rawValue;
+                                const now = Date.now();
+                                if (val !== this.lastCode || (now - this.lastScanAt) > 1500) {
+                                    this.lastCode = val;
+                                    this.lastScanAt = now;
+                                    $wire.barcodeInput = val;
+                                    $wire.processBarcode();
+                                }
+                            }
+                        } catch (e) {}
+                        if (this.scanning) requestAnimationFrame(() => this.detectLoop());
+                    },
+                
+                    stopScan() {
+                        this.scanning = false;
+                        this.videoStream?.getTracks().forEach(t => t.stop());
+                        this.videoStream = null;
+                    }
+                }">
                     <input type="text" wire:model="barcodeInput" wire:keydown.enter="processBarcode"
-                        placeholder="📷 Scan barcode / IMEI — press Enter"
-                        class="w-full pl-10 pr-4 py-2.5 text-sm bg-indigo-50 border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white placeholder-indigo-300">
+                        enterkeyhint="go" placeholder="Scan barcode / IMEI — press Enter"
+                        class="w-full pl-10 pr-24 py-2.5 text-sm bg-indigo-50 border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white placeholder-indigo-300">
                     <svg class="w-5 h-5 text-indigo-400 absolute left-3 top-2.5" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                     </svg>
+
+                    <div class="absolute right-2 top-1.5 flex items-center gap-1">
+                        <button type="button" wire:click="processBarcode" wire:loading.attr="disabled"
+                            wire:target="processBarcode" title="Add to cart"
+                            class="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors disabled:opacity-50">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M13 6l6 6-6 6" />
+                            </svg>
+                        </button>
+
+                        <button type="button" @click="startScan()" title="Scan with camera"
+                            class="p-1.5 rounded-lg text-indigo-500 hover:bg-indigo-100 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                stroke-width="1.75">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </button>
+
+                        {{-- Camera viewfinder overlay — teleported out of the Livewire-managed
+                             tree so it can never be torn down by a component re-render.
+                             wire:ignore is kept as a defense-in-depth belt-and-braces measure. --}}
+                        <template x-teleport="body">
+                            <div x-show="scanning" x-cloak wire:ignore wire:key="pos-scan-viewfinder"
+                                class="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4"
+                                style="display:none">
+                                <div class="w-full max-w-sm rounded-2xl overflow-hidden bg-black">
+                                    <video x-ref="posScanVideo" class="w-full aspect-[4/3] object-cover" playsinline
+                                        autoplay muted></video>
+                                </div>
+                                <p class="text-white text-sm mt-4">Point the camera at a barcode or IMEI</p>
+                                <button @click="stopScan()" class="mt-4 btn-danger btn-sm">✕ Stop Scanning</button>
+                            </div>
+                        </template>
+                    </div>
                 </div>
 
                 {{-- Product name/sku search --}}
@@ -566,7 +659,8 @@
                                 @endforeach
                             </select>
                             @if ($line['type'] === 'finance_partner')
-                                <p class="text-xs text-gray-400">This amount will be recorded as receivable from the
+                                <p class="text-xs text-gray-400">This amount will be recorded as receivable from
+                                    the
                                     EMI company.</p>
                             @endif
                         @endif
@@ -690,7 +784,8 @@
                         <button type="button" wire:click="selectUnitFromPicker({{ $unit['id'] }})"
                             class="w-full flex items-center justify-between px-5 py-3.5 hover:bg-indigo-50 text-left transition-colors">
                             <div>
-                                <div class="font-mono font-semibold text-gray-900">{{ $unit['serial_number'] }}</div>
+                                <div class="font-mono font-semibold text-gray-900">{{ $unit['serial_number'] }}
+                                </div>
                                 @if ($unit['secondary'])
                                     <div class="font-mono text-xs text-gray-400">{{ $unit['secondary'] }}</div>
                                 @endif
@@ -731,7 +826,8 @@
                                     <span class="badge badge-yellow text-xs">{{ $held['held_at'] }}</span>
                                 </div>
                                 <div class="text-xs text-gray-500 mt-0.5">
-                                    {{ $held['item_count'] }} item(s) · Total: ৳{{ number_format($held['total'], 2) }}
+                                    {{ $held['item_count'] }} item(s) · Total:
+                                    ৳{{ number_format($held['total'], 2) }}
                                 </div>
                             </div>
                             <div class="flex gap-2 shrink-0">

@@ -123,7 +123,7 @@
     </div>
 
     {{-- Camera viewfinder --}}
-    <div x-show="scanning" class="relative rounded-xl overflow-hidden bg-black" style="display:none;">
+    <div x-show="scanning" wire:ignore class="relative rounded-xl overflow-hidden bg-black" style="display:none;">
         <video x-ref="video" class="w-full max-h-56 object-cover" playsinline muted></video>
 
         {{-- Scan line animation --}}

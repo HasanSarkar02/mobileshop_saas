@@ -52,7 +52,6 @@
                 class="relative flex h-16 items-center justify-center px-4 border-b border-gray-100 dark:border-gray-700 shrink-0">
                 {{-- Logo Container (Centered & Larger) --}}
                 <div class="flex items-center justify-center w-full">
-                    {{-- ১. শপ লোগো --}}
                     @if ($shop?->logo_path)
                         <img src="{{ Storage::url($shop->logo_path) }}"
                             class="h-18 max-h-18 w-auto max-w-full object-contain py-1"
@@ -63,8 +62,6 @@
                         <img src="{{ asset('storage/' . $settings->logo_path) }}"
                             class="h-18 max-h-18 w-auto max-w-full object-contain py-1"
                             alt="{{ $settings->app_name ?? 'System Logo' }}">
-
-                        {{-- ৩. সিস্টেম নেম --}}
                     @else
                         <div class="font-bold text-indigo-700 dark:text-indigo-400 truncate text-base text-center">
                             {{ $settings?->app_name ?? ($shop?->name ?? 'SmartShop ERP') }}

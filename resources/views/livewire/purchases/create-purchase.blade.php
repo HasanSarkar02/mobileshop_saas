@@ -167,8 +167,8 @@
                                         </div>
 
                                         {{-- Scanner Button --}}
-                                        <button type="button" x-data
-                                            @click="$dispatch('scan-imei-{{ $idx }}-{{ $si }}')"
+                                        <button type="button"
+                                            @click="$dispatch('scan-imei-requested', { fieldId: 'imei-{{ $idx }}-{{ $si }}' })"
                                             class="btn-secondary btn-sm mt-5 shrink-0" title="Scan with Camera">
                                             📷
                                         </button>
@@ -197,6 +197,7 @@
                     async startForField(fieldId) {
                         this.activeField = document.getElementById(fieldId);
                         if (!('BarcodeDetector' in window)) {
+                            $dispatch('notify', { type: 'error', message: 'Camera scanning isn\'t supported in this browser. Try Chrome on Android, or type the IMEI manually.' });
                             this.activeField?.focus();
                             return;
                         }
@@ -207,7 +208,12 @@
                             await this.$refs.imeiVideo.play();
                             this.scanning = true;
                             this.detect();
-                        } catch (e) {}
+                        } catch (e) {
+                            const msg = e.name === 'NotAllowedError' ?
+                                'Camera permission denied. Please allow camera access in your browser settings and try again.' :
+                                (e.name === 'NotFoundError' ? 'No camera found on this device.' : 'Could not start camera: ' + e.message);
+                            $dispatch('notify', { type: 'error', message: msg });
+                        }
                     },
                 
                     async detect() {
@@ -218,7 +224,7 @@
                                 const val = found[0].rawValue;
                                 this.activeField.value = val;
                                 this.activeField.dispatchEvent(new Event('input'));
-                                // Move to next IMEI field automatically
+                                this.activeField.dispatchEvent(new Event('change', { bubbles: true }));
                                 const next = this.activeField.closest('[data-imei-row]')?.nextElementSibling?.querySelector('input');
                                 this.activeField = next || null;
                                 await new Promise(r => setTimeout(r, 1200));
@@ -231,8 +237,9 @@
                         this.scanning = false;
                         this.videoStream?.getTracks().forEach(t => t.stop());
                     }
-                }">
-                    <div x-show="scanning" class="mt-2 rounded-xl overflow-hidden bg-black" style="display:none">
+                }" @scan-imei-requested.window="startForField($event.detail.fieldId)">
+                    <div x-show="scanning" wire:ignore class="mt-2 rounded-xl overflow-hidden bg-black"
+                        style="display:none">
                         <video x-ref="imeiVideo" class="w-full max-h-40 object-cover" playsinline muted></video>
                         <div
                             class="bg-black/70 text-white text-xs text-center py-1.5 flex items-center justify-between px-3">
