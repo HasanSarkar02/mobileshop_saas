@@ -19,7 +19,7 @@
         <input wire:model.live="dateFrom" type="date" class="input text-sm w-auto">
         <input wire:model.live="dateTo" type="date" class="input text-sm w-auto">
         <div class="flex gap-1">
-            @foreach (['' => 'All', 'damaged' => '⚠ Damaged', 'written_off' => '✗ Written Off', 'reserved' => '🔒 Reserved', 'unreserved' => '🔓 Released'] as $val => $label)
+            @foreach (['' => 'All', 'opening_stock' => '🏁 Opening', 'damaged' => '⚠ Damaged', 'written_off' => '✗ Written Off', 'reserved' => '🔒 Reserved', 'unreserved' => '🔓 Released'] as $val => $label)
                 <button wire:click="$set('typeFilter', '{{ $val }}')"
                     class="px-3 py-1.5 rounded-lg text-xs font-medium
                         {{ $typeFilter === $val ? 'bg-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-600' }}">

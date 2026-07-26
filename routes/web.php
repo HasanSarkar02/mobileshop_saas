@@ -115,7 +115,7 @@ Route::middleware(['auth:web'])->group(function () {
 
     // Impersonation stop
     Route::post('impersonation/stop', [ImpersonationController::class, 'stop'])->name('impersonation.stop')->middleware('impersonation.timeout');
-
+    Route::get('inventory/opening-stock',\App\Livewire\Inventory\OpeningStockEntry::class)->name('inventory.opening-stock')->middleware('feature:inventory');
     // Products
     Route::prefix('products')->name('products.')->middleware('feature:inventory')->group(function () {
         Route::livewire('/', ProductList::class)->name('index');
