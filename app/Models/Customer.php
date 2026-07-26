@@ -61,6 +61,11 @@ class Customer extends Model
         return $this->hasMany(CustomerTransaction::class)->latest();
     }
 
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class); // যুক্ত করা হয়েছে
+    }
+
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -128,5 +133,12 @@ class Customer extends Model
             ->select(['id', 'name', 'phone', 'customer_type', 'current_balance', 'credit_limit'])
             ->limit(8)
             ->get();
+    }
+
+    public function isDeletable(): bool
+    {
+        return $this->transactions()->doesntExist()
+            && $this->sales()->doesntExist()
+            && (float) $this->current_balance === 0.0;
     }
 }

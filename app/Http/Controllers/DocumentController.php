@@ -15,6 +15,7 @@ use App\Reporting\Services\FinancialReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DocumentController extends Controller
 {
@@ -619,5 +620,188 @@ class DocumentController extends Controller
         return Pdf::loadView('documents.payroll-register', compact('run'))
             ->setPaper('A4', 'landscape')
             ->download("{$run->run_number}-register.pdf");
+    }
+
+        public function trialBalancePrint(Request $request)
+    {
+        $shopId = Auth::user()->shop_id;
+        $branchId   = $request->branchId ?? null;
+        $filter = $this->buildFilterFromRequest($request, $shopId);
+        $asOf   = $filter->dateRange->to->toDateString();
+
+        $rows = DB::table('accounts')
+            ->leftJoin('journal_entry_lines', 'journal_entry_lines.account_id', '=', 'accounts.id')
+            ->leftJoin('journal_entries', function ($j) use ($asOf) {
+                $j->on('journal_entries.id', '=', 'journal_entry_lines.journal_entry_id')
+                  ->where('journal_entries.entry_date', '<=', $asOf);
+            })
+            ->where('accounts.shop_id', $shopId)
+            ->where('accounts.is_active', true)
+            ->where('accounts.is_header', false)
+            ->selectRaw('
+                accounts.code, accounts.name, accounts.type,
+                COALESCE(SUM(journal_entry_lines.debit), 0)  AS total_debit,
+                COALESCE(SUM(journal_entry_lines.credit), 0) AS total_credit
+            ')
+            ->groupBy('accounts.id', 'accounts.code', 'accounts.name', 'accounts.type')
+            ->orderBy('accounts.code')
+            ->get();
+
+        $result  = [];
+        $totalDr = 0;
+        $totalCr = 0;
+
+        foreach ($rows as $row) {
+            $dr      = (float) $row->total_debit;
+            $cr      = (float) $row->total_credit;
+            $balance = in_array($row->type, ['asset','expense']) ? $dr - $cr : $cr - $dr;
+
+            if ($balance == 0 && $dr == 0 && $cr == 0) continue;
+
+            $isDebitNormal = in_array($row->type, ['asset', 'expense']);
+
+            if ($isDebitNormal) {
+                // Asset & Expense
+                $debitBalance  = max(0, $balance);
+                $creditBalance = max(0, -$balance);
+            } else {
+                // Liability, Equity & Revenue
+                $creditBalance = max(0, $balance);
+                $debitBalance  = max(0, -$balance);
+            }
+
+            $totalDr += $debitBalance;
+            $totalCr += $creditBalance;
+
+            $result[] = [
+                'code'           => $row->code,
+                'name'           => $row->name,
+                'type'           => $row->type,
+                'debit_balance'  => $debitBalance,
+                'credit_balance' => $creditBalance,
+            ];
+        }
+
+        $shop      = Auth::user()->shop;
+        $data      = ['rows' => $result, 'total_dr' => $totalDr, 'total_cr' => $totalCr, 'balanced' => abs($totalDr - $totalCr) < 0.01];
+        $asOfLabel = $filter->dateRange->to->format('d M Y');
+
+        return view('documents.trial-balance', compact('shop','branchId', 'data', 'asOfLabel'));
+    }
+
+        public function balanceSheetPrint(Request $request)
+    {
+        $shopId = Auth::user()->shop_id;
+        $branchId   = $request->branchId ?? null;
+        $filter = $this->buildFilterFromRequest($request, $shopId);
+        
+        $asOf = $filter->dateRange->to->toDateString();
+
+        $rows = DB::table('accounts')
+            ->leftJoin('journal_entry_lines', 'journal_entry_lines.account_id', '=', 'accounts.id')
+            ->leftJoin('journal_entries', function ($j) use ($asOf) {
+                $j->on('journal_entries.id', '=', 'journal_entry_lines.journal_entry_id')
+                  ->where('journal_entries.entry_date', '<=', $asOf);
+            })
+            ->where('accounts.shop_id', $shopId)
+            ->where('accounts.is_active', true)
+            ->where('accounts.is_header', false)
+            ->whereIn('accounts.type', ['asset','liability','equity'])
+            ->selectRaw('accounts.code, accounts.name, accounts.type,
+                COALESCE(SUM(journal_entry_lines.debit),0) AS dr,
+                COALESCE(SUM(journal_entry_lines.credit),0) AS cr')
+            ->groupBy('accounts.id','accounts.code','accounts.name','accounts.type')
+            ->orderBy('accounts.code')->get();
+
+        $pl = DB::table('accounts')
+            ->join('journal_entry_lines','journal_entry_lines.account_id','=','accounts.id')
+            ->join('journal_entries', function ($j) use ($asOf) {
+                $j->on('journal_entries.id','=','journal_entry_lines.journal_entry_id')
+                  ->where('journal_entries.entry_date','<=',$asOf);
+            })
+            ->where('accounts.shop_id', $shopId)
+            ->whereIn('accounts.type',['revenue','expense'])
+            ->selectRaw('accounts.type, COALESCE(SUM(journal_entry_lines.debit),0) AS dr, COALESCE(SUM(journal_entry_lines.credit),0) AS cr')
+            ->groupBy('accounts.type')->get()->keyBy('type');
+
+        $retained = ((float)($pl['revenue']?->cr ?? 0) - (float)($pl['revenue']?->dr ?? 0))
+                  - ((float)($pl['expense']?->dr ?? 0) - (float)($pl['expense']?->cr ?? 0));
+
+        $assets = $liabilities = $equity = [];
+        $totalAssets = $totalLiabilities = $totalEquity = 0.0;
+
+        foreach ($rows as $row) {
+            $balance = in_array($row->type, ['asset']) ? (float)$row->dr - (float)$row->cr : (float)$row->cr - (float)$row->dr;
+            if ($balance == 0) continue;
+            
+            match($row->type) {
+                'asset'     => [$assets[]      = ['code'=>$row->code,'name'=>$row->name,'balance'=>$balance], $totalAssets      += $balance],
+                'liability' => [$liabilities[] = ['code'=>$row->code,'name'=>$row->name,'balance'=>$balance], $totalLiabilities += $balance],
+                'equity'    => [$equity[]      = ['code'=>$row->code,'name'=>$row->name,'balance'=>$balance], $totalEquity      += $balance],
+            };
+        }
+
+        if ($retained != 0) {
+            $equity[]    = ['code'=>'—','name'=>'Retained Earnings (Current Year)','balance'=>$retained];
+            $totalEquity += $retained;
+        }
+
+        $shop      = Auth::user()->shop;
+        $asOfLabel = $filter->dateRange->to->format('d M Y');
+
+        return view('documents.balance-sheet', compact('shop', 'branchId','assets','liabilities','equity','totalAssets','totalLiabilities','totalEquity','asOfLabel'));
+    }
+
+        public function generalLedgerPrint(Request $request)
+    {
+        $shopId    = Auth::user()->shop_id;
+        $accountId = (int) $request->get('account');
+        $branchId   = $request->branchId ?? null;
+        $filter = $this->buildFilterFromRequest($request, $shopId);
+        $from   = $filter->dateRange->from->toDateString();
+        $to     = $filter->dateRange->to->toDateString();
+
+        abort_if(! $accountId, 400, 'Account required.');
+
+        $account = \App\Models\Account::where('shop_id', $shopId)->findOrFail($accountId);
+
+        $opening = (float) DB::table('journal_entry_lines')
+            ->join('journal_entries','journal_entries.id','=','journal_entry_lines.journal_entry_id')
+            ->where('journal_entry_lines.account_id', $accountId)
+            ->where('journal_entries.shop_id', $shopId)
+            ->where('journal_entries.entry_date', '<', $from)
+            ->selectRaw('COALESCE(SUM(debit),0) - COALESCE(SUM(credit),0) AS balance')
+            ->first()?->balance ?? 0;
+
+        $lines = DB::table('journal_entry_lines')
+            ->join('journal_entries','journal_entries.id','=','journal_entry_lines.journal_entry_id')
+            ->where('journal_entry_lines.account_id', $accountId)
+            ->where('journal_entries.shop_id', $shopId)
+            ->whereBetween('journal_entries.entry_date', [$from, $to])
+            ->selectRaw('journal_entries.entry_date, journal_entries.entry_number,
+                journal_entries.description, journal_entry_lines.description AS line_desc,
+                COALESCE(journal_entry_lines.debit,0) AS debit,
+                COALESCE(journal_entry_lines.credit,0) AS credit')
+            ->orderBy('journal_entries.entry_date')
+            ->orderBy('journal_entries.id')
+            ->get();
+
+        $running = $opening;
+        $lines   = $lines->map(function ($l) use (&$running) {
+            $running     += (float)$l->debit - (float)$l->credit;
+            $l->balance   = $running;
+            return $l;
+        });
+
+        $shop      = Auth::user()->shop;
+        $fromLabel = $filter->dateRange->from->format('d M Y');
+        $toLabel   = $filter->dateRange->to->format('d M Y');
+        $totalDr   = (float) $lines->sum('debit');
+        $totalCr   = (float) $lines->sum('credit');
+        $closing   = $running;
+
+        return view('documents.general-ledger', compact(
+            'shop','account', 'branchId', 'lines','opening','closing','totalDr','totalCr','fromLabel','toLabel'
+        ));
     }
 }

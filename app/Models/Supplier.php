@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['shop_id', 'name', 'phone', 'email', 'address','notes', 'is_active', 'current_balance', 'credit_limit'])]
+#[Fillable(['shop_id', 'name', 'phone', 'email', 'address','notes', 'is_active', 'current_balance', 'bank_name', 'bank_account_number', 'bank_branch_name', 
+    'bank_routing_number', 'payment_terms', 'credit_limit'])]
 class Supplier extends Model
 {
     use HasFactory, SoftDeletes, BelongsToShop;

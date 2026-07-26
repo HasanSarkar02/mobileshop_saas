@@ -83,7 +83,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('/2fa/challenge', [AdminLoginController::class, 'verifyTwoFactorChallenge'])->name('2fa.verify');
 
 
-    // Protected admin routes — must be authenticated via the admin guard
+    //  admin routes 
     Route::middleware('super_admin')->group(function () {
         Route::post('logout', [AdminLoginController::class, 'destroy'])->name('logout');
         Route::get('/2fa/recovery-codes', [AdminLoginController::class, 'showRecoveryCodesOnce'])->name('2fa.recovery-codes.show');

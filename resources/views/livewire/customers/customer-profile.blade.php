@@ -48,6 +48,14 @@
 
             {{-- Quick Actions --}}
             <div class="flex sm:flex-col gap-2 shrink-0">
+                @if ($customer->isDeletable())
+                    @can('customers.delete')
+                        <button wire:click="delete" wire:confirm="Delete {{ $customer->name }}? This cannot be undone."
+                            class="btn-danger btn-sm">
+                            Delete
+                        </button>
+                    @endcan
+                @endif
                 <a href="{{ route('customers.edit', $customer) }}" wire:navigate class="btn-secondary btn-sm">Edit</a>
                 @if ($customer->current_balance > 0)
                     <button wire:click="$set('showPaymentForm', true)" class="btn-success btn-sm">

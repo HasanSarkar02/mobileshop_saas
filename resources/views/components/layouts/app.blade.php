@@ -461,7 +461,8 @@
     <div x-data="{
         notifications: [],
         add(e) {
-            const n = { id: Date.now(), ...e.detail[0] };
+            const detail = Array.isArray(e.detail) ? e.detail[0] : e.detail;
+            const n = { id: Date.now(), ...detail };
             this.notifications.push(n);
             setTimeout(() => this.remove(n.id), 4000);
         },

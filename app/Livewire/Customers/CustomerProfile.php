@@ -156,4 +156,18 @@ class CustomerProfile extends Component
             'message' => 'Due reminder queued.',
         ]);
     }
+
+    public function delete(): void
+    {
+        $this->requirePermission('customers.delete');
+
+        if (! $this->customer->isDeletable()) {
+            $this->dispatch('notify', ['type' => 'error',
+                'message' => 'Cannot delete — customer has transaction history.']);
+            return;
+        }
+
+        $this->customer->delete();
+        $this->redirect(route('customers.index'), navigate: true);
+    }
 }
