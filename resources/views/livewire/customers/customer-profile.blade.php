@@ -150,7 +150,7 @@
     {{-- ── Tabs ── --}}
     <div class="card overflow-hidden">
         <nav class="flex border-b border-gray-200 overflow-x-auto">
-            @foreach ([['key' => 'overview', 'label' => 'Overview'], ['key' => 'transactions', 'label' => 'Transaction History'], ['key' => 'purchases', 'label' => 'Purchase History'], ['key' => 'documents', 'label' => 'Documents'], ['key' => 'guarantor', 'label' => 'Guarantor']] as $tab)
+            @foreach ([['key' => 'overview', 'label' => 'Overview'], ['key' => 'followup', 'label' => 'Due Follow-up'], ['key' => 'transactions', 'label' => 'Transaction History'], ['key' => 'purchases', 'label' => 'Purchase History'], ['key' => 'documents', 'label' => 'Documents'], ['key' => 'guarantor', 'label' => 'Guarantor']] as $tab)
                 <button wire:click="$set('activeTab', '{{ $tab['key'] }}')"
                     class="px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors
                         {{ $activeTab === $tab['key'] ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700' }}">
@@ -259,6 +259,216 @@
                     </div>
                 </div>
             @endif
+        </div>
+
+        {{-- Due Follow-up Tab --}}
+        <div wire:show="activeTab === 'followup'" class="p-5 space-y-5">
+
+            {{-- Summary --}}
+            <div class="grid sm:grid-cols-4 gap-4">
+                <div class="card p-3 border-0 bg-gray-50">
+                    <div class="text-xs text-gray-400">Outstanding Due</div>
+                    <div class="font-bold text-red-600">৳{{ number_format($customer->current_balance, 2) }}</div>
+                </div>
+                <div class="card p-3 border-0 bg-gray-50">
+                    <div class="text-xs text-gray-400">Next Follow-up</div>
+                    <div class="font-bold text-gray-800">
+                        {{ $this->openFollowUp?->next_followup_date?->format('d M Y, h:i A') ?? '—' }}</div>
+                </div>
+                <div class="card p-3 border-0 bg-gray-50">
+                    <div class="text-xs text-gray-400">Promise Date</div>
+                    <div class="font-bold text-gray-800">
+                        {{ $this->openFollowUp?->promised_payment_date?->format('d M Y, h:i A') ?? '—' }}</div>
+                </div>
+                <div class="card p-3 border-0 bg-gray-50">
+                    <div class="text-xs text-gray-400">Current Status</div>
+                    @if ($this->openFollowUp)
+                        <span
+                            class="badge {{ $this->openFollowUp->status->badgeClass() }}">{{ $this->openFollowUp->status->label() }}</span>
+                    @else
+                        <span class="text-gray-400 text-sm">No active follow-up</span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                @can('customers.manage_followups')
+                    <button wire:click="$set('showFollowUpForm', true)" class="btn-primary btn-sm">+ Add
+                        Follow-up</button>
+                    @if ($this->openFollowUp)
+                        <button wire:click="editFollowUp({{ $this->openFollowUp->id }})"
+                            class="btn-secondary btn-sm">Edit Follow-up</button>
+                    @endif
+                @endcan
+                @if ($customer->current_balance > 0)
+                    <button wire:click="$set('showPaymentForm', true)" class="btn-success btn-sm">Receive
+                        Payment</button>
+                @endif
+            </div>
+
+            {{-- Add Follow-up Form --}}
+            <div wire:show="showFollowUpForm" class="card p-4 border-blue-200 bg-blue-50 space-y-3">
+                <div class="grid sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="label text-xs">Follow-up Type *</label>
+                        <select wire:model="followupType" class="input @error('followupType') input-error @enderror">
+                            <option value="">Select…</option>
+                            @foreach (\App\Enums\FollowUpType::cases() as $t)
+                                <option value="{{ $t->value }}">{{ $t->label() }}</option>
+                            @endforeach
+                        </select>
+                        @error('followupType')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="label text-xs">Follow-up Date *</label>
+                        <input wire:model="followupDate" type="datetime-local"
+                            class="input @error('followupDate') input-error @enderror">
+                        @error('followupDate')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="label text-xs">Status *</label>
+                        <select wire:model="followupStatus"
+                            class="input @error('followupStatus') input-error @enderror">
+                            @foreach (\App\Enums\FollowUpStatus::cases() as $s)
+                                <option value="{{ $s->value }}">{{ $s->label() }}</option>
+                            @endforeach
+                        </select>
+                        @error('followupStatus')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="label text-xs">Promised Payment Date</label>
+                        <input wire:model="promisedPaymentDate" type="datetime-local" class="input">
+                    </div>
+                    <div>
+                        <label class="label text-xs">Promised Amount (৳)</label>
+                        <input wire:model="promisedAmount" type="number" step="0.01" min="0"
+                            class="input">
+                        @error('promisedAmount')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="label text-xs">Next Follow-up Date</label>
+                        <input wire:model="nextFollowupDate" type="datetime-local" class="input">
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="label text-xs">Customer Response</label>
+                        <textarea wire:model="customerResponse" rows="2" class="input" placeholder="What did the customer say?"></textarea>
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="label text-xs">Internal Note</label>
+                        <textarea wire:model="internalNote" rows="2" class="input"
+                            placeholder="Internal note (not shown to customer)"></textarea>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button wire:click="addFollowUp" class="btn-primary btn-sm" wire:loading.attr="disabled"
+                        wire:target="addFollowUp">
+                        <span wire:loading.remove wire:target="addFollowUp">Save Follow-up</span>
+                        <span wire:loading wire:target="addFollowUp">Saving…</span>
+                    </button>
+                    <button wire:click="$set('showFollowUpForm', false)" class="btn-secondary btn-sm">Cancel</button>
+                </div>
+            </div>
+
+            <div wire:show="editingFollowUpId" class="card p-4 border-amber-200 bg-amber-50 space-y-3">
+                <p class="text-xs font-semibold text-amber-700">Editing the active follow-up — reschedule or update its
+                    outcome.</p>
+                <div class="grid sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="label text-xs">Next Follow-up Date</label>
+                        <input wire:model="editNextFollowupDate" type="datetime-local" class="input">
+                    </div>
+                    <div>
+                        <label class="label text-xs">Promised Payment Date</label>
+                        <input wire:model="editPromisedPaymentDate" type="datetime-local" class="input">
+                    </div>
+                    <div>
+                        <label class="label text-xs">Promised Amount (৳)</label>
+                        <input wire:model="editPromisedAmount" type="number" step="0.01" min="0"
+                            class="input">
+                        @error('editPromisedAmount')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="label text-xs">Status</label>
+                        <select wire:model="editStatus" class="input">
+                            @foreach (\App\Enums\FollowUpStatus::cases() as $s)
+                                <option value="{{ $s->value }}">{{ $s->label() }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="label text-xs">Customer Response</label>
+                        <textarea wire:model="editCustomerResponse" rows="2" class="input"></textarea>
+                    </div>
+                    <div class="sm:col-span-3">
+                        <label class="label text-xs">Internal Note</label>
+                        <textarea wire:model="editInternalNote" rows="2" class="input"></textarea>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button wire:click="updateFollowUp" class="btn-primary btn-sm">Save Changes</button>
+                    <button wire:click="cancelEditFollowUp" class="btn-secondary btn-sm">Cancel</button>
+                </div>
+            </div>
+
+            {{-- Merged Timeline --}}
+            <div>
+                <h4 class="font-semibold text-gray-900 text-sm mb-3">Follow-up & Payment History</h4>
+                <div class="space-y-2">
+                    @forelse ($this->timeline as $entry)
+                        <div class="flex items-start gap-3 text-sm py-2 border-b border-gray-50 last:border-0">
+                            @if ($entry['type'] === 'transaction')
+                                @php
+                                    $tx = $entry['model'];
+                                @endphp
+                                <span
+                                    class="{{ $tx->direction === 'debit' ? 'text-red-600' : 'text-green-600' }} font-bold w-4 shrink-0">
+                                    {{ $tx->direction === 'debit' ? '+' : '−' }}
+                                </span>
+                                <div class="flex-1">
+                                    <span
+                                        class="font-medium text-gray-700">{{ $tx->transaction_type->label() }}</span>
+                                    <span class="text-gray-500"> — ৳{{ number_format($tx->amount, 2) }}</span>
+                                </div>
+                            @else
+                                @php
+                                    $f = $entry['model'];
+                                @endphp
+                                <span
+                                    class="badge {{ $f->status->badgeClass() }} shrink-0">{{ $f->status->label() }}</span>
+                                <div class="flex-1">
+                                    <span class="font-medium text-gray-700">{{ $f->followup_type->label() }}
+                                        follow-up</span>
+                                    <span class="text-xs text-gray-400"> — by
+                                        {{ $f->createdBy?->name ?? 'System' }}</span>
+                                    @if ($f->promised_payment_date)
+                                        <span class="text-gray-500"> — promised
+                                            {{ $f->promised_payment_date->format('d M Y, h:i A') }}</span>
+                                    @endif
+                                    @if ($f->customer_response)
+                                        <p class="text-xs text-gray-400 mt-0.5">{{ $f->customer_response }}</p>
+                                    @endif
+                                    @if ($f->internal_note)
+                                        <p class="text-xs text-gray-400 mt-0.5 italic">{{ $f->internal_note }}</p>
+                                    @endif
+                                </div>
+                            @endif
+                            <span class="text-gray-400 text-xs shrink-0">{{ $entry['at']->diffForHumans() }}</span>
+                        </div>
+                    @empty
+                        <p class="text-sm text-gray-400">No history yet.</p>
+                    @endforelse
+                </div>
+            </div>
         </div>
 
         {{-- Transactions Tab --}}

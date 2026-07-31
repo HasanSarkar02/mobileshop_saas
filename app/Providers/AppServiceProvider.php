@@ -8,6 +8,7 @@ use App\Services\ShopFeatureService;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use App\Listeners\CustomerFollowUpEventSubscriber;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Event::subscribe(NotificationEventSubscriber::class);
+        Event::subscribe(CustomerFollowUpEventSubscriber::class);
 
         \Illuminate\Support\Facades\Blade::if('feature', function (string $feature) {
         return app(ShopFeatureService::class)->enabled($feature);

@@ -61,6 +61,11 @@ class Customer extends Model
         return $this->hasMany(CustomerTransaction::class)->latest();
     }
 
+    public function dueFollowUps(): HasMany
+    {
+        return $this->hasMany(CustomerDueFollowUp::class)->latest();
+    }
+
     public function sales(): HasMany
     {
         return $this->hasMany(Sale::class); // যুক্ত করা হয়েছে
@@ -139,6 +144,7 @@ class Customer extends Model
     {
         return $this->transactions()->doesntExist()
             && $this->sales()->doesntExist()
+            && $this->dueFollowUps()->doesntExist()
             && (float) $this->current_balance === 0.0;
     }
 }

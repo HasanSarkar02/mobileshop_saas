@@ -170,19 +170,22 @@ class RecordUsedPhoneAcquisitionAction
 
     private function getOrCreateUsedPhoneVariant(Shop $shop, string $modelDescription, float $sellPrice): ProductVariant
     {
-        // Find or create the shop's "Used Phones" catch-all product
-        $product = \App\Models\Product::withoutGlobalScopes()
+        $product = Product::withoutGlobalScopes()
             ->firstOrCreate(
-                ['shop_id' => $shop->id, 'name' => 'Used Phones (Unlinked)'],
                 [
                     'shop_id'       => $shop->id,
+                    'system_origin' => Product::ORIGIN_USED_PHONE_BUCKET,
+                ],
+                [
+                    'shop_id'       => $shop->id,
+                    'name'          => 'Used Phones (Unlinked)',
                     'tracking_type' => 'serialized',
                     'description'   => 'Auto-created for used phone acquisitions not linked to catalog',
                     'is_active'     => true,
+                    'system_origin' => Product::ORIGIN_USED_PHONE_BUCKET,
                 ]
             );
 
-        // Each unlinked acquisition gets its own variant with a unique SKU
         $sku = 'USED-' . strtoupper(substr(str_replace(' ', '-', preg_replace('/[^a-zA-Z0-9 ]/', '', $modelDescription)), 0, 20)) . '-' . now()->format('His');
 
         return ProductVariant::create([

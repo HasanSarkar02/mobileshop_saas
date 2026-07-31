@@ -109,6 +109,7 @@ class ShopSettings extends Component
     //Treasury approval threshold and petty cash limit 
     public string $treasuryApprovalThreshold = '10000';
     public string $pettyCashLimit            = '5000';
+    public string $dueFollowupIgnoreThreshold = '0';
 
     public function mount(): void
     {
@@ -140,6 +141,7 @@ class ShopSettings extends Component
         $this->smsOnServiceReady = (bool) $shop->sms_on_service_ready;
         $this->treasuryApprovalThreshold = (string) ($shop->treasury_approval_threshold ?? 10000);
         $this->pettyCashLimit            = (string) ($shop->petty_cash_limit ?? 5000);
+        $this->dueFollowupIgnoreThreshold = (string) ($shop->due_followup_ignore_threshold ?? 0);
     }
 
     // ── Computed Properties ────────────────────
@@ -481,6 +483,7 @@ class ShopSettings extends Component
             'expense_approval_threshold'  => (float) $this->expenseApprovalThreshold,
             'treasury_approval_threshold' => (float) $this->treasuryApprovalThreshold,
             'petty_cash_limit'            => (float) $this->pettyCashLimit,
+            'due_followup_ignore_threshold' => (float) $this->dueFollowupIgnoreThreshold,
         ]);
     }
 

@@ -2,10 +2,10 @@
 
 namespace App\Reporting\Repositories;
 
+use App\Models\ProductVariant;
 use App\Reporting\DTOs\ReportFilter;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-
 class InventoryRepository extends BaseReportRepository
 {
     /** Total value: serialized units (cost_price) + non-serialized (qty × avg_cost) */
@@ -47,68 +47,137 @@ class InventoryRepository extends BaseReportRepository
     /** SKUs below minimum threshold — "low stock" */
     public function lowStockItems(int $shopId, ?int $branchId = null, int $threshold = 3): Collection
     {
-        // Non-serialized variants with qty <= variant's min_stock_level (fallback to parameter)
-        return DB::table('branch_stocks')
-            ->join('product_variants', 'product_variants.id', '=', 'branch_stocks.product_variant_id')
-            ->join('products', 'products.id', '=', 'product_variants.product_id')
-            ->leftJoin('brands', 'brands.id', '=', 'products.brand_id')
-            ->where('branch_stocks.shop_id', $shopId)
-            ->where('products.tracking_type', 'non_serialized')
-            ->where('products.is_active', true)
-            ->whereRaw('branch_stocks.quantity <= COALESCE(product_variants.min_stock_level, ?)', [$threshold])
-            ->when($branchId, fn ($q) => $q->where('branch_stocks.branch_id', $branchId))
+        $nonSerialized = DB::table('branch_stocks as bs')
+            ->join('product_variants as pv', 'pv.id', '=', 'bs.product_variant_id')
+            ->join('products as p', 'p.id', '=', 'pv.product_id')
+            ->leftJoin('brands as b', 'b.id', '=', 'p.brand_id')
+            ->where('bs.shop_id', $shopId)
+            ->where('p.tracking_type', 'non_serialized')
+            ->where('p.is_active', true)
+            ->whereNull('p.system_origin')
+            ->where('pv.is_active', true)
+            ->when($branchId, fn ($q) => $q->where('bs.branch_id', $branchId))
+            ->whereRaw('bs.quantity <= COALESCE(pv.min_stock_level, ?)', [$threshold])
             ->selectRaw('
-                products.name                                 AS product_name,
-                COALESCE(brands.name, "—")                    AS brand,
-                product_variants.sku,
-                product_variants.selling_price,
-                COALESCE(product_variants.min_stock_level, ?) AS threshold,
-                branch_stocks.quantity,
-                branch_stocks.average_cost,
-                (branch_stocks.quantity * branch_stocks.average_cost) AS stock_value
-            ', [$threshold])
-            ->orderBy('branch_stocks.quantity')
+                p.id                             AS product_id,
+                pv.id                            AS variant_id,
+                p.name                          AS product_name,
+                COALESCE(b.name, "—")           AS brand,
+                pv.sku,
+                "non_serialized"                AS tracking_type,
+                pv.selling_price,
+                COALESCE(pv.min_stock_level, ?) AS threshold,
+                bs.quantity,
+                bs.average_cost,
+                (bs.quantity * bs.average_cost) AS stock_value
+            ', [$threshold]);
+
+        $serialized = DB::table('product_variants as pv')
+            ->join('products as p', 'p.id', '=', 'pv.product_id')
+            ->leftJoin('brands as b', 'b.id', '=', 'p.brand_id')
+            ->leftJoin('product_units as pu', function ($j) use ($branchId) {
+                $j->on('pu.product_variant_id', '=', 'pv.id')
+                ->where('pu.status', '=', 'in_stock')
+                ->where('pu.is_archived', '=', false);
+                if ($branchId) {
+                    $j->where('pu.branch_id', '=', $branchId);
+                }
+            })
+            ->where('p.shop_id', $shopId)
+            ->where('p.tracking_type', 'serialized')
+            ->where('p.is_active', true)
+            ->whereNull('p.system_origin')
+            ->where('pv.is_active', true)
+            ->groupBy('p.id', 'p.name', 'b.name', 'pv.id', 'pv.sku', 'pv.selling_price', 'pv.min_stock_level')
+            ->havingRaw('COUNT(pu.id) <= COALESCE(pv.min_stock_level, ?)', [$threshold])
+            ->selectRaw('
+                p.id                                               AS product_id,
+                pv.id                                              AS variant_id,
+                p.name                                            AS product_name,
+                COALESCE(b.name, "—")                             AS brand,
+                pv.sku,
+                "serialized"                                      AS tracking_type,
+                pv.selling_price,
+                COALESCE(pv.min_stock_level, ?)                   AS threshold,
+                COUNT(pu.id)                                      AS quantity,
+                COALESCE(AVG(pu.cost_price), 0)                   AS average_cost,
+                (COUNT(pu.id) * COALESCE(AVG(pu.cost_price), 0))  AS stock_value
+            ', [$threshold]);
+
+        return $nonSerialized->unionAll($serialized)
+            ->orderBy('quantity')
             ->get();
     }
 
-        /**
-     * Low Stock Alerts — Improved version with per-product threshold
-     */
-    public function lowStockAlerts(int $shopId, ?int $branchId = null): \Illuminate\Support\Collection
+    public function lowStockAlerts(int $shopId, ?int $branchId = null): Collection
     {
-        return DB::table('branch_stocks as bs')
+        $nonSerialized = DB::table('branch_stocks as bs')
             ->join('product_variants as pv', 'pv.id', '=', 'bs.product_variant_id')
             ->join('products as p', 'p.id', '=', 'pv.product_id')
             ->leftJoin('brands as b', 'b.id', '=', 'p.brand_id')
             ->leftJoin('branches as br', 'br.id', '=', 'bs.branch_id')
             ->where('bs.shop_id', $shopId)
             ->where('p.is_active', true)
+            ->whereNull('p.system_origin')
             ->where('pv.is_active', true)
             ->where('p.tracking_type', 'non_serialized')
             ->when($branchId, fn ($q) => $q->where('bs.branch_id', $branchId))
-            ->whereRaw('
-                (bs.quantity - COALESCE(bs.reserved_quantity, 0))
-                <= 
-                COALESCE(pv.min_stock_level, 3)
-            ')
+            ->whereRaw('(bs.quantity - COALESCE(bs.reserved_quantity, 0)) <= COALESCE(pv.min_stock_level, 3)')
             ->selectRaw('
-                p.name AS product_name,
+                p.name                                           AS product_name,
                 pv.sku,
                 pv.attributes_label,
-                COALESCE(b.name, "") AS brand,
-                br.name AS branch_name,
+                COALESCE(b.name, "")                             AS brand,
+                br.name                                          AS branch_name,
+                "non_serialized"                                 AS tracking_type,
                 bs.quantity,
-                COALESCE(bs.reserved_quantity, 0) AS reserved_quantity,
-                COALESCE(bs.damaged_quantity, 0) AS damaged_quantity,
+                COALESCE(bs.reserved_quantity, 0)                AS reserved_quantity,
+                COALESCE(bs.damaged_quantity, 0)                 AS damaged_quantity,
                 (bs.quantity - COALESCE(bs.reserved_quantity, 0)) AS available_quantity,
+                COALESCE(pv.min_stock_level, 3)                  AS threshold,
+                pv.id                                             AS variant_id
+            ');
+
+        // ── Serialized: reserved units already excluded (they have status='reserved', not 'in_stock') ──
+        $serialized = DB::table('product_variants as pv')
+            ->join('products as p', 'p.id', '=', 'pv.product_id')
+            ->leftJoin('brands as b', 'b.id', '=', 'p.brand_id')
+            ->leftJoin('product_units as pu', function ($j) use ($branchId) {
+                $j->on('pu.product_variant_id', '=', 'pv.id')
+                ->where('pu.status', '=', 'in_stock')
+                ->where('pu.is_archived', '=', false);
+                if ($branchId) {
+                    $j->where('pu.branch_id', '=', $branchId);
+                }
+            })
+            ->leftJoin('branches as br', 'br.id', '=', 'pu.branch_id')
+            ->where('p.shop_id', $shopId)
+            ->where('p.is_active', true)
+            ->whereNull('p.system_origin')
+            ->where('pv.is_active', true)
+            ->where('p.tracking_type', 'serialized')
+            ->groupBy('p.id', 'p.name', 'b.name', 'pv.id', 'pv.sku', 'pv.attributes_label', 'pv.min_stock_level', 'pu.branch_id', 'br.name')
+            ->havingRaw('COUNT(pu.id) <= COALESCE(pv.min_stock_level, 3)')
+            ->selectRaw('
+                p.name                          AS product_name,
+                pv.sku,
+                pv.attributes_label,
+                COALESCE(b.name, "")            AS brand,
+                br.name                         AS branch_name,
+                "serialized"                    AS tracking_type,
+                COUNT(pu.id)                    AS quantity,
+                0                                AS reserved_quantity,
+                0                                AS damaged_quantity,
+                COUNT(pu.id)                    AS available_quantity,
                 COALESCE(pv.min_stock_level, 3) AS threshold,
-                pv.id AS variant_id
-            ')
-            ->orderByRaw('available_quantity ASC')
+                pv.id                            AS variant_id
+            ');
+
+        return $nonSerialized->unionAll($serialized)
+            ->orderBy('available_quantity')
             ->limit(20)
             ->get();
     }
-
     /** IMEI-level stock counts by status */
     public function imeiStatusCounts(int $shopId, ?int $branchId = null): Collection
     {
@@ -246,5 +315,23 @@ class InventoryRepository extends BaseReportRepository
             ')
             ->orderByDesc('product_units.created_at')
             ->paginate($filter->perPage);
+    }
+
+    public function totalActiveSkuCount(int $shopId): int
+    {
+        return ProductVariant::query()
+            ->whereHas('product', fn ($q) => $q->where('shop_id', $shopId)->where('is_active', true))
+            ->where('is_active', true)
+            ->count();
+    }
+
+    public function outOfStockCount(int $shopId, ?int $branchId = null): int
+    {
+        return ProductVariant::query()
+            ->whereHas('product', fn ($q) => $q->where('shop_id', $shopId)->where('is_active', true))
+            ->where('is_active', true)
+            ->get()
+            ->filter(fn ($v) => $v->current_stock <= 0)
+            ->count();
     }
 }

@@ -40,6 +40,7 @@ enum PermissionEnum: string
     case CustomersManage          = 'customers.manage';
     case CustomersRecordDuePayment = 'customers.record_due_payment';
     case CustomersWriteOffDue     = 'customers.write_off_due';
+    case CustomersManageFollowups = 'customers.manage_followups';
 
     // ── Suppliers & Purchases ─────────────────────────────────────────────────
     case SuppliersManage   = 'suppliers.manage';
@@ -156,6 +157,7 @@ enum PermissionEnum: string
             self::CustomersManage          => 'Add / edit customers',
             self::CustomersRecordDuePayment => 'Record a customer due payment',
             self::CustomersWriteOffDue     => "Write off a customer's bad debt",
+            self::CustomersManageFollowups => 'Add and manage customer due follow-ups',
 
             self::SuppliersManage  => 'Manage suppliers',
             self::SuppliersPayment => 'Record Payment',
@@ -269,6 +271,7 @@ enum PermissionEnum: string
                 self::CustomersManage,
                 self::CustomersRecordDuePayment,
                 self::CustomersWriteOffDue,
+                self::CustomersManageFollowups
             ]) => 'Customers',
 
             in_array($this, [

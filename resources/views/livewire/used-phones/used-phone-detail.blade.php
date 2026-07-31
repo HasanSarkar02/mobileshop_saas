@@ -30,6 +30,77 @@
         <a href="{{ route('used-phones.index') }}" wire:navigate class="btn-secondary btn-sm shrink-0">← Back</a>
     </div>
 
+    {{-- Stock Adjustment Modal --}}
+    @livewire('inventory.stock-adjustment-modal')
+
+    {{-- Unit Actions --}}
+    @if ($acquisition->productUnit && !$saleRecord)
+        @php $unit = $acquisition->productUnit; @endphp
+        <div class="card p-4 flex flex-wrap items-center gap-3">
+            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Unit Actions</span>
+
+            <span
+                class="badge {{ match ($unit->status->value) {
+                    'in_stock' => 'badge-green',
+                    'reserved' => 'badge-yellow',
+                    'damaged' => 'badge-red',
+                    'written_off' => 'badge-gray',
+                    default => 'badge-gray',
+                } }}">
+                {{ ucfirst(str_replace('_', ' ', $unit->status->value)) }}
+            </span>
+
+            @can('inventory.edit')
+                @if ($unit->status->value === 'in_stock')
+                    <button
+                        wire:click="$dispatch('open-stock-adjustment', {
+                        unit_id: {{ $unit->id }}, variant_id: {{ $acquisition->product_variant_id }},
+                        branch_id: {{ $unit->branch_id ?? 0 }}, type: 'damaged',
+                        product_name: '{{ addslashes($acquisition->model_description) }} – {{ $unit->serial_number }}',
+                        tracking_type: 'serialized'
+                    })"
+                        class="btn-secondary btn-sm text-amber-600">⚠ Mark Damaged</button>
+
+                    <button
+                        wire:click="$dispatch('open-stock-adjustment', {
+                        unit_id: {{ $unit->id }}, variant_id: {{ $acquisition->product_variant_id }},
+                        branch_id: {{ $unit->branch_id ?? 0 }}, type: 'written_off',
+                        product_name: '{{ addslashes($acquisition->model_description) }} – {{ $unit->serial_number }}',
+                        tracking_type: 'serialized'
+                    })"
+                        class="btn-secondary btn-sm text-red-600">✗ Mark Lost / Stolen</button>
+
+                    <button
+                        wire:click="$dispatch('open-stock-adjustment', {
+                        unit_id: {{ $unit->id }}, variant_id: {{ $acquisition->product_variant_id }},
+                        branch_id: {{ $unit->branch_id ?? 0 }}, type: 'reserved',
+                        product_name: '{{ addslashes($acquisition->model_description) }} – {{ $unit->serial_number }}',
+                        tracking_type: 'serialized'
+                    })"
+                        class="btn-secondary btn-sm text-blue-600">🔒 Reserve</button>
+                @elseif ($unit->status->value === 'reserved')
+                    <button
+                        wire:click="$dispatch('open-stock-adjustment', {
+                        unit_id: {{ $unit->id }}, variant_id: {{ $acquisition->product_variant_id }},
+                        branch_id: {{ $unit->branch_id ?? 0 }}, type: 'unreserved',
+                        product_name: '{{ addslashes($acquisition->model_description) }} – {{ $unit->serial_number }}',
+                        tracking_type: 'serialized'
+                    })"
+                        class="btn-secondary btn-sm text-green-600">🔓 Release Hold</button>
+                @elseif ($unit->status->value === 'damaged')
+                    <button
+                        wire:click="$dispatch('open-stock-adjustment', {
+                        unit_id: {{ $unit->id }}, variant_id: {{ $acquisition->product_variant_id }},
+                        branch_id: {{ $unit->branch_id ?? 0 }}, type: 'written_off',
+                        product_name: '{{ addslashes($acquisition->model_description) }} – {{ $unit->serial_number }}',
+                        tracking_type: 'serialized'
+                    })"
+                        class="btn-secondary btn-sm text-red-600">✗ Write Off</button>
+                @endif
+            @endcan
+        </div>
+    @endif
+
     {{-- P&L Card --}}
     <div class="grid grid-cols-3 gap-4">
         <div class="card p-4 border-0 bg-red-50">

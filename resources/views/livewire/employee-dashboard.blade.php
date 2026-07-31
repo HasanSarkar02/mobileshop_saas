@@ -34,7 +34,10 @@
             <div class="text-2xl font-bold text-teal-800">৳{{ number_format($employeeSales['month_revenue'], 0) }}</div>
         </div>
     </div>
-
+    {{-- ── Collection Follow-ups ───────────────────────────────────────────── --}}
+    @can('customers.manage_followups')
+        @include('livewire.partials.followup-widgets')
+    @endcan
     {{-- Pending Approval Notification --}}
     @if ($pendingExpenses > 0)
         <div class="card p-4 bg-amber-50 border-amber-200">

@@ -21,4 +21,9 @@ class Brand extends Model
     {
         return $this->hasMany(Product::class);
     }
+
+    public function scopeUsedByShop($query, int $shopId)
+    {
+        return $query->whereHas('products', fn ($q) => $q->where('products.shop_id', $shopId));
+    }
 }

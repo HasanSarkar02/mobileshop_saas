@@ -6,6 +6,7 @@ use App\Models\SaleItem;
 use App\Models\UsedPhoneAcquisition;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -13,10 +14,14 @@ use Livewire\Component;
 #[Title('Used Phone Detail')]
 class UsedPhoneDetail extends Component
 {
+    use \App\Traits\HasAuthorization;
+
     public UsedPhoneAcquisition $acquisition;
 
     public function mount(UsedPhoneAcquisition $acquisition): void
     {
+        $this->requirePermission('used_phones.view');
+
         $this->acquisition = $acquisition->load([
             'variant.product',
             'productUnit.branch',
@@ -25,6 +30,13 @@ class UsedPhoneDetail extends Component
             'createdBy',
             'tradeInSale.customer',
         ]);
+    }
+
+    #[On('stock-adjusted')]
+    public function refreshUnit(): void
+    {
+        $this->acquisition->refresh();
+        $this->acquisition->load('productUnit.branch');
     }
 
     #[Computed]

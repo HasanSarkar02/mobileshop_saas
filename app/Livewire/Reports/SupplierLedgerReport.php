@@ -63,8 +63,12 @@ class SupplierLedgerReport extends Component
             ->where('settlement_type', 'credit_note')
             ->where('return_date', '<', $filter->dateRange->from->toDateString())
             ->sum('total_amount');
-
-        $opening = $openingPurchases - $openingPayments - $openingReturns;
+        $openingOB = (float) DB::table('supplier_opening_balances')
+            ->where('supplier_id', $supplierId)
+            ->where('shop_id', $shopId)
+            ->where('balance_date', '<', $filter->dateRange->from->toDateString())
+            ->sum('amount');
+        $opening = $openingPurchases - $openingPayments - $openingReturns + $openingOB;
 
         // Period transactions
         $purchases = DB::table('purchases')
@@ -84,9 +88,14 @@ class SupplierLedgerReport extends Component
             ->whereBetween('return_date', [$filter->dateRange->from->toDateString(), $filter->dateRange->to->toDateString()])
             ->selectRaw("return_date AS txn_date,'Return' AS txn_type, return_number AS ref, 0 AS debit, total_amount AS credit")
             ->get();
+        $openingBalances = DB::table('supplier_opening_balances')
+            ->where('supplier_id', $supplierId)->where('shop_id', $shopId)
+            ->whereBetween('balance_date', [$filter->dateRange->from->toDateString(), $filter->dateRange->to->toDateString()])
+            ->selectRaw("balance_date AS txn_date,'Opening Balance' AS txn_type, reference_number AS ref, amount AS debit, 0 AS credit")
+            ->get();
 
         $running = $opening;
-        $lines   = $purchases->concat($payments)->concat($returns)
+        $lines   = $purchases->concat($payments)->concat($returns)->concat($openingBalances)
             ->sortBy('txn_date')
             ->map(function ($r) use (&$running) {
                 $running += (float)$r->debit - (float)$r->credit;

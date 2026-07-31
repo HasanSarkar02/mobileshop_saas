@@ -22,6 +22,55 @@ class CustomerRepository extends BaseReportRepository
             ]);
     }
 
+    public function followUpsDueToday(int $shopId): Collection
+    {
+        return DB::table('customer_due_follow_ups')
+            ->join('customers', 'customers.id', '=', 'customer_due_follow_ups.customer_id')
+            ->where('customer_due_follow_ups.shop_id', $shopId)
+            ->whereDate('customer_due_follow_ups.next_followup_date', now()->toDateString())
+            ->whereNull('customer_due_follow_ups.completed_at')
+            ->whereNotIn('customer_due_follow_ups.status', ['paid', 'cancelled'])
+            ->orderBy('customers.name')
+            ->get([
+                'customer_due_follow_ups.id', 'customers.id as customer_id',
+                'customers.name as customer_name', 'customers.current_balance',
+                'customer_due_follow_ups.next_followup_date', 'customer_due_follow_ups.status',
+            ]);
+    }
+
+    public function overdueFollowUps(int $shopId): Collection
+    {
+        return DB::table('customer_due_follow_ups')
+            ->join('customers', 'customers.id', '=', 'customer_due_follow_ups.customer_id')
+            ->where('customer_due_follow_ups.shop_id', $shopId)
+            ->whereDate('customer_due_follow_ups.next_followup_date', '<', now()->toDateString())
+            ->whereNull('customer_due_follow_ups.completed_at')
+            ->whereNotIn('customer_due_follow_ups.status', ['paid', 'cancelled'])
+            ->orderBy('customer_due_follow_ups.next_followup_date')
+            ->get([
+                'customer_due_follow_ups.id', 'customers.id as customer_id',
+                'customers.name as customer_name', 'customers.current_balance',
+                'customer_due_follow_ups.next_followup_date', 'customer_due_follow_ups.status',
+            ]);
+    }
+
+    public function brokenPromises(int $shopId): Collection
+    {
+        return DB::table('customer_due_follow_ups')
+            ->join('customers', 'customers.id', '=', 'customer_due_follow_ups.customer_id')
+            ->where('customer_due_follow_ups.shop_id', $shopId)
+            ->whereDate('customer_due_follow_ups.promised_payment_date', '<', now()->toDateString())
+            ->whereNull('customer_due_follow_ups.completed_at')
+            ->whereNotIn('customer_due_follow_ups.status', ['paid', 'cancelled'])
+            ->where('customers.current_balance', '>', 0)
+            ->orderBy('customer_due_follow_ups.promised_payment_date')
+            ->get([
+                'customer_due_follow_ups.id', 'customers.id as customer_id',
+                'customers.name as customer_name', 'customers.current_balance',
+                'customer_due_follow_ups.promised_payment_date', 'customer_due_follow_ups.promised_amount',
+            ]);
+    }
+
     /** Customer summary stats */
     public function stats(int $shopId): object
     {

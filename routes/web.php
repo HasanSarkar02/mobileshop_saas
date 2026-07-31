@@ -156,6 +156,7 @@ Route::middleware(['auth:web'])->group(function () {
     // Customers
     Route::prefix('customers')->name('customers.')->middleware('feature:customers')->group(function () {
         Route::livewire('/', CustomerList::class)->name('index');
+        Route::livewire('/due-followups', \App\Livewire\Customers\CustomerFollowUpList::class)->name('due-followups');
         Route::livewire('/create', CustomerForm::class)->name('create');
         Route::livewire('/{customer}/edit', CustomerForm::class)->name('edit');
         Route::livewire('/{customer}', CustomerProfile::class)->name('show');

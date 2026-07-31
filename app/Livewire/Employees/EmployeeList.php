@@ -31,7 +31,8 @@ class EmployeeList extends Component
     #[Computed]
     public function stats(): array
     {
-        $employees = User::where('user_type', UserType::Employee->value);
+        $employees = User::where('shop_id', Auth::user()->shop_id)
+        ->where('user_type', UserType::Employee->value);
 
         return [
             'total'    => (clone $employees)->count(),
@@ -81,7 +82,7 @@ class EmployeeList extends Component
             'password'           => \Illuminate\Support\Str::password(40),
             'phone'              => $this->localEmpPhone ?: null,
             'is_active'          => true,
-            'has_system_access'  => false, // cannot login
+            'has_system_access'  => false,
             'email_verified_at'  => now(),
         ]);
 
@@ -95,7 +96,10 @@ class EmployeeList extends Component
 
     public function render()
     {
-        $employees = User::where('user_type', UserType::Employee->value)
+        $shopId = Auth::user()->shop_id;
+        $employees = User::query()
+            ->where('shop_id', $shopId)
+            ->where('user_type', UserType::Employee->value)
             ->with(['employeeProfile', 'branch', 'roles','activeSalaryStructure.policy',])
             ->when($this->search, fn ($q) =>
                 $q->where('name', 'like', "%{$this->search}%")
@@ -110,7 +114,9 @@ class EmployeeList extends Component
             ->latest()
             ->paginate(20);
 
-        $branches = \App\Models\Branch::where('is_active', true)->get();
+        $branches = \App\Models\Branch::where('shop_id', $shopId)
+        ->where('is_active', true)
+        ->get();
 
         return view('livewire.employees.employee-list', compact('employees', 'branches'));
     }

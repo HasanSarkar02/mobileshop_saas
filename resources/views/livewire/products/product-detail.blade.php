@@ -28,7 +28,10 @@
         </div>
         <div class="flex gap-2">
             <a href="{{ route('products.edit', $product) }}" wire:navigate class="btn-secondary btn-sm">Edit</a>
-            <a href="{{ route('purchases.create') }}" wire:navigate class="btn-primary btn-sm">+ Purchase Stock</a>
+            <a href="{{ route('purchases.create', $variant ? ['variant_ids' => $variant->id] : []) }}" wire:navigate
+                class="btn-primary btn-sm">
+                + Receive Stock
+            </a>
         </div>
     </div>
 

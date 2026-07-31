@@ -43,7 +43,18 @@ class CreatePurchase extends Component
             ?? Branch::where('shop_id', Auth::user()->shop_id)->where('is_main', true)->value('id')
             ?? 0
         );
-        $this->addLine();
+
+        $prefillIds = array_values(array_filter(
+            array_map('intval', explode(',', (string) request()->query('variant_ids', '')))
+        ));
+
+        if (! empty($prefillIds)) {
+            $this->prefillVariants($prefillIds);
+        }
+
+        if (empty($this->lines)) {
+            $this->addLine();
+        }
     }
 
     public function addLine(): void
@@ -255,6 +266,40 @@ class CreatePurchase extends Component
         } catch (\InvalidArgumentException $e) {
             $this->dispatch('notify', type: 'error', message: $e->getMessage());
         }
+    }
+
+    private function prefillVariants(array $variantIds): void
+    {
+        $variants = ProductVariant::with('product.brand')
+            ->whereIn('id', $variantIds)
+            ->where('shop_id', Auth::user()->shop_id)
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($variants as $variant) {
+            $label = trim(
+                ($variant->product->brand?->name ?? '') . ' ' .
+                $variant->product->name .
+                ($variant->attributes_label ? ' — ' . $variant->attributes_label : '')
+            );
+
+            $this->lines[] = [
+                'product_variant_id' => $variant->id,
+                'variant_label' => $label,
+                'unit_cost' => '',
+                'quantity' => 1,
+                'tracking_type' => $variant->product->tracking_type->value,
+                'manufacturer_warranty_months' => 12,
+                'shop_warranty_days' => 7,
+                'serial_numbers' => [],
+            ];
+            $this->searches[] = $label;
+            $this->searchResults[] = [];
+
+            $this->syncSerialSlots(count($this->lines) - 1);
+        }
+
+        $this->recalcTotal();
     }
 
     public function render()

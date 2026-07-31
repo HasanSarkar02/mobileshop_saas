@@ -28,6 +28,10 @@ class ProductForm extends Component
     public string $trackingType = 'non_serialized';
     public string $description = '';
 
+    public bool $showSuccessActions = false;
+    public ?int $createdProductId = null;
+    public array $createdVariantIds = [];
+
     // Variants — each: [id, attributes_label, sku, selling_price, is_active, _destroy]
     public array $variants = [];
 
@@ -171,7 +175,6 @@ class ProductForm extends Component
             'variants.*.selling_price.min'      => 'Selling price cannot be negative.',
         ]);
 
-        // Ensure no duplicate SKUs within this form
         $skus = collect($this->variants)
             ->filter(fn($v) => ! $v['_destroy'])
             ->pluck('sku')
@@ -182,7 +185,9 @@ class ProductForm extends Component
             return;
         }
 
-        DB::transaction(function () {
+        $isNewProduct = ! $this->product?->exists; // NEW
+
+        $product = DB::transaction(function () { // NEW: capture return value
             $shopId = Auth::user()->shop_id;
 
             $productData = [
@@ -204,7 +209,6 @@ class ProductForm extends Component
 
             foreach ($this->variants as $variantData) {
                 if ($variantData['_destroy'] && ! empty($variantData['id'])) {
-                    // Check if this variant has any stock/units first — if so, only deactivate
                     $variant = ProductVariant::find($variantData['id']);
                     if ($variant) {
                         if ($variant->units()->exists() || $variant->branchStocks()->where('quantity', '>', 0)->exists()) {
@@ -225,8 +229,8 @@ class ProductForm extends Component
                     'sku'              => strtoupper(trim($variantData['sku'])),
                     'barcode'          => $barcode,
                     'selling_price'    => (float) $variantData['selling_price'],
-                    'min_stock_level'  => isset($variantData['min_stock_level']) && $variantData['min_stock_level'] !== '' 
-                          ? (int) $variantData['min_stock_level'] : null,
+                    'min_stock_level'  => isset($variantData['min_stock_level']) && $variantData['min_stock_level'] !== ''
+                        ? (int) $variantData['min_stock_level'] : null,
                     'is_active'        => $variantData['is_active'],
                 ];
 
@@ -242,7 +246,6 @@ class ProductForm extends Component
                     }
                 }
 
-                // Real guarantee — DB unique constraint, caught for a friendly race-condition message
                 try {
                     if (! empty($variantData['id'])) {
                         ProductVariant::where('id', $variantData['id'])->where('shop_id', $shopId)->update($vData);
@@ -263,13 +266,21 @@ class ProductForm extends Component
                     throw $e;
                 }
             }
+
+            return $product; // NEW
         });
 
-        $message = $this->product?->exists
-            ? "Product \"{$this->name}\" updated."
-            : "Product \"{$this->name}\" created.";
+        // NEW: branch on new-vs-edit instead of always redirecting
+        if ($isNewProduct) {
+            $this->createdProductId   = $product->id;
+            $this->createdVariantIds  = $product->variants()->pluck('id')->toArray();
+            $this->showSuccessActions = true;
 
-        $this->dispatch('notify', type: 'success', message: $message);
+            $this->dispatch('notify', type: 'success', message: "Product \"{$this->name}\" created successfully.");
+            return;
+        }
+
+        $this->dispatch('notify', type: 'success', message: "Product \"{$this->name}\" updated.");
         $this->redirect(route('products.index'), navigate: true);
     }
 
@@ -277,6 +288,13 @@ class ProductForm extends Component
     {
         $value = trim((string) $value);
         return $value === '' ? null : $value;
+    }
+
+    public function createAnother(): void
+    {
+        $this->reset();
+        $this->addVariant();
+        $this->resetErrorBag();
     }
 
     public function render()

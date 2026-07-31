@@ -32,6 +32,10 @@ enum NotificationEventType: string
     case CustomerPaymentReminderSms = 'customer_payment_reminder_sms';
     case CustomerPaymentReceived = 'customer_payment_received';
 
+    // Collections
+    case CollectionFollowUpDue = 'collection_followup_due';
+    case CollectionPromiseBroken = 'collection_promise_broken';
+
     // Finance Partners
     case FpReceivableOverdue = 'fp_receivable_overdue';
     case FpSettlementRecorded = 'fp_settlement_recorded';
@@ -94,6 +98,8 @@ enum NotificationEventType: string
             self::CustomerDueReminder => 'Customer due reminder',
             self::CustomerPaymentReminderSms => 'Customer payment reminder (SMS)',
             self::CustomerPaymentReceived => 'Customer payment received',
+            self::CollectionFollowUpDue => 'Follow-up due today',
+            self::CollectionPromiseBroken => 'Customer broken promise',
             self::FpReceivableOverdue => 'Finance partner receivable overdue',
             self::FpSettlementRecorded => 'Finance partner settlement recorded',
             self::StockLow => 'Stock running low',
@@ -145,6 +151,7 @@ enum NotificationEventType: string
             self::UsedPhoneAcquired => NotificationCategory::UsedPhones,
             self::SystemAnnouncement => NotificationCategory::System,
             self::ImpersonationStarted => NotificationCategory::Security,
+            self::CollectionFollowUpDue, self::CollectionPromiseBroken => NotificationCategory::Customers,
         };
     }
 
@@ -167,6 +174,7 @@ enum NotificationEventType: string
             self::ServiceTicketOverdue,
             self::SupplierBalanceHigh,
             self::PayrollReminderDue => NotificationPriority::Normal,
+            self::CollectionPromiseBroken => NotificationPriority::High,
             default => NotificationPriority::Normal,
         };
     }
@@ -196,6 +204,9 @@ enum NotificationEventType: string
             self::CustomerPaymentReceived => [
                 NotificationChannel::Sms,
             ],
+            self::CollectionFollowUpDue, self::CollectionPromiseBroken => [
+                NotificationChannel::InApp, NotificationChannel::Popup,
+            ],
             default => [NotificationChannel::InApp],
         };
     }
@@ -211,6 +222,8 @@ enum NotificationEventType: string
             self::SalaryOverdrawn,
             self::SupplierPaymentDue,
             self::LoanRepaymentDue,
+            self::CollectionFollowUpDue,
+            self::CollectionPromiseBroken,
             self::PayrollReminderDue,
         ], true);
     }
@@ -226,6 +239,7 @@ enum NotificationEventType: string
             self::SupplierPaymentDue => 'View supplier',
             self::PayrollReminderDue => 'Go to Payroll',
             self::LoanRepaymentDue => 'View treasury',
+            self::CollectionFollowUpDue, self::CollectionPromiseBroken => 'View customer',
             default => null,
         };
     }

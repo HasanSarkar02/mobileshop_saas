@@ -21,7 +21,7 @@ use App\Models\ShopSubscription;
     'trial_ends_at', 'subscription_ends_at', 'is_active', 'settings',
     'subscription_plan_id', 'books_locked_through', 'onboarding_completed_at','expense_approval_threshold','logo_path', 'trade_license_number',
     'website', 'document_footer_note', 'show_document_confidential','sms_enabled','sms_provider','sms_sender_id', 'sms_api_key', 'sms_on_sale', 'sms_on_due_reminder', 'sms_on_service_ready',
-    'smtp_enabled','smtp_host', 'smtp_port', 'smtp_username', 'smtp_password', 'smtp_from_address', 'smtp_from_name', 'smtp_encryption','suspension_reason', 'suspended_at',
+    'smtp_enabled','smtp_host', 'smtp_port', 'smtp_username', 'smtp_password', 'smtp_from_address', 'smtp_from_name', 'smtp_encryption','suspension_reason', 'suspended_at', 'due_followup_ignore_threshold',
 ])]
 class Shop extends Model
 {
@@ -40,6 +40,7 @@ class Shop extends Model
             'default_vat_rate'        => 'decimal:2',
             'settings'                => 'array',
             'expense_approval_threshold' => 'decimal:2',
+            'due_followup_ignore_threshold'=> 'decimal:2',
             'show_document_confidential' => 'boolean',
             'enabled_features' => 'array',
             'smtp_password' => 'encrypted',

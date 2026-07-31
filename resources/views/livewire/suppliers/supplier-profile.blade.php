@@ -66,6 +66,74 @@
         </div>
     </div>
 
+    {{-- Opening Balance --}}
+    @if ($this->existingOpeningBalance)
+        <div class="card p-4 bg-slate-50 border-slate-200 flex items-center justify-between flex-wrap gap-2">
+            <div>
+                <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-0.5">Opening Balance</div>
+                <div class="text-sm text-slate-700">
+                    ৳{{ number_format($this->existingOpeningBalance->amount, 2) }}
+                    as of {{ \Carbon\Carbon::parse($this->existingOpeningBalance->balance_date)->format('d M Y') }}
+                    <span
+                        class="font-mono text-xs text-slate-400 ml-1">({{ $this->existingOpeningBalance->reference_number }})</span>
+                </div>
+            </div>
+        </div>
+    @else
+        <div class="card p-5">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="font-semibold text-gray-900 text-sm">Opening Balance</h3>
+                    <p class="text-xs text-gray-400 mt-0.5">
+                        One-time entry for a due amount that existed before this supplier was added to the system.
+                    </p>
+                </div>
+                <button wire:click="toggleOpeningBalanceForm" class="btn-secondary btn-sm">
+                    {{ $showOpeningBalanceForm ? '✕ Cancel' : '+ Add Opening Balance' }}
+                </button>
+            </div>
+
+            <div wire:show="showOpeningBalanceForm" class="space-y-4 pt-4 mt-4 border-t border-gray-100">
+                <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+                    ⚠ This can only be entered once per supplier.
+                    Journal: <strong>Dr Opening Balance Equity → Cr Accounts Payable</strong>
+                </div>
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="label text-xs">Amount Owed (৳) *</label>
+                        <input wire:model="obAmount" type="number" step="0.01" min="0.01"
+                            class="input text-sm font-semibold @error('obAmount') input-error @enderror"
+                            placeholder="0.00">
+                        @error('obAmount')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="label text-xs">As Of Date *</label>
+                        <input wire:model="obDate" type="date"
+                            class="input text-sm @error('obDate') input-error @enderror">
+                        @error('obDate')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="label text-xs">Notes</label>
+                        <input wire:model="obNotes" type="text" class="input text-sm"
+                            placeholder="Optional — e.g. carried over from previous system">
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button wire:click="recordOpeningBalance" class="btn-primary btn-sm" wire:loading.attr="disabled"
+                        wire:target="recordOpeningBalance">
+                        <span wire:loading.remove wire:target="recordOpeningBalance">Save Opening Balance</span>
+                        <span wire:loading wire:target="recordOpeningBalance">Processing…</span>
+                    </button>
+                    <button wire:click="$set('showOpeningBalanceForm', false)"
+                        class="btn-secondary btn-sm">Cancel</button>
+                </div>
+            </div>
+        </div>
+    @endif
     {{-- Record Payment --}}
     @if ($calculatedBalance > 0)
         <div class="card p-5">
@@ -126,11 +194,13 @@
                     </div>
                     <div>
                         <label class="label text-xs">Cheque / Bank Reference No.</label>
-                        <input wire:model="payReference" type="text" class="input text-sm" placeholder="Optional">
+                        <input wire:model="payReference" type="text" class="input text-sm"
+                            placeholder="Optional">
                     </div>
                     <div>
                         <label class="label text-xs">Notes</label>
-                        <input wire:model="payNotes" type="text" class="input text-sm" placeholder="Optional notes">
+                        <input wire:model="payNotes" type="text" class="input text-sm"
+                            placeholder="Optional notes">
                     </div>
                 </div>
                 <div class="flex gap-3">

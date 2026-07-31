@@ -67,7 +67,7 @@
                                     {{ $a->model_description }}
                                 </a>
 
-                                @if ($a->variant?->product && $a->variant->product->name !== 'Used Phones (Unlinked)')
+                                @if ($a->variant?->product && is_null($a->variant->product->system_origin))
                                     <div class="text-xs text-indigo-400">
                                         {{ $a->variant->sku }}
                                     </div>

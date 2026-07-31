@@ -50,6 +50,24 @@ class Dashboard extends Component
         return (ReportPeriod::tryFrom($this->period) ?? ReportPeriod::Today)->label();
     }
 
+    #[Computed]
+    public function followUpsDueToday(): \Illuminate\Support\Collection
+    {
+        return app(\App\Reporting\Repositories\CustomerRepository::class)->followUpsDueToday(Auth::user()->shop_id);
+    }
+
+    #[Computed]
+    public function overdueFollowUps(): \Illuminate\Support\Collection
+    {
+        return app(\App\Reporting\Repositories\CustomerRepository::class)->overdueFollowUps(Auth::user()->shop_id);
+    }
+
+    #[Computed]
+    public function brokenPromises(): \Illuminate\Support\Collection
+    {
+        return app(\App\Reporting\Repositories\CustomerRepository::class)->brokenPromises(Auth::user()->shop_id);
+    }
+
     public function render()
     {
         $user = \Illuminate\Support\Facades\Auth::user();

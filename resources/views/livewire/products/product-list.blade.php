@@ -14,6 +14,23 @@
             @endforeach
         </select>
 
+        <select wire:model.live="brandId" class="input w-auto">
+            <option value="0">All brands</option>
+            @foreach ($brands as $b)
+                <option value="{{ $b->id }}">{{ $b->name }}</option>
+            @endforeach
+        </select>
+        <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" wire:model.live="lowStockOnly" class="rounded border-gray-300 text-indigo-600">
+            Low stock only
+        </label>
+        @if ($lowStockOnly)
+            <div class="flex items-center gap-2 text-sm bg-orange-50 text-orange-700 px-3 py-2 rounded-lg">
+                Showing low-stock products only
+                <button wire:click="$set('lowStockOnly', false)" class="underline">Clear</button>
+            </div>
+        @endif
+
         <a href="{{ route('products.create') }}" wire:navigate class="btn-primary sm:ml-auto whitespace-nowrap">
             + Add Product
         </a>
@@ -54,8 +71,14 @@
                                 @endif
                             </td>
                             <td class="table-td">
-                                <span class="font-semibold text-gray-900">{{ $product->active_variant_count }}</span>
-                                <span class="text-gray-400 text-xs"> variants</span>
+                                <div class="flex flex-wrap gap-1">
+                                    @foreach ($product->variants as $v)
+                                        <span
+                                            class="badge {{ $v->current_stock == 0 ? 'badge-red' : ($v->is_low_stock ? 'badge-yellow' : 'badge-green') }}">
+                                            {{ $v->attributes_label ?? 'Standard' }}: {{ $v->current_stock }}
+                                        </span>
+                                    @endforeach
+                                </div>
                             </td>
                             <td class="table-td">
                                 <span class="{{ $product->is_active ? 'badge-green' : 'badge-gray' }} badge">

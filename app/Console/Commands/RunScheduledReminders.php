@@ -12,6 +12,7 @@ use App\Services\Notifications\ReminderCheckers\SupplierPaymentReminderChecker;
 use App\Services\Notifications\ReminderCheckers\WarrantyExpiryReminderChecker;
 use Illuminate\Console\Command;
 use Throwable;
+use App\Services\Notifications\ReminderCheckers\FollowUpReminderChecker;
 
 class RunScheduledReminders extends Command
 {
@@ -28,6 +29,7 @@ class RunScheduledReminders extends Command
             app(PayrollReminderChecker::class),
             app(LoanRepaymentReminderChecker::class),
             app(FinancePartnerReceivableOverdueChecker::class),
+            app(FollowUpReminderChecker::class),
         ];
 
         $shops = Shop::withoutGlobalScopes()

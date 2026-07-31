@@ -548,6 +548,29 @@
                             class="input w-40">
                     </div>
                 </div>
+                <div class="card p-5 bg-green-50 border-green-200 space-y-4 mt-4">
+                    <div>
+                        <h4 class="font-semibold text-green-900 text-sm">Due Follow-up Ignore Threshold</h4>
+                        <p class="text-xs text-green-700 mt-0.5">
+                            Customers whose outstanding due falls at or below this amount won't get a new
+                            automatic follow-up (e.g. small leftover change no one bothers collecting).
+                            Set to <strong>0</strong> to always follow up regardless of amount.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-green-800 font-medium">৳</span>
+                        <input wire:model="dueFollowupIgnoreThreshold" type="number" min="0" step="50"
+                            class="input w-40">
+                        <span class="text-xs text-green-600">
+                            @if ((float) $dueFollowupIgnoreThreshold > 0)
+                                Due of ৳{{ number_format((float) $dueFollowupIgnoreThreshold, 0) }} or less won't
+                                trigger a new follow-up
+                            @else
+                                Every remaining due amount gets a follow-up
+                            @endif
+                        </span>
+                    </div>
+                </div>
                 <button wire:click="saveBusinessRules" class="btn-primary btn-sm">Save Rules</button>
             </div>
         </div>

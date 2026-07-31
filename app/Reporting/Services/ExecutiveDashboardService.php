@@ -93,11 +93,11 @@ class ExecutiveDashboardService
         $lowStock  = $this->inventory->lowStockItems($shopId, $branchId);
 
         $inventoryDTO = new InventorySummaryDTO(
-            totalSkus:            0, // count variants with stock > 0
+            totalSkus:            $this->inventory->totalActiveSkuCount($shopId),
             totalSerializedUnits: (int) $invValue->serialized_units,
             inStockUnits:         (int) $invValue->serialized_units,
             lowStockSkus:         $lowStock->count(),
-            outOfStockSkus:       0,
+            outOfStockSkus:       $this->inventory->outOfStockCount($shopId, $branchId),
             totalInventoryValue:  (float) $invValue->total_value,
             serializedValue:      (float) $invValue->serialized_value,
             nonSerializedValue:   (float) $invValue->non_serialized_value,

@@ -80,10 +80,12 @@
                     'color' => 'blue',
                 ]
                 : null,
+            // alerts array-তে (top banner)
             $inv->lowStockSkus > 0
                 ? [
                     'label' => "{$inv->lowStockSkus} low-stock item(s)",
                     'route' => 'products.index',
+                    'params' => ['lowStockOnly' => 1],
                     'color' => 'orange',
                 ]
                 : null,
@@ -92,7 +94,7 @@
     @if (!empty($alerts))
         <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             @foreach ($alerts as $alert)
-                <a href="{{ route($alert['route']) }}" wire:navigate
+                <a href="{{ route($alert['route'], $alert['params'] ?? []) }}" wire:navigate
                     class="flex items-center gap-3 p-3 rounded-xl border-l-4 bg-{{ $alert['color'] }}-50 border-{{ $alert['color'] }}-400 hover:bg-{{ $alert['color'] }}-100 transition-colors">
                     <div class="flex-1 text-sm font-medium text-{{ $alert['color'] }}-800">
                         {{ $alert['label'] }}
@@ -102,7 +104,10 @@
             @endforeach
         </div>
     @endif
-
+    {{-- ── Collection Follow-ups ───────────────────────────────────────────── --}}
+    @can('customers.manage_followups')
+        @include('livewire.partials.followup-widgets')
+    @endcan
     {{-- ── Sales KPI Row ────────────────────────────────────────────────────── --}}
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         @php
@@ -261,38 +266,41 @@
                 <h3 class="font-semibold text-gray-900 text-sm">Top Products</h3>
                 <span class="text-xs text-gray-400">{{ $this->selectedPeriodLabel }}</span>
             </div>
-            <table class="w-full">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="table-th">Product</th>
-                        <th class="table-th text-right">Qty</th>
-                        <th class="table-th text-right">Revenue</th>
-                        <th class="table-th text-right">Profit</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-50">
-                    @forelse($s->topProducts as $p)
-                        <tr class="hover:bg-gray-50">
-                            <td class="table-td">
-                                <div class="font-medium text-sm text-gray-900">{{ $p->product_name }}</div>
-                                <div class="text-xs text-gray-400">{{ $p->brand_name }} · {{ $p->sku }}</div>
-                            </td>
-                            <td class="table-td text-right text-gray-600">{{ $p->qty_sold }}</td>
-                            <td class="table-td text-right font-semibold">৳{{ number_format($p->revenue, 0) }}</td>
-                            <td
-                                class="table-td text-right {{ $p->profit >= 0 ? 'text-green-600' : 'text-red-500' }} font-medium">
-                                {{ $p->profit >= 0 ? '+' : '' }}৳{{ number_format($p->profit, 0) }}
-                            </td>
-                        </tr>
-                    @empty
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
                         <tr>
-                            <td colspan="4" class="table-td text-center text-gray-400 py-6 text-sm">
-                                No sales this period.
-                            </td>
+                            <th class="table-th">Product</th>
+                            <th class="table-th text-right">Qty</th>
+                            <th class="table-th text-right">Revenue</th>
+                            <th class="table-th text-right">Profit</th>
                         </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        @forelse($s->topProducts as $p)
+                            <tr class="hover:bg-gray-50">
+                                <td class="table-td">
+                                    <div class="font-medium text-sm text-gray-900">{{ $p->product_name }}</div>
+                                    <div class="text-xs text-gray-400">{{ $p->brand_name }} · {{ $p->sku }}
+                                    </div>
+                                </td>
+                                <td class="table-td text-right text-gray-600">{{ $p->qty_sold }}</td>
+                                <td class="table-td text-right font-semibold">৳{{ number_format($p->revenue, 0) }}</td>
+                                <td
+                                    class="table-td text-right {{ $p->profit >= 0 ? 'text-green-600' : 'text-red-500' }} font-medium">
+                                    {{ $p->profit >= 0 ? '+' : '' }}৳{{ number_format($p->profit, 0) }}
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="table-td text-center text-gray-400 py-6 text-sm">
+                                    No sales this period.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         {{-- Top Customers --}}
@@ -302,41 +310,44 @@
                 <a href="{{ route('customers.index') }}" wire:navigate
                     class="text-xs text-indigo-600 hover:underline">View all</a>
             </div>
-            <table class="w-full">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="table-th">Customer</th>
-                        <th class="table-th text-right">Orders</th>
-                        <th class="table-th text-right">Revenue</th>
-                        <th class="table-th text-right">Due</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-50">
-                    @forelse($s->topCustomers as $c)
-                        <tr class="hover:bg-gray-50">
-                            <td class="table-td">
-                                <div class="font-medium text-sm text-gray-900">{{ $c->name }}</div>
-                                <div class="text-xs text-gray-400">{{ $c->phone }}</div>
-                            </td>
-                            <td class="table-td text-right text-gray-600">{{ $c->order_count }}</td>
-                            <td class="table-td text-right font-semibold">৳{{ number_format($c->revenue, 0) }}</td>
-                            <td
-                                class="table-td text-right {{ $c->outstanding_due > 0 ? 'text-red-600 font-bold' : 'text-gray-300' }}">
-                                @if ($c->outstanding_due > 0)
-                                    ৳{{ number_format($c->outstanding_due, 0) }}
-                                @else
-                                    Clear
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
                         <tr>
-                            <td colspan="4" class="table-td text-center text-gray-400 py-6 text-sm">No customers.
-                            </td>
+                            <th class="table-th">Customer</th>
+                            <th class="table-th text-right">Orders</th>
+                            <th class="table-th text-right">Revenue</th>
+                            <th class="table-th text-right">Due</th>
                         </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-gray-50">
+                        @forelse($s->topCustomers as $c)
+                            <tr class="hover:bg-gray-50">
+                                <td class="table-td">
+                                    <div class="font-medium text-sm text-gray-900">{{ $c->name }}</div>
+                                    <div class="text-xs text-gray-400">{{ $c->phone }}</div>
+                                </td>
+                                <td class="table-td text-right text-gray-600">{{ $c->order_count }}</td>
+                                <td class="table-td text-right font-semibold">৳{{ number_format($c->revenue, 0) }}</td>
+                                <td
+                                    class="table-td text-right {{ $c->outstanding_due > 0 ? 'text-red-600 font-bold' : 'text-gray-300' }}">
+                                    @if ($c->outstanding_due > 0)
+                                        ৳{{ number_format($c->outstanding_due, 0) }}
+                                    @else
+                                        Clear
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="table-td text-center text-gray-400 py-6 text-sm">No
+                                    customers.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -404,23 +415,22 @@
         <div class="card overflow-hidden">
             <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
                 <h3 class="font-semibold text-gray-900 text-sm">Low Stock Alerts</h3>
-                <a href="{{ route('products.index') }}" wire:navigate
+                <a href="{{ route('products.index', ['lowStockOnly' => 1]) }}" wire:navigate
                     class="text-xs text-indigo-600 hover:underline">Products</a>
             </div>
             <div class="divide-y divide-gray-50">
                 @forelse($inv->lowStockItems as $item)
                     @php $item = (object) $item; @endphp
-                    <div class="px-5 py-3 flex items-center justify-between">
+                    <a href="{{ route('products.show', $item->product_id) }}" wire:navigate
+                        class="px-5 py-3 flex items-center justify-between hover:bg-gray-50">
                         <div class="flex-1 min-w-0">
                             <div class="text-sm font-medium text-gray-900 truncate">{{ $item->product_name }}</div>
                             <div class="text-xs text-gray-400">{{ $item->sku }}</div>
                         </div>
-                        <div class="shrink-0 ml-3">
-                            <span class="badge {{ $item->quantity == 0 ? 'badge-red' : 'badge-yellow' }}">
-                                {{ $item->quantity }} left
-                            </span>
-                        </div>
-                    </div>
+                        <span class="badge {{ $item->quantity == 0 ? 'badge-red' : 'badge-yellow' }}">
+                            {{ $item->quantity }} left
+                        </span>
+                    </a>
                 @empty
                     <div class="px-5 py-8 text-center">
                         <div class="text-green-600 font-medium text-sm">✓ All stock levels OK</div>

@@ -3,6 +3,7 @@
 namespace App\Livewire\Suppliers;
 
 use App\Actions\RecordSupplierPaymentAction;
+use App\Actions\RecordSupplierOpeningBalanceAction;
 use App\Models\Branch;
 use App\Models\PaymentAccount;
 use App\Models\Supplier;
@@ -38,6 +39,12 @@ class SupplierProfile extends Component
     public string $payNotes         = '';
     public int    $payBranchId      = 0;
 
+    // Opening balance form
+    public bool   $showOpeningBalanceForm = false;
+    public string $obAmount               = '';
+    public string $obDate                 = '';
+    public string $obNotes                = '';
+
     public function mount(Supplier $supplier): void
     {
          $this->requirePermission('suppliers.manage');
@@ -47,6 +54,7 @@ class SupplierProfile extends Component
 
         $this->supplier    = $supplier;
         $this->payDate     = now()->format('Y-m-d');
+        $this->obDate      = now()->format('Y-m-d');
         $this->payBranchId = (int) (
             Auth::user()->branch_id
             ?? Branch::where('shop_id', Auth::user()->shop_id)->where('is_main', true)->value('id')
@@ -67,8 +75,18 @@ class SupplierProfile extends Component
         return Branch::where('shop_id', Auth::user()->shop_id)->where('is_active', true)->get();
     }
 
+    #[Computed]
+    public function existingOpeningBalance(): ?object
+    {
+        return DB::table('supplier_opening_balances')
+            ->where('shop_id', Auth::user()->shop_id)
+            ->where('supplier_id', $this->supplier->id)
+            ->first();
+    }
+
     /**
-     * Full ledger — all purchases + payments chronologically with running balance.
+     * Full ledger — all purchases + payments + opening balance
+     * chronologically with running balance.
      */
     #[Computed]
     public function ledger(): \Illuminate\Support\Collection
@@ -122,8 +140,23 @@ class SupplierProfile extends Component
             ")
             ->get();
 
+        // Opening balance (pre-existing due carried into the system)
+        $openingBalances = DB::table('supplier_opening_balances')
+            ->where('shop_id', $shopId)
+            ->where('supplier_id', $supplierId)
+            ->selectRaw("
+                balance_date  AS txn_date,
+                'Opening Balance' AS txn_type,
+                reference_number AS reference,
+                amount        AS debit,
+                0             AS credit,
+                id            AS ref_id,
+                'supplier_opening_balance' AS ref_type
+            ")
+            ->get();
+
         // Merge + sort + running balance
-        $all     = $purchases->concat($payments)->concat($returns)
+        $all     = $purchases->concat($payments)->concat($returns)->concat($openingBalances)
             ->sortBy('txn_date');
 
         $running = 0.0;
@@ -161,7 +194,64 @@ class SupplierProfile extends Component
             else                   $buckets['over_90'] += $amt;
         }
 
+        // Opening balance ages from its own as-of date, same buckets.
+        $openingBalance = DB::table('supplier_opening_balances')
+            ->where('shop_id', $shopId)
+            ->where('supplier_id', $supplierId)
+            ->selectRaw('amount, DATEDIFF(?, balance_date) AS days_overdue', [$today])
+            ->first();
+
+        if ($openingBalance) {
+            $days = (int) $openingBalance->days_overdue;
+            $amt  = (float) $openingBalance->amount;
+
+            if ($days <= 0)        $buckets['current'] += $amt;
+            elseif ($days <= 30)   $buckets['1_30']    += $amt;
+            elseif ($days <= 60)   $buckets['31_60']   += $amt;
+            elseif ($days <= 90)   $buckets['61_90']   += $amt;
+            else                   $buckets['over_90'] += $amt;
+        }
+
         return $buckets;
+    }
+
+    public function toggleOpeningBalanceForm(): void
+    {
+        $this->requirePermission('suppliers.manage');
+        $this->showOpeningBalanceForm = ! $this->showOpeningBalanceForm;
+    }
+
+    public function recordOpeningBalance(RecordSupplierOpeningBalanceAction $action): void
+    {
+        $this->requirePermission('suppliers.manage');
+
+        $this->validate([
+            'obAmount' => 'required|numeric|min:0.01',
+            'obDate'   => 'required|date|before_or_equal:today',
+        ]);
+
+        $shop = Auth::user()->shop()->withoutGlobalScopes()->findOrFail(Auth::user()->shop_id);
+        $amountEntered = (float) $this->obAmount;
+
+        try {
+            $action->execute($shop, $this->supplier, [
+                'amount'       => $amountEntered,
+                'balance_date' => $this->obDate,
+                'notes'        => $this->obNotes ?: null,
+            ], Auth::user());
+
+            $this->supplier->refresh();
+            $this->showOpeningBalanceForm = false;
+            $this->obAmount = '';
+            $this->obNotes  = '';
+            unset($this->ledger, $this->agingSummary, $this->existingOpeningBalance);
+
+            $this->dispatch('notify', ['type' => 'success',
+                'message' => "Opening balance of ৳" . number_format($amountEntered, 2) . " recorded for {$this->supplier->name}."]);
+
+        } catch (\Exception $e) {
+            $this->dispatch('notify', ['type' => 'error', 'message' => $e->getMessage()]);
+        }
     }
 
     public function recordPayment(RecordSupplierPaymentAction $action): void

@@ -114,8 +114,8 @@ class CustomerLedgerService
                 actor: $actor,
             );
 
-            // $customer->refresh();
-            // DB::afterCommit(fn () => event(new CustomerPaymentRecorded($transaction, $customer, $shop)));
+            $customer->refresh();
+            DB::afterCommit(fn () => event(new CustomerPaymentRecorded($transaction, $customer, $shop)));
 
             return $transaction;
         });
