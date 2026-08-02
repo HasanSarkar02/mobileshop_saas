@@ -13,12 +13,15 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use App\Actions\Inventory\ReverseOpeningStockAction;
+use App\Traits\ReversesOpeningStock;
 
 #[Layout('components.layouts.app')]
 #[Title('Opening Stock Entry')]
 class OpeningStockEntry extends Component
 {
     use \App\Traits\HasAuthorization;
+    use ReversesOpeningStock;
     use WithFileUploads;
 
     // Applies to the whole scanning session
@@ -42,6 +45,10 @@ class OpeningStockEntry extends Component
     public bool  $isSaving = false;
     public array $recentEntries = [];
 
+    public bool   $showReverseModal = false;
+    public ?int   $reversingEntryId = null;
+    public string $reversalReason   = '';
+    
     public function mount(): void
     {
         $this->requirePermission('inventory.create');
@@ -62,10 +69,10 @@ class OpeningStockEntry extends Component
     private function loadRecentEntries(): void
     {
         $this->recentEntries = \App\Models\StockAdjustment::where('shop_id', Auth::user()->shop_id)
-            ->where('adjustment_type', 'opening_stock')
-            ->with(['variant.product', 'branch', 'createdBy'])
+            ->whereIn('adjustment_type', ['opening_stock', 'opening_stock_reversal'])
+            ->with(['variant.product', 'branch', 'createdBy', 'reversalOf.variant.product'])
             ->orderByDesc('created_at')
-            ->limit(10)
+            ->limit(15)
             ->get()
             ->toArray();
     }
@@ -422,6 +429,11 @@ class OpeningStockEntry extends Component
         $this->loadRecentEntries();
     }
 
+    protected function afterReversal(): void
+    {
+        $this->loadRecentEntries();
+    }
+    
     public function render()
     {
         return view('livewire.inventory.opening-stock-entry');

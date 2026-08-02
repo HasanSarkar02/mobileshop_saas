@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 
 #[Fillable([
     'shop_id', 'branch_id', 'product_variant_id', 'serial_number', 'secondary_serial_number',
-    'cost_price', 'purchase_line_item_id', 'status', 'disposition_type', 'disposition_id',
+    'cost_price', 'purchase_line_item_id','stock_adjustment_id', 'status', 'disposition_type', 'disposition_id',
     'manufacturer_warranty_months', 'shop_warranty_days', 'sold_at', 'is_archived',
 ])]
 class ProductUnit extends Model
@@ -83,5 +83,10 @@ class ProductUnit extends Model
     {
         $exp = $this->shopWarrantyExpiresAt();
         return $exp && $exp->isFuture();
+    }
+
+    public function stockAdjustment(): BelongsTo
+    {
+        return $this->belongsTo(StockAdjustment::class);
     }
 }

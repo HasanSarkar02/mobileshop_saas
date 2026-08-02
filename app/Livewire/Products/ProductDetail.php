@@ -111,10 +111,16 @@ class ProductDetail extends Component
             // ─── Status counts — include ALL statuses (sold, archived, etc.) ──
             $statusCounts = ProductUnit::withoutGlobalScopes()
                 ->where('product_variant_id', $variant->id)
+                ->where('is_archived', false)
                 ->selectRaw('status, COUNT(*) as count')
                 ->groupBy('status')
                 ->pluck('count', 'status')
                 ->toArray();
+
+            $statusCounts['voided'] = ProductUnit::withoutGlobalScopes()
+                ->where('product_variant_id', $variant->id)
+                ->where('is_archived', true)
+                ->count();
         }
 
         if ($this->product->tracking_type->value === 'non_serialized' && $variant) {

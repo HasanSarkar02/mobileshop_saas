@@ -7,6 +7,7 @@ use App\Enums\UnitStatus;
 use App\Models\Account;
 use App\Models\Branch;
 use App\Models\BranchStock;
+use App\Models\JournalEntry;
 use App\Models\ProductUnit;
 use App\Models\ProductVariant;
 use App\Models\Shop;
@@ -62,10 +63,10 @@ class RecordOpeningStockAction
                 ]);
             }
 
-            // GL entry only if cost > 0
-            if ($totalCost > 0) {
-                $this->postOpeningStockJournal($shop, $branch, $totalCost, $variant->sku, $actor);
-            }
+            // GL entry only if cost > 0 — link it to the audit row so it can be reversed later
+            $journalEntry = $totalCost > 0
+                ? $this->postOpeningStockJournal($shop, $branch, $totalCost, $variant->sku, $actor)
+                : null;
 
             // Audit log
             StockAdjustment::create([
@@ -78,12 +79,16 @@ class RecordOpeningStockAction
                 'total_cost'         => $totalCost,
                 'reason'             => 'Opening stock entry',
                 'created_by'         => $actor->id,
+                'journal_entry_id'   => $journalEntry?->id,
             ]);
         });
     }
 
     /**
      * Serialized: register each IMEI as a ProductUnit.
+     * The StockAdjustment (batch) row is created BEFORE the units so every
+     * unit can be stamped with stock_adjustment_id — this is what makes a
+     * later batch reversal possible.
      */
     public function executeSerialized(
         Shop           $shop,
@@ -95,14 +100,15 @@ class RecordOpeningStockAction
         if (empty($serials)) throw new \RuntimeException('At least one IMEI is required.');
 
         return DB::transaction(function () use ($shop, $variant, $branch, $serials, $actor) {
-            $created   = 0;
-            $totalCost = 0;
+            // Pass 1 — validate & dedupe without touching the database, so we
+            // know the final totals before creating anything.
+            $toCreate  = [];
+            $totalCost = 0.0;
 
             foreach ($serials as $row) {
                 $serial = trim($row['serial_number'] ?? '');
                 if (empty($serial)) continue;
 
-                // Skip already registered IMEIs
                 $exists = ProductUnit::withoutGlobalScopes()
                     ->where('serial_number', $serial)
                     ->where('is_archived', false)
@@ -112,29 +118,24 @@ class RecordOpeningStockAction
 
                 $cost = (float) ($row['cost_price'] ?? 0);
 
-                ProductUnit::create([
-                    'shop_id'                      => $shop->id,
-                    'branch_id'                    => $branch->id,
-                    'product_variant_id'           => $variant->id,
+                $toCreate[] = [
                     'serial_number'                => $serial,
                     'secondary_serial_number'      => $row['secondary_serial_number'] ?? null,
                     'cost_price'                   => $cost,
-                    'status'                       => UnitStatus::InStock,
-                    'is_archived'                  => false,
                     'manufacturer_warranty_months' => (int) ($row['warranty_months'] ?? 0),
                     'shop_warranty_days'           => (int) ($row['shop_warranty_days'] ?? 0),
-                    'purchase_line_item_id'        => null, // opening stock, no purchase
-                ]);
+                ];
 
                 $totalCost += $cost;
-                $created++;
             }
 
-            if ($totalCost > 0) {
-                $this->postOpeningStockJournal($shop, $branch, $totalCost, $variant->sku, $actor);
-            }
+            $created = count($toCreate);
 
-            StockAdjustment::create([
+            $journalEntry = $totalCost > 0
+                ? $this->postOpeningStockJournal($shop, $branch, $totalCost, $variant->sku, $actor)
+                : null;
+
+            $adjustment = StockAdjustment::create([
                 'shop_id'            => $shop->id,
                 'branch_id'          => $branch->id,
                 'product_variant_id' => $variant->id,
@@ -144,7 +145,26 @@ class RecordOpeningStockAction
                 'total_cost'         => $totalCost,
                 'reason'             => 'Opening stock entry',
                 'created_by'         => $actor->id,
+                'journal_entry_id'   => $journalEntry?->id,
             ]);
+
+            // Pass 2 — now create the units, each traceable back to $adjustment
+            foreach ($toCreate as $unitData) {
+                ProductUnit::create([
+                    'shop_id'                      => $shop->id,
+                    'branch_id'                    => $branch->id,
+                    'product_variant_id'           => $variant->id,
+                    'stock_adjustment_id'          => $adjustment->id,
+                    'serial_number'                => $unitData['serial_number'],
+                    'secondary_serial_number'      => $unitData['secondary_serial_number'],
+                    'cost_price'                   => $unitData['cost_price'],
+                    'status'                       => UnitStatus::InStock,
+                    'is_archived'                  => false,
+                    'manufacturer_warranty_months' => $unitData['manufacturer_warranty_months'],
+                    'shop_warranty_days'           => $unitData['shop_warranty_days'],
+                    'purchase_line_item_id'        => null, // opening stock, no purchase
+                ]);
+            }
 
             return $created;
         });
@@ -156,14 +176,14 @@ class RecordOpeningStockAction
         float  $cost,
         string $sku,
         User   $actor,
-    ): void {
+    ): JournalEntry {
         $inventoryGl = Account::withoutGlobalScopes()
             ->where('shop_id', $shop->id)->where('code', '1200')->firstOrFail();
 
         $openingEquity = Account::withoutGlobalScopes()
             ->where('shop_id', $shop->id)->where('code', '3020')->firstOrFail();
 
-        $this->accounting->postEntry(
+        return $this->accounting->postEntry(
             shop:        $shop,
             description: "Opening stock — {$sku}",
             lines: [

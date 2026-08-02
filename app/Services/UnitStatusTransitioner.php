@@ -153,4 +153,25 @@ class UnitStatusTransitioner
 
         return $unit;
     }
+
+    public function voidForReversal(int $productUnitId): ProductUnit
+    {
+        $unit = ProductUnit::withoutGlobalScopes()
+            ->where('id', $productUnitId)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        if ($unit->status !== UnitStatus::InStock) {
+            throw new RuntimeException(
+                "Cannot void unit [{$unit->serial_number}]: current status is "
+                . "{$unit->status->value}, expected in_stock. It may have already been sold, reserved, or otherwise moved."
+            );
+        }
+
+        $unit->status = UnitStatus::Voided;
+        $unit->is_archived = true;
+        $unit->save();
+
+        return $unit;
+    }
 }

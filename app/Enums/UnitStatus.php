@@ -12,6 +12,7 @@ enum UnitStatus: string
     case Lost = 'lost';
     case RmaToSupplier = 'rma_to_supplier';
     case WrittenOff = 'written_off';
+    case Voided = 'voided';
 
     /**
      * The real lifecycle graph from the architecture review — not a linear
@@ -29,6 +30,7 @@ enum UnitStatus: string
             self::Lost => [self::WrittenOff],
             self::RmaToSupplier => [self::WrittenOff],
             self::WrittenOff => [],
+            self::Voided => [],
         };
     }
 
@@ -40,7 +42,7 @@ enum UnitStatus: string
     /** Statuses where the physical unit has definitively left this shop's active pool — these free up the IMEI for a future legitimate trade-in re-entry. */
     public function isArchivable(): bool
     {
-        return in_array($this, [self::Sold, self::WrittenOff, self::RmaToSupplier], true);
+        return in_array($this, [self::Sold, self::WrittenOff, self::RmaToSupplier, self::Voided], true);
     }
 
     public function label(): string
@@ -54,6 +56,7 @@ enum UnitStatus: string
             self::Reserved                  => 'Reserved',
             self::RmaToSupplier             => 'RMA to Supplier',
             self::WrittenOff                => 'Written Off',
+            self::Voided                    => 'Voided',
         };
     }
 
@@ -68,6 +71,7 @@ enum UnitStatus: string
             self::Reserved                  => 'badge-blue',
             self::RmaToSupplier             => 'badge-indigo',
             self::WrittenOff                => 'badge-gray',
+            self::Voided                    => 'badge-gray',
         };
     }
 

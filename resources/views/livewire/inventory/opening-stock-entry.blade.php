@@ -147,7 +147,8 @@
                 autocomplete="off" @disabled($branchId < 1)>
 
             @if (!empty($searchResults))
-                <div class="absolute z-30 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+                <div class="absolute z-30 mt-1 w-full bg-white border border-gray-200
+            rounded-xl shadow-lg max-h-80 overflow-y-auto"
                     x-show="open">
                     @foreach ($searchResults as $r)
                         <button type="button"
@@ -316,39 +317,87 @@
                 <a href="{{ route('inventory.adjustments') }}?type=opening_stock" wire:navigate
                     class="text-xs text-indigo-600 hover:underline">View all →</a>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-gray-50 border-b border-gray-200">
-                        <tr>
-                            <th class="table-th">Product</th>
-                            <th class="table-th">Branch</th>
-                            <th class="table-th text-right">Qty</th>
-                            <th class="table-th text-right">Total Cost</th>
-                            <th class="table-th">Date</th>
-                            <th class="table-th">By</th>
+            <table class="w-full">
+                <thead class="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                        <th class="table-th">Product</th>
+                        <th class="table-th">Branch</th>
+                        <th class="table-th text-right">Qty</th>
+                        <th class="table-th text-right">Total Cost</th>
+                        <th class="table-th">Date</th>
+                        <th class="table-th">By</th>
+                        <th class="table-th text-right">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @foreach ($recentEntries as $entry)
+                        @php $isReversal = $entry['adjustment_type'] === 'opening_stock_reversal'; @endphp
+                        <tr class="hover:bg-gray-50 {{ $isReversal ? 'bg-gray-50' : '' }}">
+                            <td class="table-td text-sm text-gray-900">
+                                {{ $entry['variant']['product']['name'] ?? '—' }}
+                                <div class="text-xs text-gray-400">{{ $entry['variant']['sku'] ?? '' }}</div>
+                                @if ($isReversal)
+                                    <span class="badge badge-gray text-xs mt-1 inline-block">↩ Correction</span>
+                                @endif
+                            </td>
+                            <td class="table-td text-sm text-gray-500">{{ $entry['branch']['name'] ?? '—' }}</td>
+                            <td class="table-td text-right font-semibold {{ $isReversal ? 'text-red-600' : '' }}">
+                                {{ $isReversal ? '−' : '' }}{{ $entry['quantity'] }}
+                            </td>
+                            <td class="table-td text-right text-indigo-700 font-semibold">
+                                {{ $entry['total_cost'] > 0 ? '৳' . number_format($entry['total_cost'], 2) : '—' }}
+                            </td>
+                            <td class="table-td text-xs text-gray-400">
+                                {{ \Carbon\Carbon::parse($entry['created_at'])->format('d M Y H:i') }}
+                            </td>
+                            <td class="table-td text-xs text-gray-400">{{ $entry['created_by']['name'] ?? '—' }}</td>
+                            <td class="table-td text-right">
+                                @if ($isReversal)
+                                    <span class="text-xs text-gray-400">—</span>
+                                @elseif ($entry['reversed_at'])
+                                    <span class="badge badge-gray text-xs">Reversed</span>
+                                @else
+                                    <button wire:click="openReverseModal({{ $entry['id'] }})"
+                                        class="text-xs text-red-500 hover:underline font-medium">
+                                        Reverse
+                                    </button>
+                                @endif
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        @foreach ($recentEntries as $entry)
-                            <tr class="hover:bg-gray-50">
-                                <td class="table-td text-sm text-gray-900">
-                                    {{ $entry['variant']['product']['name'] ?? '—' }}
-                                    <div class="text-xs text-gray-400">{{ $entry['variant']['sku'] ?? '' }}</div>
-                                </td>
-                                <td class="table-td text-sm text-gray-500">{{ $entry['branch']['name'] ?? '—' }}</td>
-                                <td class="table-td text-right font-semibold">{{ $entry['quantity'] }}</td>
-                                <td class="table-td text-right text-indigo-700 font-semibold">
-                                    {{ $entry['total_cost'] > 0 ? '৳' . number_format($entry['total_cost'], 2) : '—' }}
-                                </td>
-                                <td class="table-td text-xs text-gray-400">
-                                    {{ \Carbon\Carbon::parse($entry['created_at'])->format('d M Y H:i') }}
-                                </td>
-                                <td class="table-td text-xs text-gray-400">{{ $entry['created_by']['name'] ?? '—' }}
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
+    {{-- Reverse Confirmation Modal --}}
+    @if ($showReverseModal)
+        <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+                <div>
+                    <h3 class="font-bold text-gray-900 text-lg">Reverse Opening Stock Entry</h3>
+                    <p class="text-sm text-gray-500 mt-1">
+                        This will roll back the stock quantity and post a correcting accounting entry
+                        (Dr Opening Balance Equity / Cr Inventory). The original entry is kept for audit —
+                        nothing is deleted.
+                    </p>
+                </div>
+                <div>
+                    <label class="label">Reason for correction *</label>
+                    <textarea wire:model="reversalReason" rows="3" class="input @error('reversalReason') input-error @enderror"
+                        placeholder="e.g. Wrong cost price entered — should be ৳320, not ৳230"></textarea>
+                    @error('reversalReason')
+                        <p class="error">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div class="flex gap-3 justify-end pt-2 border-t border-gray-100">
+                    <button wire:click="$set('showReverseModal', false)" class="btn-secondary">Cancel</button>
+                    <button wire:click="confirmReverse" wire:loading.attr="disabled" wire:target="confirmReverse"
+                        class="btn-danger">
+                        <span wire:loading.remove wire:target="confirmReverse">Confirm Reversal</span>
+                        <span wire:loading wire:target="confirmReverse">Reversing…</span>
+                    </button>
+                </div>
             </div>
         </div>
     @endif

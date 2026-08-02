@@ -9,22 +9,24 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Traits\ReversesOpeningStock;
 
 #[Layout('components.layouts.app')]
 #[Title('Stock Adjustment Log')]
 class StockAdjustmentLog extends Component
 {
-    use \App\Traits\HasAuthorization, WithPagination;
+    use \App\Traits\HasAuthorization, ReversesOpeningStock, WithPagination;
 
     #[Url] public string $typeFilter = '';
     #[Url] public string $dateFrom   = '';
     #[Url] public string $dateTo     = '';
+    #[Url] public string $search     = '';
+
+    public function updatingSearch(): void { $this->resetPage(); }
 
     public function mount(): void
     {
         $this->requirePermission('inventory.view');
-        $this->dateFrom = now()->startOfMonth()->format('Y-m-d');
-        $this->dateTo   = now()->format('Y-m-d');
     }
 
     #[Computed]
@@ -35,6 +37,23 @@ class StockAdjustmentLog extends Component
             ->when($this->typeFilter, fn ($q) => $q->where('adjustment_type', $this->typeFilter))
             ->when($this->dateFrom,  fn ($q) => $q->whereDate('created_at', '>=', $this->dateFrom))
             ->when($this->dateTo,    fn ($q) => $q->whereDate('created_at', '<=', $this->dateTo))
+            ->when($this->search, function ($q) {
+                $term = $this->search;
+                $q->where(fn ($sq) => $sq
+                    ->whereHas('variant', fn ($vq) => $vq
+                        ->where('sku', 'like', "%{$term}%")
+                        ->orWhereHas('product', fn ($pq) => $pq->where('name', 'like', "%{$term}%"))
+                    )
+                    ->orWhereHas('productUnit', fn ($uq) => $uq
+                        ->where('serial_number', 'like', "%{$term}%")
+                        ->orWhere('secondary_serial_number', 'like', "%{$term}%")
+                    )
+                    ->orWhereHas('productUnits', fn ($uq) => $uq
+                        ->where('serial_number', 'like', "%{$term}%")
+                        ->orWhere('secondary_serial_number', 'like', "%{$term}%")
+                    )
+                );
+            })
             ->orderByDesc('created_at')
             ->paginate(30);
     }
