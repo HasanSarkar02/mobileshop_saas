@@ -78,11 +78,10 @@ class ProcessPurchaseReturnAction
                     $unit = ProductUnit::withoutGlobalScopes()->findOrFail($item['product_unit_id']);
                     $this->transitioner->transition(
                         $unit,
-                        \App\Enums\UnitStatus::ReturnedPendingInspection,
+                        \App\Enums\UnitStatus::RmaToSupplier,
                         $return
                     );
-                    // Mark as returned to supplier
-                    $unit->update(['is_archived' => true]);
+
                 } else {
                     // Non-serialized — reduce branch stock
                     BranchStock::withoutGlobalScopes()

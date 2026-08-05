@@ -6,7 +6,7 @@
             {{-- Photo --}}
             <div class="shrink-0">
                 @if ($customer->photo_path)
-                    <img src="{{ Storage::url($customer->photo_path) }}"
+                    <img src="{{ asset('storage/' . $customer->photo_path) }}" alt="{{ $customer->name }}"
                         class="w-20 h-20 rounded-2xl object-cover border-2 border-gray-200">
                 @else
                     <div class="w-20 h-20 rounded-2xl bg-indigo-100 flex items-center justify-center">
@@ -602,8 +602,8 @@
                     <div class="space-y-2">
                         <p class="text-xs font-semibold text-gray-500">{{ $doc['label'] }}</p>
                         @if ($doc['path'])
-                            <a href="{{ Storage::url($doc['path']) }}" target="_blank" class="block">
-                                <img src="{{ Storage::url($doc['path']) }}"
+                            <a href="{{ asset('storage/' . $doc['path']) }}" target="_blank" class="block">
+                                <img src="{{ asset('storage/' . $doc['path']) }}"
                                     class="w-full h-40 object-cover rounded-xl border border-gray-200 hover:opacity-80 transition-opacity">
                             </a>
                         @else
@@ -629,7 +629,7 @@
                 <div class="space-y-5">
                     <div class="flex items-start gap-5">
                         @if ($g->photo_path)
-                            <img src="{{ Storage::url($g->photo_path) }}"
+                            <img src="{{ asset('storage/' . $g->photo_path) }}"
                                 class="w-20 h-20 rounded-xl object-cover border-2 border-gray-200 shrink-0">
                         @endif
                         <div class="grid sm:grid-cols-2 gap-x-8 gap-y-2 text-sm flex-1">
@@ -649,8 +649,8 @@
                             @if ($doc['path'])
                                 <div>
                                     <p class="text-xs font-semibold text-gray-500 mb-2">{{ $doc['label'] }}</p>
-                                    <a href="{{ Storage::url($doc['path']) }}" target="_blank">
-                                        <img src="{{ Storage::url($doc['path']) }}"
+                                    <a href="{{ asset('storage/' . $doc['path']) }}" target="_blank">
+                                        <img src="{{ asset('storage/' . $doc['path']) }}"
                                             class="w-full h-36 object-cover rounded-xl border border-gray-200 hover:opacity-80 transition-opacity">
                                     </a>
                                 </div>

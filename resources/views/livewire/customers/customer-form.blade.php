@@ -122,7 +122,7 @@
                             <img src="{{ $photo->temporaryUrl() }}"
                                 class="w-24 h-24 rounded-xl object-cover border-2 border-indigo-300" alt="Preview">
                         @elseif($customer?->photo_path)
-                            <img src="{{ Storage::url($customer->photo_path) }}"
+                            <img src="{{ asset('storage/' . $customer->photo_path) }}"
                                 class="w-24 h-24 rounded-xl object-cover border-2 border-gray-200" alt="Photo">
                         @else
                             <div

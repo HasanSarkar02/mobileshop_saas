@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.3",
         "barryvdh/laravel-dompdf": "^3.1",
+        "intervention/image": "^4.2",
         "kreait/firebase-php": "^8.3",
         "laravel/fortify": "^1.37",
         "laravel/framework": "^13.8",

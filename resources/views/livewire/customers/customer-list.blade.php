@@ -58,7 +58,7 @@
                             <td class="table-td">
                                 <div class="flex items-center gap-3">
                                     @if ($customer->photo_path)
-                                        <img src="{{ Storage::url($customer->photo_path) }}"
+                                        <img src="{{ asset('storage/' . $customer->photo_path) }}"
                                             class="w-8 h-8 rounded-full object-cover shrink-0"
                                             alt="{{ $customer->name }}">
                                     @else

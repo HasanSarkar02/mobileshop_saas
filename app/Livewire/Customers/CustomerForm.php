@@ -17,6 +17,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use App\Services\Media\ImageUploadService;
 
 #[Layout('components.layouts.app')]
 #[Title('Customer')]
@@ -110,7 +111,7 @@ class CustomerForm extends Component
         }
     }
 
-    public function save(CustomerLedgerService $ledger): void
+    public function save(CustomerLedgerService $ledger, ImageUploadService $imageService): void
     {
         $isNew = ! $this->customer?->exists;
 
@@ -125,25 +126,25 @@ class CustomerForm extends Component
             'email'         => 'nullable|email|max:255',
             'creditLimit'   => 'nullable|numeric|min:0',
             'openingBalance'=> 'nullable|numeric|min:0',
-            'photo'         => 'nullable|image|max:3072|mimes:jpg,jpeg,png,webp',
-            'idFront'       => 'nullable|image|max:3072|mimes:jpg,jpeg,png,webp',
-            'idBack'        => 'nullable|image|max:3072|mimes:jpg,jpeg,png,webp',
+            'photo'         => 'nullable|image|max:15360|mimes:jpg,jpeg,png,webp',
+            'idFront'       => 'nullable|image|max:15360|mimes:jpg,jpeg,png,webp',
+            'idBack'        => 'nullable|image|max:15360|mimes:jpg,jpeg,png,webp',
             'guarantorName'     => $this->hasGuarantor ? 'required|string|max:255' : 'nullable',
             'guarantorPhone'    => $this->hasGuarantor ? 'required|string|max:20' : 'nullable',
-            'guarantorNidFront' => 'nullable|image|max:3072|mimes:jpg,jpeg,png,webp',
-            'guarantorNidBack'  => 'nullable|image|max:3072|mimes:jpg,jpeg,png,webp',
-            'guarantorPhoto'    => 'nullable|image|max:3072|mimes:jpg,jpeg,png,webp',
+            'guarantorNidFront' => 'nullable|image|max:15360|mimes:jpg,jpeg,png,webp',
+            'guarantorNidBack'  => 'nullable|image|max:15360|mimes:jpg,jpeg,png,webp',
+            'guarantorPhoto'    => 'nullable|image|max:15360|mimes:jpg,jpeg,png,webp',
         ], [
             'phone.unique' => 'This phone number is already registered as a customer.',
         ]);
 
-        DB::transaction(function () use ($ledger, $isNew) {
+        DB::transaction(function () use ($ledger,$imageService, $isNew) {
             $shopId = Auth::user()->shop_id;
             $dir    = "shops/{$shopId}/customers";
 
-            $photoPath   = $this->photo    ? $this->photo->store("{$dir}", 'public')    : $this->customer?->photo_path;
-            $idFrontPath = $this->idFront  ? $this->idFront->store("{$dir}", 'public')  : $this->customer?->id_front_path;
-            $idBackPath  = $this->idBack   ? $this->idBack->store("{$dir}", 'public')   : $this->customer?->id_back_path;
+            $photoPath = $this->photo ? $imageService->replace($this->photo, $this->customer?->photo_path, $dir) : $this->customer?->photo_path;
+            $idFrontPath = $this->idFront ? $imageService->replace($this->idFront, $this->customer?->id_front_path, $dir) : $this->customer?->id_front_path;
+            $idBackPath  = $this->idBack  ? $imageService->replace($this->idBack, $this->customer?->id_back_path, $dir)   : $this->customer?->id_back_path;
 
             $data = [
                 'shop_id'       => $shopId,
@@ -183,10 +184,10 @@ class CustomerForm extends Component
             // Guarantor
             if ($this->hasGuarantor) {
                 $guarantorDir = "{$dir}";
-                $gPhoto    = $this->guarantorPhoto    ? $this->guarantorPhoto->store($guarantorDir, 'public')    : $customer->guarantor?->photo_path;
-                $gNidFront = $this->guarantorNidFront ? $this->guarantorNidFront->store($guarantorDir, 'public') : $customer->guarantor?->nid_front_path;
-                $gNidBack  = $this->guarantorNidBack  ? $this->guarantorNidBack->store($guarantorDir, 'public')  : $customer->guarantor?->nid_back_path;
-
+                $existingGuarantor = $this->customer?->guarantor;
+                $gPhoto    = $this->guarantorPhoto    ? $imageService->replace($this->guarantorPhoto, $existingGuarantor?->photo_path, $guarantorDir)         : $existingGuarantor?->photo_path;
+                $gNidFront = $this->guarantorNidFront ? $imageService->replace($this->guarantorNidFront, $existingGuarantor?->nid_front_path, $guarantorDir)  : $existingGuarantor?->nid_front_path;
+                $gNidBack  = $this->guarantorNidBack  ? $imageService->replace($this->guarantorNidBack, $existingGuarantor?->nid_back_path, $guarantorDir)    : $existingGuarantor?->nid_back_path;
                 CustomerGuarantor::updateOrCreate(
                     ['customer_id' => $customer->id],
                     [

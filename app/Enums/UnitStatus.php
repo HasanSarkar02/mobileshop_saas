@@ -22,7 +22,7 @@ enum UnitStatus: string
     public function allowedTransitions(): array
     {
         return match ($this) {
-            self::InStock => [self::Reserved, self::Sold, self::Lost],
+            self::InStock => [self::Reserved, self::Sold, self::Lost, self::RmaToSupplier],
             self::Reserved => [self::InStock, self::Sold],
             self::Sold => [self::ReturnedPendingInspection],
             self::ReturnedPendingInspection => [self::InStock, self::Damaged],
