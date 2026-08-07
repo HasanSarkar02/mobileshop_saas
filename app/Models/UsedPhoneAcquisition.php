@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'shop_id', 'branch_id', 'acquisition_number',
     'seller_name', 'seller_phone', 'seller_nid', 'seller_address',
+    'seller_photo_path', 'seller_nid_front_path', 'seller_nid_back_path',
     'imei_1', 'imei_2', 'model_description', 'product_variant_id', 'product_unit_id',
     'condition', 'condition_notes', 'accessories',
     'purchase_price', 'expected_sell_price', 'payment_account_id',

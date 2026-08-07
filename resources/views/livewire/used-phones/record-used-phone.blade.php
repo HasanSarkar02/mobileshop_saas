@@ -38,6 +38,55 @@
                     </div>
                 </div>
             </fieldset>
+            {{-- Seller Documents --}}
+            <fieldset class="space-y-4">
+                <legend
+                    class="text-xs font-semibold text-gray-400 uppercase tracking-wider pb-2 block w-full border-b border-gray-100">
+                    Seller Documents
+                    <span class="text-gray-300 normal-case">(recommended for safety / fraud protection)</span>
+                </legend>
+                <div class="grid sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="label">Seller Photo</label>
+                        @if ($sellerPhoto)
+                            <img src="{{ $sellerPhoto->temporaryUrl() }}"
+                                class="w-full h-32 object-cover rounded-xl border border-gray-200 mb-2">
+                        @endif
+                        <input wire:model="sellerPhoto" type="file" accept="image/*"
+                            class="input text-xs @error('sellerPhoto') input-error @enderror">
+                        <p wire:loading wire:target="sellerPhoto" class="text-xs text-gray-400 mt-1">Uploading…</p>
+                        @error('sellerPhoto')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="label">NID Front</label>
+                        @if ($sellerNidFront)
+                            <img src="{{ $sellerNidFront->temporaryUrl() }}"
+                                class="w-full h-32 object-cover rounded-xl border border-gray-200 mb-2">
+                        @endif
+                        <input wire:model="sellerNidFront" type="file" accept="image/*"
+                            class="input text-xs @error('sellerNidFront') input-error @enderror">
+                        <p wire:loading wire:target="sellerNidFront" class="text-xs text-gray-400 mt-1">Uploading…</p>
+                        @error('sellerNidFront')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="label">NID Back</label>
+                        @if ($sellerNidBack)
+                            <img src="{{ $sellerNidBack->temporaryUrl() }}"
+                                class="w-full h-32 object-cover rounded-xl border border-gray-200 mb-2">
+                        @endif
+                        <input wire:model="sellerNidBack" type="file" accept="image/*"
+                            class="input text-xs @error('sellerNidBack') input-error @enderror">
+                        <p wire:loading wire:target="sellerNidBack" class="text-xs text-gray-400 mt-1">Uploading…</p>
+                        @error('sellerNidBack')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </fieldset>
 
             {{-- Phone Details --}}
             <fieldset class="space-y-4">

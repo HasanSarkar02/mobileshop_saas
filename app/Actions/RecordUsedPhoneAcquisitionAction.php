@@ -15,6 +15,7 @@ use App\Models\Shop;
 use App\Models\UsedPhoneAcquisition;
 use App\Models\User;
 use App\Services\AccountingService;
+use App\Services\Media\ImageUploadService;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -22,6 +23,7 @@ class RecordUsedPhoneAcquisitionAction
 {
     public function __construct(
         private readonly AccountingService $accounting,
+        private readonly ImageUploadService $imageService,
     ) {}
 
     /**
@@ -39,6 +41,9 @@ class RecordUsedPhoneAcquisitionAction
      *   payment_account_id: int,
      *   trade_in_sale_id?: int|null,
      *   notes?: string,
+     *   seller_photo?: \Illuminate\Http\UploadedFile|null,
+     *   seller_nid_front?: \Illuminate\Http\UploadedFile|null,
+     *   seller_nid_back?: \Illuminate\Http\UploadedFile|null,
      * }  $data
      */
     public function execute(Shop $shop, array $data, User $actor): UsedPhoneAcquisition
@@ -56,6 +61,21 @@ class RecordUsedPhoneAcquisitionAction
                     "IMEI {$data['imei_1']} is already registered as active inventory. " .
                     "If this is a legitimate trade-in, contact support."
                 );
+            }
+
+            $sellerPhotoPath    = null;
+            $sellerNidFrontPath = null;
+            $sellerNidBackPath  = null;
+            $imageDir = "shops/{$shop->id}/used-phones";
+
+            if (! empty($data['seller_photo'])) {
+                $sellerPhotoPath = $this->imageService->store($data['seller_photo'], $imageDir);
+            }
+            if (! empty($data['seller_nid_front'])) {
+                $sellerNidFrontPath = $this->imageService->store($data['seller_nid_front'], $imageDir);
+            }
+            if (! empty($data['seller_nid_back'])) {
+                $sellerNidBackPath = $this->imageService->store($data['seller_nid_back'], $imageDir);
             }
 
             // ── 2. Get or auto-create ProductUnit ─────────────────────────────
@@ -108,6 +128,9 @@ class RecordUsedPhoneAcquisitionAction
                 'seller_phone'         => $data['seller_phone'] ?? null,
                 'seller_nid'           => $data['seller_nid'] ?? null,
                 'seller_address'       => $data['seller_address'] ?? null,
+                'seller_photo_path'     => $sellerPhotoPath,
+                'seller_nid_front_path' => $sellerNidFrontPath,
+                'seller_nid_back_path'  => $sellerNidBackPath,
                 'imei_1'               => $data['imei_1'],
                 'imei_2'               => $data['imei_2'] ?? null,
                 'model_description'    => $data['model_description'],

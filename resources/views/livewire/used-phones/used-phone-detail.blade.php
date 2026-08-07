@@ -162,14 +162,114 @@
         </div>
 
         <div class="card p-5 space-y-3">
-            <h3 class="font-semibold text-gray-900 text-sm border-b border-gray-100 pb-2">Seller Information</h3>
-            @foreach ([['label' => 'Name', 'value' => $acquisition->seller_name], ['label' => 'Phone', 'value' => $acquisition->seller_phone ?? '—'], ['label' => 'NID', 'value' => $acquisition->seller_nid ?? '—'], ['label' => 'Address', 'value' => $acquisition->seller_address ?? '—']] as $row)
-                <div class="flex gap-3">
-                    <span class="text-xs text-gray-400 w-20 shrink-0 pt-0.5">{{ $row['label'] }}</span>
-                    <span class="text-sm text-gray-800">{{ $row['value'] }}</span>
+            <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                <h3 class="font-semibold text-gray-900 text-sm">Seller Information</h3>
+                @can('used_phones.manage')
+                    @if (!$editingSeller)
+                        <button wire:click="startEditingSeller" type="button"
+                            class="text-xs text-indigo-600 hover:underline">✎ Edit</button>
+                    @endif
+                @endcan
+            </div>
+
+            @if ($editingSeller)
+                <div class="space-y-3">
+                    <div>
+                        <label class="label">Seller Name *</label>
+                        <input wire:model="sellerName" type="text"
+                            class="input @error('sellerName') input-error @enderror">
+                        @error('sellerName')
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="label">Phone</label>
+                        <input wire:model="sellerPhone" type="tel" class="input">
+                    </div>
+                    <div>
+                        <label class="label">NID Number</label>
+                        <input wire:model="sellerNid" type="text" class="input">
+                    </div>
+                    <div>
+                        <label class="label">Address</label>
+                        <input wire:model="sellerAddress" type="text" class="input">
+                    </div>
                 </div>
-            @endforeach
+            @else
+                @foreach ([['label' => 'Name', 'value' => $acquisition->seller_name], ['label' => 'Phone', 'value' => $acquisition->seller_phone ?? '—'], ['label' => 'NID', 'value' => $acquisition->seller_nid ?? '—'], ['label' => 'Address', 'value' => $acquisition->seller_address ?? '—']] as $row)
+                    <div class="flex gap-3">
+                        <span class="text-xs text-gray-400 w-20 shrink-0 pt-0.5">{{ $row['label'] }}</span>
+                        <span class="text-sm text-gray-800">{{ $row['value'] }}</span>
+                    </div>
+                @endforeach
+            @endif
         </div>
+    </div>
+
+    {{-- Seller Documents --}}
+    {{-- Seller Documents --}}
+    <div class="card p-5">
+        <h3 class="font-semibold text-gray-900 text-sm border-b border-gray-100 pb-2 mb-3">Seller Documents</h3>
+
+        @if ($editingSeller)
+            <div class="grid sm:grid-cols-3 gap-4 mb-4">
+                @foreach ([['prop' => 'sellerPhoto', 'existing' => $acquisition->seller_photo_path, 'label' => 'Seller Photo'], ['prop' => 'sellerNidFront', 'existing' => $acquisition->seller_nid_front_path, 'label' => 'NID Front'], ['prop' => 'sellerNidBack', 'existing' => $acquisition->seller_nid_back_path, 'label' => 'NID Back']] as $doc)
+                    <div>
+                        <label class="label">{{ $doc['label'] }}</label>
+                        @if ($this->{$doc['prop']})
+                            <img src="{{ $this->{$doc['prop']}->temporaryUrl() }}"
+                                class="w-full h-32 object-cover rounded-xl border border-gray-200 mb-2">
+                        @elseif ($doc['existing'])
+                            <img src="{{ asset('storage/' . $doc['existing']) }}"
+                                class="w-full h-32 object-cover rounded-xl border border-gray-200 mb-2 opacity-60">
+                            <p class="text-xs text-gray-400 mb-1">Current — pick a file to replace</p>
+                        @endif
+                        <input wire:model="{{ $doc['prop'] }}" type="file" accept="image/*"
+                            class="input text-xs @error($doc['prop']) input-error @enderror">
+                        <p wire:loading wire:target="{{ $doc['prop'] }}" class="text-xs text-gray-400 mt-1">Uploading…
+                        </p>
+                        @error($doc['prop'])
+                            <p class="error">{{ $message }}</p>
+                        @enderror
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="flex gap-2 pt-2 border-t border-gray-100">
+                <button wire:click="saveSellerInfo" type="button" class="btn-primary btn-sm"
+                    wire:loading.attr="disabled" wire:target="saveSellerInfo">
+                    <span wire:loading.remove wire:target="saveSellerInfo">Save Changes</span>
+                    <span wire:loading wire:target="saveSellerInfo">Saving…</span>
+                </button>
+                <button wire:click="cancelEditingSeller" type="button" class="btn-secondary btn-sm">Cancel</button>
+            </div>
+        @else
+            <div class="grid sm:grid-cols-3 gap-5">
+                @php
+                    $sellerDocs = [
+                        ['label' => 'Seller Photo', 'path' => $acquisition->seller_photo_path],
+                        ['label' => 'NID Front', 'path' => $acquisition->seller_nid_front_path],
+                        ['label' => 'NID Back', 'path' => $acquisition->seller_nid_back_path],
+                    ];
+                @endphp
+                @foreach ($sellerDocs as $doc)
+                    <div class="space-y-2">
+                        <p class="text-xs font-semibold text-gray-500">{{ $doc['label'] }}</p>
+                        @if ($doc['path'])
+                            <a href="{{ asset('storage/' . $doc['path']) }}" target="_blank" class="block">
+                                <img src="{{ asset('storage/' . $doc['path']) }}"
+                                    class="w-full h-40 object-cover rounded-xl border border-gray-200 hover:opacity-80 transition-opacity">
+                            </a>
+                        @else
+                            <div
+                                class="w-full h-40 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 text-xs">
+                                Not uploaded
+                            </div>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        @endif
     </div>
 
     {{-- Catalog Link --}}

@@ -12,17 +12,22 @@ use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Layout('components.layouts.app')]
 #[Title('Buy Used Phone')]
 class RecordUsedPhone extends Component
 {
     use \App\Traits\HasAuthorization;
+    use WithFileUploads;
     // Seller
     public string $sellerName    = '';
     public string $sellerPhone   = '';
     public string $sellerNid     = '';
     public string $sellerAddress = '';
+    public $sellerPhoto;
+    public $sellerNidFront;
+    public $sellerNidBack;
 
     // Phone details
     public string $imei1           = '';
@@ -129,6 +134,9 @@ class RecordUsedPhone extends Component
         $this->validate([
             'sellerName'       => 'required|string|max:255',
             'sellerPhone'      => 'nullable|string|max:20',
+            'sellerPhoto'      => 'nullable|image|max:15360|mimes:jpg,jpeg,png,webp',
+            'sellerNidFront'   => 'nullable|image|max:15360|mimes:jpg,jpeg,png,webp',
+            'sellerNidBack'    => 'nullable|image|max:15360|mimes:jpg,jpeg,png,webp',
             'imei1'            => 'required|digits_between:14,15',
             'modelDescription' => 'required|string|max:255',
             'condition'        => 'required|in:'.implode(',', array_column(PhoneCondition::cases(), 'value')),
@@ -149,6 +157,9 @@ class RecordUsedPhone extends Component
                 'seller_phone'       => $this->sellerPhone ?: null,
                 'seller_nid'         => $this->sellerNid ?: null,
                 'seller_address'     => $this->sellerAddress ?: null,
+                'seller_photo'      => $this->sellerPhoto,
+                'seller_nid_front'  => $this->sellerNidFront,
+                'seller_nid_back'   => $this->sellerNidBack,
                 'imei_1'             => $this->imei1,
                 'imei_2'             => $this->imei2 ?: null,
                 'model_description'  => $this->modelDescription,
