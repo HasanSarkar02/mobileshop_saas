@@ -507,8 +507,11 @@ class DocumentController extends Controller
                 reference_number AS reference, 0 AS debit, amount AS credit")
             ->get();
 
+        // Credit-note returns only — cash refunds never touched AP, so they must
+        // not appear as payable credits.
         $returns = \Illuminate\Support\Facades\DB::table('purchase_returns')
             ->where('supplier_id', $supplier->id)
+            ->where('settlement_type', 'credit_note')
             ->selectRaw("return_date AS txn_date, 'Return' AS txn_type,
                 return_number AS reference, 0 AS debit, total_amount AS credit")
             ->get();

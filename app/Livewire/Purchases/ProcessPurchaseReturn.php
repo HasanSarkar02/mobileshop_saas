@@ -27,8 +27,11 @@ class ProcessPurchaseReturn extends Component
 
     // Return items — one per returnable purchase line
     // ['purchase_line_item_id', 'product_variant_id', 'product_name', 'sku',
-    //  'original_qty', 'max_qty', 'unit_cost', 'selected', 'quantity', 'condition']
+    //  'original_qty', 'already_returned', 'remaining_qty', 'unit_cost',
+    //  'selected', 'quantity', 'condition']
     public array $returnItems = [];
+
+    public bool $hasReturnable = true;
 
     public function mount(Purchase $purchase): void
     {
@@ -41,24 +44,49 @@ class ProcessPurchaseReturn extends Component
         $this->purchase    = $purchase->load(['lineItems.variant.product', 'lineItems.units', 'supplier']);
         $this->returnDate  = now()->format('Y-m-d');
 
-        $this->returnItems = $purchase->lineItems->map(fn ($line) => [
-            'purchase_line_item_id' => $line->id,
-            'product_variant_id'    => $line->product_variant_id,
-            'product_name'          => $line->variant?->product?->name
-                                    ?? 'Product #' . $line->product_variant_id,
-            'sku'                   => $line->variant?->sku ?? '',
-            'original_qty'          => $line->quantity,
-            'unit_cost'             => (float) $line->unit_cost,
-            'selected'              => false,
-            'quantity'              => $line->quantity,
-            'condition'             => 'good',
-            // For serialized items, show IMEI picker
-            'product_unit_id'       => null,
-            'available_units'       => $line->units
-                ->where('status', 'in_stock')
-                ->pluck('serial_number', 'id')
-                ->toArray(),
-        ])->toArray();
+        // A fully-paid invoice has zero outstanding AP — only a cash refund is
+        // meaningful, so default to it (server enforces this in the action too).
+        if ($this->purchase->payment_status === 'paid') {
+            $this->settlementType = 'cash_refund';
+        }
+
+        // Cumulative already-returned qty per line (all settlements) — the
+        // server re-checks this inside the transaction; this is display + defaults.
+        $alreadyReturned = $this->purchase->returnedQuantities();
+
+        $this->returnItems = $purchase->lineItems->map(function ($line) use ($alreadyReturned) {
+            $returned  = (int) ($alreadyReturned[$line->id] ?? 0);
+            $remaining = max(0, (int) $line->quantity - $returned);
+            // NOTE: $line->units is an Eloquent *collection* of enum-cast models,
+            // so compare against the enum — the string 'in_stock' never matches
+            // here (and previously left the IMEI picker silently empty, forcing
+            // every return down the bulk-stock path).
+            $available = $line->units->where('status', \App\Enums\UnitStatus::InStock)
+                ->pluck('serial_number', 'id')->toArray();
+            $isSerialized = ! empty($available);
+
+            return [
+                'purchase_line_item_id' => $line->id,
+                'product_variant_id'    => $line->product_variant_id,
+                'product_name'          => $line->variant?->product?->name
+                                        ?? 'Product #' . $line->product_variant_id,
+                'sku'                   => $line->variant?->sku ?? '',
+                'original_qty'          => $line->quantity,
+                'already_returned'      => $returned,
+                'remaining_qty'         => $isSerialized ? min($remaining, count($available)) : $remaining,
+                'unit_cost'             => (float) $line->unit_cost,
+                'selected'              => false,
+                // Serialized returns move exactly one IMEI unit per item.
+                'quantity'              => $isSerialized ? ($remaining > 0 && ! empty($available) ? 1 : 0) : $remaining,
+                'condition'             => 'good',
+                // For serialized items, show IMEI picker
+                'product_unit_id'       => null,
+                'available_units'       => $available,
+            ];
+        })->toArray();
+
+        $this->hasReturnable = collect($this->returnItems)
+            ->contains(fn ($i) => $i['remaining_qty'] > 0);
     }
 
     #[Computed]
@@ -78,6 +106,12 @@ class ProcessPurchaseReturn extends Component
 
     public function save(ProcessPurchaseReturnAction $action): void
     {
+        if (! $this->hasReturnable) {
+            $this->dispatch('notify', ['type' => 'error',
+                'message' => 'Nothing left to return on this purchase — it has already been fully returned.']);
+            return;
+        }
+
         $selected = collect($this->returnItems)->filter(fn ($i) => $i['selected']);
 
         if ($selected->isEmpty()) {

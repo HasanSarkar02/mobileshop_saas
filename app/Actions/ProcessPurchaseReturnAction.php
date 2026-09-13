@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Models\BranchStock;
 use App\Models\ProductUnit;
 use App\Models\Purchase;
+use App\Models\PurchaseLineItem;
 use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnItem;
 use App\Models\Shop;
@@ -26,14 +27,55 @@ class ProcessPurchaseReturnAction
 
     public function execute(Purchase $purchase, array $data, User $actor): PurchaseReturn
     {
-        if ($purchase->payment_status === 'paid') {
+        // Validate settlement type FIRST — never trust the caller (Livewire validates too,
+        // but server-side is authoritative). Only the two implemented types are accepted.
+        $settlement = $data['settlement_type'] ?? null;
+        if (! in_array($settlement, ['credit_note', 'cash_refund'], true)) {
+            throw new RuntimeException(
+                "Invalid settlement type. Must be 'credit_note' or 'cash_refund'."
+            );
+        }
+
+        // A fully-paid invoice has zero outstanding AP, so a credit note would be
+        // meaningless (and the old max(0, ...) clamp would silently destroy value).
+        // Cash refunds are still allowed — money physically comes back.
+        if ($purchase->payment_status === 'paid' && $settlement !== 'cash_refund') {
             throw new RuntimeException(
                 'This purchase is fully paid. A purchase return against a paid invoice ' .
                 'requires a cash refund from the supplier. Set settlement_type = cash_refund.'
             );
         }
 
+        if ($settlement === 'cash_refund' && empty($data['refund_account_id'])) {
+            throw new RuntimeException('Cash refund requires a refund account.');
+        }
+
+        // Credit-note oversize guard (before the transaction so nothing is written).
+        // NOTE: amounts are DECIMAL(14,2) taka, not integer paisa — compared here in
+        // integer paisa via round(x * 100) for exact 2-decimal comparison.
+        if ($settlement === 'credit_note') {
+            $requestedTotal = 0.0;
+            foreach ($data['items'] ?? [] as $item) {
+                $requestedTotal += (float) $item['unit_cost'] * (int) $item['quantity'];
+            }
+
+            $outstanding = $purchase->effectiveTotalAmount() - (float) $purchase->amount_paid;
+
+            if ((int) round($requestedTotal * 100) > (int) round($outstanding * 100)) {
+                throw new RuntimeException(
+                    'Credit note (৳' . number_format($requestedTotal, 2) . ') exceeds outstanding payable ' .
+                    '(৳' . number_format($outstanding, 2) . ') — use cash refund for the excess.'
+                );
+            }
+        }
+
         return DB::transaction(function () use ($purchase, $data, $actor) {
+            // Quantity / price / total caps BEFORE anything is written. Runs inside
+            // the transaction on the locked purchase row so two concurrent
+            // returns serialize here — the loser sees the winner's quantities
+            // and fails cleanly instead of double-spending stock/cash.
+            $this->validateReturnableItems($purchase, $data['items'] ?? []);
+
             $shop     = Shop::withoutGlobalScopes()->findOrFail($purchase->shop_id);
             $supplier = $purchase->supplier()->withoutGlobalScopes()->lockForUpdate()->findOrFail($purchase->supplier_id);
 
@@ -155,6 +197,137 @@ class ProcessPurchaseReturnAction
             DB::afterCommit(fn () => event(new PurchaseReturnProcessed($return, $shop)));
             return $return->fresh(['items.variant', 'supplier', 'purchase']);
         });
+    }
+
+    /**
+     * Close the repeat-return loophole: every submitted item is checked against
+     * what this purchase can still return. Without this, the same (bulk,
+     * non-serialized) line could be returned over and over — each pass posting
+     * another cash-refund journal and decrementing stock without bound.
+     *
+     * Enforces, in integer paisa where money is compared:
+     *  - each item references a real line of THIS purchase, qty >= 1;
+     *  - return price == purchase line price (the UI has no price field —
+     *    anything else is tampered input and would print cash / erase AP);
+     *  - serialized items: qty == 1, unit belongs to the line, still in_stock,
+     *    never returned before (in this or any earlier return);
+     *  - per-line cumulative returned qty (all settlements) <= purchased qty;
+     *  - global cumulative returned total + this request <= purchase total.
+     *
+     * Must run inside the transaction on the locked row (see caller).
+     */
+    private function validateReturnableItems(Purchase $purchase, array $items): void
+    {
+        if (empty($items)) {
+            throw new RuntimeException('No return items supplied.');
+        }
+
+        $locked = Purchase::withoutGlobalScopes()->lockForUpdate()->findOrFail($purchase->id);
+
+        $lines = PurchaseLineItem::withoutGlobalScopes()
+            ->with('variant.product')
+            ->where('purchase_id', $locked->id)
+            ->get()
+            ->keyBy('id');
+
+        // Cumulative quantities already returned per line (ALL settlements —
+        // a cash-refunded unit is gone just as much as a credited one).
+        $priorQty = DB::table('purchase_return_items as pri')
+            ->join('purchase_returns as pr', 'pr.id', '=', 'pri.purchase_return_id')
+            ->where('pr.purchase_id', $locked->id)
+            ->groupBy('pri.purchase_line_item_id')
+            ->selectRaw('pri.purchase_line_item_id as line_id, SUM(pri.quantity) as qty')
+            ->get()
+            ->mapWithKeys(fn ($r) => [(int) $r->line_id => (int) $r->qty]);
+
+        // Every serialized unit ever returned against this purchase.
+        $returnedUnitIds = DB::table('purchase_return_items as pri')
+            ->join('purchase_returns as pr', 'pr.id', '=', 'pri.purchase_return_id')
+            ->where('pr.purchase_id', $locked->id)
+            ->whereNotNull('pri.product_unit_id')
+            ->pluck('pri.product_unit_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $requestedTotal   = 0.0;
+        $requestedPerLine = [];
+        $seenUnits        = [];
+
+        foreach (array_values($items) as $index => $item) {
+            $label = 'Return item #' . ($index + 1);
+
+            $line = $lines->get((int) ($item['purchase_line_item_id'] ?? 0));
+            if (! $line) {
+                throw new RuntimeException("{$label} does not belong to this purchase.");
+            }
+
+            if ((int) ($line->product_variant_id) !== (int) ($item['product_variant_id'] ?? 0)) {
+                throw new RuntimeException("{$label} does not match the purchase line item.");
+            }
+
+            $qty = (int) ($item['quantity'] ?? 0);
+            if ($qty < 1) {
+                throw new RuntimeException("{$label}: quantity must be at least 1.");
+            }
+
+            if ((int) round((float) ($item['unit_cost'] ?? 0) * 100)
+                !== (int) round((float) $line->unit_cost * 100)) {
+                throw new RuntimeException(
+                    "{$label}: return price must match the purchase price " .
+                    '(৳' . number_format((float) $line->unit_cost, 2) . ').'
+                );
+            }
+
+            $unitId = $item['product_unit_id'] ?? null;
+            if (! empty($unitId)) {
+                $unitId = (int) $unitId;
+                if ($qty !== 1) {
+                    throw new RuntimeException("{$label}: serialized (IMEI) returns must be one unit at a time.");
+                }
+                if (in_array($unitId, $seenUnits, true)) {
+                    throw new RuntimeException("{$label}: the same unit is listed twice in this return.");
+                }
+                $seenUnits[] = $unitId;
+                if (in_array($unitId, $returnedUnitIds, true)) {
+                    throw new RuntimeException("{$label}: this unit was already returned and cannot be returned again.");
+                }
+                $unit = ProductUnit::withoutGlobalScopes()->find($unitId);
+                if (! $unit
+                    || (int) $unit->purchase_line_item_id !== (int) $line->id
+                    || $unit->status !== \App\Enums\UnitStatus::InStock) {
+                    throw new RuntimeException("{$label}: the selected unit is no longer available for return.");
+                }
+            }
+
+            $requestedPerLine[$line->id] = ($requestedPerLine[$line->id] ?? 0) + $qty;
+            $requestedTotal += (float) $item['unit_cost'] * $qty;
+        }
+
+        // Per-line caps.
+        foreach ($requestedPerLine as $lineId => $qty) {
+            $line      = $lines->get($lineId);
+            $already   = (int) ($priorQty[$lineId] ?? 0);
+            $remaining = (int) $line->quantity - $already;
+            if ($qty > $remaining) {
+                $name = $line->variant?->product?->name ?? ('line #' . $line->id);
+                throw new RuntimeException(
+                    "Only " . max(0, $remaining) . " of {$line->quantity} ({$name}) can still be returned " .
+                    "— {$already} already returned. You asked for {$qty}."
+                );
+            }
+        }
+
+        // Global cap: everything returned so far + this request <= purchase total.
+        $priorTotal = (float) PurchaseReturn::withoutGlobalScopes()
+            ->where('purchase_id', $locked->id)
+            ->sum('total_amount');
+        if ((int) round(($priorTotal + $requestedTotal) * 100)
+            > (int) round((float) $locked->total_amount * 100)) {
+            throw new RuntimeException(
+                'Total returned (৳' . number_format($priorTotal + $requestedTotal, 2) . ') would exceed the ' .
+                'purchase total (৳' . number_format((float) $locked->total_amount, 2) . ').'
+            );
+        }
     }
 
     private function nextReturnNumber(Shop $shop): string

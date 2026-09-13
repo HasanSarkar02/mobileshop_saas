@@ -18,16 +18,29 @@
         <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
             <h3 class="font-semibold text-gray-900 text-sm">Select Items to Return</h3>
         </div>
+        @if (!$hasReturnable)
+            <div class="m-4 bg-red-50 border border-red-300 rounded-xl p-3 text-sm text-red-800">
+                ⛔ <strong>Nothing left to return.</strong>
+                Every unit of this purchase has already been returned — further returns are blocked.
+            </div>
+        @endif
         <div class="divide-y divide-gray-100">
             @foreach ($returnItems as $idx => $item)
                 <div class="p-4 space-y-3 {{ $item['selected'] ? 'bg-blue-50' : '' }}"
                     wire:key="ri-{{ $idx }}">
                     <div class="flex items-start gap-3">
                         <input wire:model.live="returnItems.{{ $idx }}.selected" type="checkbox"
-                            class="mt-1 rounded border-gray-300 text-indigo-600">
+                            @if ($item['remaining_qty'] <= 0) disabled @endif
+                            class="mt-1 rounded border-gray-300 text-indigo-600 disabled:opacity-40">
                         <div class="flex-1">
                             <div class="font-semibold text-sm text-gray-900">{{ $item['product_name'] }}</div>
                             <div class="text-xs text-gray-400">SKU: {{ $item['sku'] }}</div>
+                            @if (($item['already_returned'] ?? 0) > 0)
+                                <div class="text-xs text-amber-600 font-medium mt-0.5">
+                                    ↩ Already returned {{ $item['already_returned'] }} of {{ $item['original_qty'] }}
+                                    · {{ $item['remaining_qty'] }} left
+                                </div>
+                            @endif
                         </div>
                         <div class="text-right shrink-0">
                             <div class="text-xs text-gray-400">Unit Cost</div>
@@ -43,8 +56,9 @@
                                     Quantity *
                                 </label>
                                 <input wire:model.lazy="returnItems.{{ $idx }}.quantity" type="number"
-                                    min="1" max="{{ $item['original_qty'] }}" class="input text-sm">
-                                <p class="text-xs text-gray-400 mt-0.5">Max: {{ $item['original_qty'] }}</p>
+                                    min="1" max="{{ $item['remaining_qty'] }}" class="input text-sm"
+                                    @if ($item['remaining_qty'] <= 0) disabled @endif>
+                                <p class="text-xs text-gray-400 mt-0.5">Max: {{ $item['remaining_qty'] }} (still returnable)</p>
                             </div>
 
                             {{-- Condition --}}
@@ -101,6 +115,13 @@
     <div class="card p-6 space-y-4">
         <h3 class="font-semibold text-gray-900 border-b border-gray-100 pb-2">Return Settings</h3>
 
+        @if ($purchase->payment_status === 'paid')
+            <div class="bg-amber-50 border border-amber-300 rounded-xl p-3 text-sm text-amber-800">
+                ⚠️ <strong>This purchase is fully paid — only Cash Refund is allowed.</strong>
+                A credit note would have no outstanding payable to reduce.
+            </div>
+        @endif
+
         <div class="grid sm:grid-cols-2 gap-4">
             <div>
                 <label class="label">Return Date *</label>
@@ -112,8 +133,10 @@
 
             <div>
                 <label class="label">Settlement Type *</label>
-                <select wire:model.live="settlementType" class="input">
-                    <option value="credit_note">Credit Note (reduces what we owe supplier)</option>
+                <select wire:model.live="settlementType" class="input"
+                    @if ($purchase->payment_status === 'paid') disabled @endif>
+                    <option value="credit_note"
+                        @if ($purchase->payment_status === 'paid') disabled @endif>Credit Note (reduces what we owe supplier)</option>
                     <option value="cash_refund">Cash Refund (supplier pays us back)</option>
                 </select>
             </div>
@@ -165,7 +188,8 @@
 
     {{-- Submit --}}
     <div class="flex gap-3 pb-8">
-        <button wire:click="save" wire:loading.attr="disabled" wire:target="save" class="btn-primary">
+        <button wire:click="save" wire:loading.attr="disabled" wire:target="save" class="btn-primary"
+            @if (!$hasReturnable) disabled @endif>
             <span wire:loading.remove wire:target="save">
                 Process Return (৳{{ number_format($this->totalReturnAmount, 2) }})
             </span>

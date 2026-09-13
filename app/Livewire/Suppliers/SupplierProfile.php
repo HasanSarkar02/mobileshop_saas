@@ -125,10 +125,12 @@ class SupplierProfile extends Component
             ")
             ->get();
 
-        // All purchase returns (credit notes)
+        // Credit-note returns only — cash refunds never touched AP (money came
+        // back via cash/bank instead), so they must not reduce the payable.
         $returns = DB::table('purchase_returns')
             ->where('shop_id', $shopId)
             ->where('supplier_id', $supplierId)
+            ->where('settlement_type', 'credit_note')
             ->selectRaw("
                 return_date   AS txn_date,
                 'Return'      AS txn_type,

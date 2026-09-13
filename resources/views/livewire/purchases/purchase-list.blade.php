@@ -39,7 +39,12 @@
                             <td class="table-td font-semibold">৳{{ number_format($purchase->total_amount, 2) }}</td>
                             <td class="table-td">
                                 @php
-                                    $outstanding = (float) $purchase->total_amount - (float) $purchase->amount_paid;
+                                    // Due = net payable (after credit notes) − paid.
+                                    // Cash refunds are excluded: that money is back in
+                                    // our wallet, the payable itself is unchanged.
+                                    $outstanding = (float) $purchase->total_amount
+                                        - (float) ($purchase->credit_notes_sum ?? 0)
+                                        - (float) $purchase->amount_paid;
                                 @endphp
                                 <div class="flex flex-col gap-1">
                                     <span

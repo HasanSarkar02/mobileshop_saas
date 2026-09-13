@@ -8,7 +8,7 @@
                 {{ $purchase->purchase_date->format('d M Y') }}
             </div>
         </div>
-        @if (!in_array($purchase->payment_status, ['paid']) || $purchase->lineItems->isNotEmpty())
+        @if ($purchase->hasReturnableQuantity())
             @can('purchases.manage')
                 <a href="{{ route('purchases.return', $purchase) }}" wire:navigate class="btn-secondary btn-sm">
                     ↩ Return Items
@@ -47,7 +47,7 @@
             </div>
             <div>
                 <div class="text-xs text-gray-400">Outstanding</div>
-                @php $outstanding = $purchase->effectiveTotalAmount() - (float)$purchase->amount_paid; @endphp
+                @php $outstanding = $purchase->outstandingAmount(); @endphp
                 <div class="font-bold {{ $outstanding > 0 ? 'text-red-600' : 'text-green-600' }}">
                     {{ $outstanding > 0 ? '৳' . number_format($outstanding, 2) : '✓ Cleared' }}
                 </div>
@@ -69,10 +69,14 @@
                 </a>
             @endif
             @can('purchases.manage')
-                <a href="{{ route('purchases.return', $purchase) }}" wire:navigate
-                    class="text-xs text-amber-600 hover:underline ml-auto">
-                    ↩ Return Items
-                </a>
+                @if ($purchase->hasReturnableQuantity())
+                    <a href="{{ route('purchases.return', $purchase) }}" wire:navigate
+                        class="text-xs text-amber-600 hover:underline ml-auto">
+                        ↩ Return Items
+                    </a>
+                @else
+                    <span class="text-xs text-gray-400 ml-auto">✓ Fully returned</span>
+                @endif
             @endcan
         </div>
     </div>
@@ -197,17 +201,40 @@
                     <span class="text-gray-600">Original Amount</span>
                     <span class="font-semibold">৳{{ number_format($purchase->total_amount, 2) }}</span>
                 </div>
-                <div class="flex justify-between text-sm mt-1">
-                    <span class="text-amber-600">Less: Returns</span>
-                    <span class="font-semibold text-amber-600">
-                        -৳{{ number_format($purchase->totalReturned(), 2) }}
-                    </span>
-                </div>
+                @if ($purchase->totalCredited() > 0)
+                    <div class="flex justify-between text-sm mt-1">
+                        <span class="text-amber-600">Less: Credit notes</span>
+                        <span class="font-semibold text-amber-600">
+                            -৳{{ number_format($purchase->totalCredited(), 2) }}
+                        </span>
+                    </div>
+                @endif
+                @if ($purchase->totalCashRefunded() > 0)
+                    <div class="flex justify-between text-sm mt-1">
+                        <span class="text-gray-500" title="Cash is back in your wallet — the payable itself is unchanged.">Cash recovered (in wallet)</span>
+                        <span class="font-semibold text-green-700">
+                            ৳{{ number_format($purchase->totalCashRefunded(), 2) }}
+                        </span>
+                    </div>
+                @endif
+                @if ((float) $purchase->amount_paid > 0)
+                    <div class="flex justify-between text-sm mt-1">
+                        <span class="text-green-700">Less: Amount paid</span>
+                        <span class="font-semibold text-green-700">
+                            -৳{{ number_format($purchase->amount_paid, 2) }}
+                        </span>
+                    </div>
+                @endif
+                @php $boxOutstanding = $purchase->outstandingAmount(); @endphp
                 <div class="flex justify-between text-sm mt-1 pt-1 border-t border-gray-200">
-                    <span class="font-bold text-gray-900">Net Payable</span>
-                    <span class="font-bold text-indigo-700">
-                        ৳{{ number_format($purchase->effectiveTotalAmount(), 2) }}
-                    </span>
+                    <span class="font-bold text-gray-900">Outstanding balance</span>
+                    @if ($boxOutstanding > 0.005)
+                        <span class="font-bold text-red-600">
+                            ৳{{ number_format($boxOutstanding, 2) }}
+                        </span>
+                    @else
+                        <span class="font-bold text-green-600">✓ Settled</span>
+                    @endif
                 </div>
             </div>
         </div>

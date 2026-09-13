@@ -35,6 +35,10 @@ class PurchaseList extends Component
     public function render()
     {
         $purchases = Purchase::with('supplier', 'branch', 'createdBy')
+            // Credit-note totals per purchase so Due = net payable − paid
+            // without an N+1 query per row.
+            ->withSum(['returns as credit_notes_sum' => fn ($q) =>
+                $q->where('settlement_type', 'credit_note')], 'total_amount')
             ->when($this->search, fn($q) =>
                 $q->where('reference_number', 'like', "%{$this->search}%")
                   ->orWhereHas('supplier', fn($sq) => $sq->where('name', 'like', "%{$this->search}%"))

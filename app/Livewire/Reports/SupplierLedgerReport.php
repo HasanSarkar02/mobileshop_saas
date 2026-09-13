@@ -83,8 +83,11 @@ class SupplierLedgerReport extends Component
             ->selectRaw("payment_date AS txn_date,'Payment' AS txn_type, payment_number AS ref, 0 AS debit, amount AS credit")
             ->get();
 
+        // Credit-note returns only — cash refunds never touched AP, so they must
+        // not appear as payable credits (matches the opening-balance filter above).
         $returns = DB::table('purchase_returns')
             ->where('supplier_id', $supplierId)->where('shop_id', $shopId)
+            ->where('settlement_type', 'credit_note')
             ->whereBetween('return_date', [$filter->dateRange->from->toDateString(), $filter->dateRange->to->toDateString()])
             ->selectRaw("return_date AS txn_date,'Return' AS txn_type, return_number AS ref, 0 AS debit, total_amount AS credit")
             ->get();
