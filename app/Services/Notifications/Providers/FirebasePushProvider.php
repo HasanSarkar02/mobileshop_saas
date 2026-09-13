@@ -64,7 +64,8 @@ class FirebasePushProvider implements PushProviderInterface
         $tokenHash = substr(sha1($token), 0, 8);
         Log::warning("Deactivating Firebase token [{$tokenHash}] due to {$reason}");
         
-        UserPushToken::where('token', $token)
+        // Safe: token column is globally unique — one row, one user, one shop. Not a cross-shop query.
+        UserPushToken::withoutGlobalScopes()->where('token', $token)
             ->where('is_active', true)
             ->update([
                 'is_active'    => false,

@@ -25,7 +25,8 @@ class EscalatePendingNotifications extends Command
         Notification::withoutGlobalScopes()
             ->where('action_required', true)
             ->where('escalation_level', '<', self::MAX_ESCALATION_LEVEL)
-            ->whereHas('recipients', fn ($q) => $q->whereNull('read_at')
+            // Safe: EXISTS subquery is anchored to each single parent notification row, not a cross-shop query.
+            ->whereHas('recipients', fn ($q) => $q->withoutGlobalScopes()->whereNull('read_at')
                 ->whereNull('dismissed_at')
                 ->whereNull('action_taken_at')
                 ->where(fn ($sq) => $sq->whereNull('snoozed_until')->orWhere('snoozed_until', '<=', now())))
@@ -76,7 +77,8 @@ class EscalatePendingNotifications extends Command
             return;
         }
 
-        $recipient = $notification->recipients()->where('user_id', $owner->id)->first();
+        // Safe: anchored to single $notification with fixed shop_id, not a cross-shop query.
+        $recipient = $notification->recipients()->withoutGlobalScopes()->where('user_id', $owner->id)->first();
 
         if ($recipient) {
             $recipient->update(['read_at' => null, 'dismissed_at' => null, 'snoozed_until' => null]);

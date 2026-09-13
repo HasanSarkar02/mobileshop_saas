@@ -9,6 +9,7 @@ use App\Models\BranchStock;
 use App\Models\PaymentAccount;
 use App\Models\ServiceTicket;
 use App\Services\AccountingService;
+use App\Support\TenantContext;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
@@ -34,6 +35,9 @@ class ServiceTicketDetail extends Component
 
     public function mount(ServiceTicket $ticket): void
     {
+        if ($ticket->shop_id !== TenantContext::shopId()) {
+            abort(403);
+        }
         $this->requirePermission('service.view');
         $this->ticket  = $ticket->load(['parts.variant.product', 'payments.paymentAccount', 'customer', 'technician', 'productUnit', 'branch']);
         $this->payDate = now()->format('Y-m-d');

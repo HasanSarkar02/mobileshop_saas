@@ -19,6 +19,7 @@ use App\Enums\FollowUpStatus;
 use App\Enums\FollowUpType;
 use App\Models\CustomerDueFollowUp;
 use App\Services\CustomerFollowUpService;
+use App\Support\TenantContext;
 use Livewire\Attributes\Url;
 
 #[Layout('components.layouts.app')]
@@ -66,6 +67,11 @@ class CustomerProfile extends Component
 
     public function mount(Customer $customer): void
     {
+        // Belt and suspenders: route-model binding is tenant-scoped, but an
+        // explicit ownership check closes any binding/middleware edge case.
+        if ($customer->shop_id !== TenantContext::shopId()) {
+            abort(403);
+        }
         $this->requirePermission('customers.view');
         $this->customer = $customer->load(['guarantor', 'createdBy']);
         $this->followupDate = now()->format('Y-m-d\TH:i');

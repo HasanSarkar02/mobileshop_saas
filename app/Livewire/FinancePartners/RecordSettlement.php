@@ -6,6 +6,7 @@ use App\Actions\RecordFinancePartnerSettlementAction;
 use App\Enums\FPReceivableStatus;
 use App\Models\FinancePartner;
 use App\Models\FinancePartnerReceivable;
+use App\Support\TenantContext;
 use App\Models\PaymentAccount;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -33,6 +34,9 @@ class RecordSettlement extends Component
 
     public function mount(FinancePartner $partner): void
     {
+        if ($partner->shop_id !== TenantContext::shopId()) {
+            abort(403);
+        }
         $this->partner        = $partner;
         $this->settlementDate = now()->format('Y-m-d');
 

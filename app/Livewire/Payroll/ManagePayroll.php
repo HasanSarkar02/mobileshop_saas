@@ -6,6 +6,7 @@ use App\Actions\ProcessPayrollAction;
 use App\Enums\PayrollStatus;
 use App\Models\PaymentAccount;
 use App\Models\PayrollRun;
+use App\Support\TenantContext;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -26,6 +27,9 @@ class ManagePayroll extends Component
 
     public function mount(PayrollRun $run): void
     {
+        if ($run->shop_id !== TenantContext::shopId()) {
+            abort(403);
+        }
         if ($run->status === PayrollStatus::Paid) {
             $this->redirect(route('payroll.index'), navigate: true);
             return;

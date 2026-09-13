@@ -14,7 +14,8 @@ class PushChannelHandler implements NotificationChannelHandler
 
     public function send(NotificationDelivery $delivery): void
     {
-        $recipient = $delivery->recipient()->with('notification')->first();
+        // Safe: anchored to this single delivery's recipient (one notification, one shop), not a cross-shop query.
+        $recipient = $delivery->recipient()->withoutGlobalScopes()->with('notification')->first();
         $notification = $recipient?->notification;
 
         if (! $notification) {
@@ -22,7 +23,8 @@ class PushChannelHandler implements NotificationChannelHandler
             return;
         }
 
-        $tokens = UserPushToken::where('user_id', $recipient->user_id)->where('is_active', true)->get();
+        // Safe: user_id identifies one unique user (one shop), not a cross-shop query.
+        $tokens = UserPushToken::withoutGlobalScopes()->where('user_id', $recipient->user_id)->where('is_active', true)->get();
 
         if ($tokens->isEmpty()) {
             $delivery->update([

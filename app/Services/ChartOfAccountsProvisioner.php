@@ -104,7 +104,8 @@ class ChartOfAccountsProvisioner
      */
     public function provisionCashAccountForBranch(Shop $shop, Branch $branch, ?Account $cashHeader = null): Account
     {
-        $cashHeader ??= Account::where('shop_id', $shop->id)->where('code', '1000')->firstOrFail();
+        // Safe: runs during shop provisioning before shop has tenant context; cannot be scoped.
+        $cashHeader ??= Account::withoutGlobalScopes()->where('shop_id', $shop->id)->where('code', '1000')->firstOrFail();
 
         $account = Account::create([
             'shop_id' => $shop->id,
@@ -144,7 +145,8 @@ class ChartOfAccountsProvisioner
         ?string $bankName = null,
         ?int $branchId = null,
     ): PaymentAccount {
-        $cashHeader = Account::where('shop_id', $shop->id)->where('code', '1000')->firstOrFail();
+        // Safe: runs during shop provisioning before shop has tenant context; cannot be scoped.
+        $cashHeader = Account::withoutGlobalScopes()->where('shop_id', $shop->id)->where('code', '1000')->firstOrFail();
 
         $account = Account::create([
             'shop_id' => $shop->id,

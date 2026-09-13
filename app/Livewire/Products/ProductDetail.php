@@ -7,6 +7,7 @@ use App\Models\BranchStock;
 use App\Models\Product;
 use App\Models\ProductUnit;
 use App\Models\Sale;
+use App\Support\TenantContext;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -34,6 +35,9 @@ class ProductDetail extends Component
 
     public function mount(Product $product): void
     {
+        if ($product->shop_id !== TenantContext::shopId()) {
+            abort(403);
+        }
         $this->requirePermission('inventory.view');
         $this->product = $product->load([
         'brand',

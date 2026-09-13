@@ -8,6 +8,7 @@ use App\Enums\ReturnCondition;
 use App\Models\Branch;
 use App\Models\PaymentAccount;
 use App\Models\Sale;
+use App\Support\TenantContext;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -37,6 +38,9 @@ class ProcessReturn extends Component
 
     public function mount(Sale $sale): void
     {
+        if ($sale->shop_id !== TenantContext::shopId()) {
+            abort(403);
+        }
         if ($sale->status->value !== 'confirmed') {
             $this->redirect(route('sales.show', $sale), navigate: true);
             return;

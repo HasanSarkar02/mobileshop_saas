@@ -4,6 +4,7 @@ namespace App\Livewire\UsedPhones;
 
 use App\Models\SaleItem;
 use App\Models\UsedPhoneAcquisition;
+use App\Support\TenantContext;
 use App\Services\Media\ImageUploadService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;
@@ -34,6 +35,9 @@ class UsedPhoneDetail extends Component
 
     public function mount(UsedPhoneAcquisition $acquisition): void
     {
+        if ($acquisition->shop_id !== TenantContext::shopId()) {
+            abort(403);
+        }
         $this->requirePermission('used_phones.view');
 
         $this->acquisition = $acquisition->load([

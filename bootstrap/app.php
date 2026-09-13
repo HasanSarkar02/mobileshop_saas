@@ -23,6 +23,18 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetTenantContext::class,
         ]);
 
+        // Tenant context must resolve BEFORE SubstituteBindings: implicit
+        // route-model binding (Customer $customer, Sale $sale, …) runs at
+        // SubstituteBindings, and with the default group order the binding
+        // query executed unscoped (null context). Priority reordering only —
+        // group membership and every other middleware are untouched, and
+        // StartSession/Authenticate still sort ahead, so session + auth are
+        // available when the context resolves.
+        $middleware->prependToPriorityList(
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\SetTenantContext::class,
+        );
+
         $middleware->alias([
             'super_admin' => \App\Http\Middleware\EnsureIsSuperAdmin::class,
             'feature' => \App\Http\Middleware\CheckShopFeature::class,

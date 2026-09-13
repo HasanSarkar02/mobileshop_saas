@@ -3,6 +3,7 @@
 namespace App\Livewire\Sales;
 
 use App\Models\Sale;
+use App\Support\TenantContext;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -16,6 +17,9 @@ class SaleDetail extends Component
 
     public function mount(Sale $sale): void
     {
+        if ($sale->shop_id !== TenantContext::shopId()) {
+            abort(403);
+        }
         $this->requirePermission('sales.view');
         $this->sale = $sale->load([
             'items.variant.product.brand',

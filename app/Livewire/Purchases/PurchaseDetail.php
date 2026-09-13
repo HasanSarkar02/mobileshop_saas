@@ -3,6 +3,7 @@
 namespace App\Livewire\Purchases;
 
 use App\Models\Purchase;
+use App\Support\TenantContext;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -17,6 +18,9 @@ class PurchaseDetail extends Component
 
     public function mount(Purchase $purchase): void
     {
+        if ($purchase->shop_id !== TenantContext::shopId()) {
+            abort(403);
+        }
         $this->purchase = $purchase->load([
             'supplier',
             'branch',
